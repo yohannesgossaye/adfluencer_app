@@ -1,0 +1,1779 @@
+{
+	"info": {
+		"_postman_id": "a1b2c3d4-adfl-4000-8000-adfluence000001",
+		"name": "Adfluence API",
+		"description": "Adfluence backend API collection.\n\nBase URL: {{baseUrl}}/api/v1\n\n**Setup**\n1. Import `Adfluence.postman_environment.json` (optional)\n2. Run **Auth → Login** — tokens auto-save to collection variables\n3. Protected routes use `Authorization: Bearer {{accessToken}}`\n\n**Admin:** `make seed-admin` then use **Admin → Login** (`portal: admin`)\n\n**Rate limits:** Login lockout after 5 failed attempts (5m → 30m → 2h). Forgot password: 3/hour/email.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{ "key": "baseUrl", "value": "http://localhost:8080" },
+		{ "key": "accessToken", "value": "" },
+		{ "key": "refreshToken", "value": "" },
+		{ "key": "resetToken", "value": "" },
+		{ "key": "verifyOtp", "value": "" },
+		{ "key": "applicationUserId", "value": "" },
+		{ "key": "campaignId", "value": "" },
+		{ "key": "influencerUserId", "value": "" },
+		{ "key": "inviteId", "value": "" },
+		{ "key": "contractId", "value": "" },
+		{ "key": "businessUserId", "value": "" },
+		{ "key": "ticketId", "value": "" }
+	],
+	"item": [
+		{
+			"name": "Auth",
+			"description": "Authentication — signup, login, tokens, password reset, email verify (OTP).",
+			"item": [
+				{
+					"name": "Public",
+					"item": [
+						{
+							"name": "Signup — Business",
+							"request": {
+								"method": "POST",
+								"header": [{ "key": "Content-Type", "value": "application/json" }],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"role\": \"business\",\n  \"name\": \"Acme Coffee\",\n  \"email\": \"owner@acmecoffee.et\",\n  \"phone_number\": \"911223344\",\n  \"password\": \"SecurePass1\",\n  \"confirm_password\": \"SecurePass1\"\n}"
+								},
+								"url": "{{baseUrl}}/api/v1/auth/signup",
+								"description": "Register a business account. Returns tokens + redirect_to."
+							},
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (pm.response.code === 201) {",
+											"  const j = pm.response.json();",
+											"  if (j.data && j.data.tokens) {",
+											"    pm.collectionVariables.set('accessToken', j.data.tokens.access_token);",
+											"    pm.collectionVariables.set('refreshToken', j.data.tokens.refresh_token);",
+											"  }",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							]
+						},
+						{
+							"name": "Signup — Influencer",
+							"request": {
+								"method": "POST",
+								"header": [{ "key": "Content-Type", "value": "application/json" }],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"role\": \"influencer\",\n  \"name\": \"Yohannes Gossaye\",\n  \"email\": \"yohannesgossaye@gmail.com\",\n  \"phone_number\": \"953422606\",\n  \"password\": \"yoya1111\",\n  \"confirm_password\": \"yoya1111\"\n}"
+								},
+								"url": "{{baseUrl}}/api/v1/auth/signup"
+							},
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (pm.response.code === 201) {",
+											"  const j = pm.response.json();",
+											"  if (j.data && j.data.tokens) {",
+											"    pm.collectionVariables.set('accessToken', j.data.tokens.access_token);",
+											"    pm.collectionVariables.set('refreshToken', j.data.tokens.refresh_token);",
+											"  }",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							]
+						},
+						{
+							"name": "Login",
+							"request": {
+								"method": "POST",
+								"header": [{ "key": "Content-Type", "value": "application/json" }],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"email\": \"yohannesgossaye@gmail.com\",\n  \"password\": \"yoya1111\",\n  \"remember_me\": true,\n  \"next\": \"\"\n}"
+								},
+								"url": "{{baseUrl}}/api/v1/auth/login",
+								"description": "Login business/influencer. Optional `next` = safe internal path override. Saves tokens automatically."
+							},
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (pm.response.code === 200) {",
+											"  const j = pm.response.json();",
+											"  if (j.data && j.data.tokens) {",
+											"    pm.collectionVariables.set('accessToken', j.data.tokens.access_token);",
+											"    pm.collectionVariables.set('refreshToken', j.data.tokens.refresh_token);",
+											"  }",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							]
+						},
+						{
+							"name": "Refresh Token",
+							"request": {
+								"method": "POST",
+								"header": [{ "key": "Content-Type", "value": "application/json" }],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"refresh_token\": \"{{refreshToken}}\"\n}"
+								},
+								"url": "{{baseUrl}}/api/v1/auth/refresh"
+							},
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (pm.response.code === 200) {",
+											"  const j = pm.response.json();",
+											"  if (j.data && j.data.tokens) {",
+											"    pm.collectionVariables.set('accessToken', j.data.tokens.access_token);",
+											"    pm.collectionVariables.set('refreshToken', j.data.tokens.refresh_token);",
+											"  }",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							]
+						},
+						{
+							"name": "Forgot Password",
+							"request": {
+								"method": "POST",
+								"header": [{ "key": "Content-Type", "value": "application/json" }],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"email\": \"yohannesgossaye@gmail.com\"\n}"
+								},
+								"url": "{{baseUrl}}/api/v1/auth/forgot-password",
+								"description": "Always 200 generic message. Max 3/hour per email. Check email or server logs for reset link."
+							}
+						},
+						{
+							"name": "Reset Password",
+							"request": {
+								"method": "POST",
+								"header": [{ "key": "Content-Type", "value": "application/json" }],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"token\": \"{{resetToken}}\",\n  \"password\": \"NewSecurePass1\",\n  \"confirm_password\": \"NewSecurePass1\"\n}"
+								},
+								"url": "{{baseUrl}}/api/v1/auth/reset-password",
+								"description": "Set `resetToken` from email link query param `?token=`"
+							}
+						}
+					]
+				},
+				{
+					"name": "Protected (Bearer)",
+					"description": "Requires Authorization: Bearer {{accessToken}}",
+					"item": [
+						{
+							"name": "Get Me",
+							"request": {
+								"method": "GET",
+								"header": [
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"url": "{{baseUrl}}/api/v1/auth/me"
+							}
+						},
+						{
+							"name": "Logout",
+							"request": {
+								"method": "POST",
+								"header": [
+									{ "key": "Content-Type", "value": "application/json" },
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"refresh_token\": \"{{refreshToken}}\"\n}"
+								},
+								"url": "{{baseUrl}}/api/v1/auth/logout"
+							}
+						},
+						{
+							"name": "Send Verify Email (OTP)",
+							"request": {
+								"method": "POST",
+								"header": [
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"url": "{{baseUrl}}/api/v1/auth/send-verify-email",
+								"description": "Sends 6-digit OTP to user email. Max 3/hour."
+							}
+						},
+						{
+							"name": "Verify Email (OTP)",
+							"request": {
+								"method": "POST",
+								"header": [
+									{ "key": "Content-Type", "value": "application/json" },
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"otp\": \"{{verifyOtp}}\"\n}"
+								},
+								"url": "{{baseUrl}}/api/v1/auth/verify-email",
+								"description": "Set verifyOtp from email (6 digits, 5 min expiry)."
+							}
+						},
+						{
+							"name": "Send Verify Phone (OTP)",
+							"request": {
+								"method": "POST",
+								"header": [
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"url": "{{baseUrl}}/api/v1/auth/send-verify-phone",
+								"description": "Sends 6-digit OTP via SMS (or logs to server console in dev). Max 3/hour."
+							}
+						},
+						{
+							"name": "Verify Phone (OTP)",
+							"request": {
+								"method": "POST",
+								"header": [
+									{ "key": "Content-Type", "value": "application/json" },
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"otp\": \"{{verifyOtp}}\"\n}"
+								},
+								"url": "{{baseUrl}}/api/v1/auth/verify-phone",
+								"description": "Set verifyOtp from SMS or server console log (6 digits, 5 min expiry)."
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "Admin",
+			"description": "Admin portal — seed with `make seed-admin`. Same login endpoint with portal: admin.",
+			"item": [
+				{
+					"name": "Login — Admin",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"admin@adfluence.com\",\n  \"password\": \"admin1111\",\n  \"portal\": \"admin\",\n  \"remember_me\": false\n}"
+						},
+						"url": "{{baseUrl}}/api/v1/auth/login",
+						"description": "Requires seeded admin. Non-admin users get 403 not_admin."
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"  const j = pm.response.json();",
+									"  if (j.data && j.data.tokens) {",
+									"    pm.collectionVariables.set('accessToken', j.data.tokens.access_token);",
+									"    pm.collectionVariables.set('refreshToken', j.data.tokens.refresh_token);",
+									"  }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Get Me (Admin)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+						],
+						"url": "{{baseUrl}}/api/v1/auth/me"
+					}
+				},
+				{
+					"name": "Dashboard",
+					"item": [
+						{
+							"name": "Get Dashboard Summary",
+							"request": {
+								"method": "GET",
+								"header": [
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"url": "{{baseUrl}}/api/v1/admin/dashboard/summary",
+								"description": "Platform KPIs, pending approvals preview, audit activity, revenue trend (real completed-contract fees only), and alerts from open disputes/support tickets."
+							}
+						}
+					]
+				},
+				{
+					"name": "Influencer Applications",
+					"item": [
+						{
+							"name": "List Applications",
+							"request": {
+								"method": "GET",
+								"header": [
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"url": {
+									"raw": "{{baseUrl}}/api/v1/admin/influencers/applications?status=pending_approval&page=1&limit=20",
+									"host": ["{{baseUrl}}"],
+									"path": ["api", "v1", "admin", "influencers", "applications"],
+									"query": [
+										{ "key": "status", "value": "pending_approval" },
+										{ "key": "search", "value": "", "disabled": true },
+										{ "key": "page", "value": "1" },
+										{ "key": "limit", "value": "20" }
+									]
+								}
+							},
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (pm.response.code === 200) {",
+											"  const j = pm.response.json();",
+											"  if (j.data && j.data.items && j.data.items[0]) {",
+											"    pm.collectionVariables.set('applicationUserId', j.data.items[0].user_id);",
+											"  }",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							]
+						},
+						{
+							"name": "Get Application",
+							"request": {
+								"method": "GET",
+								"header": [
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"url": "{{baseUrl}}/api/v1/admin/influencers/applications/{{applicationUserId}}"
+							}
+						},
+						{
+							"name": "Approve Application",
+							"request": {
+								"method": "POST",
+								"header": [
+									{ "key": "Content-Type", "value": "application/json" },
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"admin_note\": \"Strong portfolio, approved for marketplace.\"\n}"
+								},
+								"url": "{{baseUrl}}/api/v1/admin/influencers/applications/{{applicationUserId}}/approve"
+							}
+						},
+						{
+							"name": "Reject Application",
+							"request": {
+								"method": "POST",
+								"header": [
+									{ "key": "Content-Type", "value": "application/json" },
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"reason\": \"Portfolio samples do not meet quality guidelines. Please upload clearer content.\",\n  \"admin_note\": \"Resubmit after guideline update.\"\n}"
+								},
+								"url": "{{baseUrl}}/api/v1/admin/influencers/applications/{{applicationUserId}}/reject"
+							}
+						},
+						{
+							"name": "Save Admin Notes",
+							"request": {
+								"method": "PATCH",
+								"header": [
+									{ "key": "Content-Type", "value": "application/json" },
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"admin_note\": \"Waiting for ID verification.\"\n}"
+								},
+								"url": "{{baseUrl}}/api/v1/admin/influencers/applications/{{applicationUserId}}/notes"
+							}
+						}
+					]
+				},
+				{
+					"name": "Business Verifications",
+					"item": [
+						{
+							"name": "List Pending Verifications",
+							"request": {
+								"method": "GET",
+								"header": [
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"url": {
+									"raw": "{{baseUrl}}/api/v1/admin/businesses/verifications?status=pending&page=1&limit=20",
+									"host": ["{{baseUrl}}"],
+									"path": ["api", "v1", "admin", "businesses", "verifications"],
+									"query": [
+										{ "key": "status", "value": "pending" },
+										{ "key": "search", "value": "", "disabled": true },
+										{ "key": "page", "value": "1" },
+										{ "key": "limit", "value": "20" }
+									]
+								}
+							},
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (pm.response.code === 200) {",
+											"  const j = pm.response.json();",
+											"  if (j.data && j.data.items && j.data.items[0]) {",
+											"    pm.collectionVariables.set('businessUserId', j.data.items[0].user_id);",
+											"  }",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							]
+						},
+						{
+							"name": "Get Business Verification",
+							"request": {
+								"method": "GET",
+								"header": [
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"url": "{{baseUrl}}/api/v1/admin/businesses/verifications/{{businessUserId}}"
+							}
+						},
+						{
+							"name": "Verify Business",
+							"request": {
+								"method": "POST",
+								"header": [
+									{ "key": "Content-Type", "value": "application/json" },
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"admin_note\": \"Business profile verified for marketplace access.\"\n}"
+								},
+								"url": "{{baseUrl}}/api/v1/admin/businesses/verifications/{{businessUserId}}/verify"
+							}
+						},
+						{
+							"name": "Revoke Business Verification",
+							"request": {
+								"method": "POST",
+								"header": [
+									{ "key": "Content-Type", "value": "application/json" },
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"reason\": \"Verification documents need review.\"\n}"
+								},
+								"url": "{{baseUrl}}/api/v1/admin/businesses/verifications/{{businessUserId}}/revoke"
+							}
+						}
+					]
+				},
+				{
+					"name": "Support",
+					"item": [
+						{
+							"name": "List Admin Support Tickets",
+							"request": {
+								"method": "GET",
+								"header": [
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"url": {
+									"raw": "{{baseUrl}}/api/v1/admin/support/tickets?role=business&status=open&page=1&limit=20",
+									"host": ["{{baseUrl}}"],
+									"path": ["api", "v1", "admin", "support", "tickets"],
+									"query": [
+										{ "key": "role", "value": "business" },
+										{ "key": "status", "value": "open" },
+										{ "key": "priority", "value": "", "disabled": true },
+										{ "key": "search", "value": "", "disabled": true },
+										{ "key": "page", "value": "1" },
+										{ "key": "limit", "value": "20" }
+									]
+								}
+							},
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (pm.response.code === 200) {",
+											"  const j = pm.response.json();",
+											"  if (j.data && j.data.items && j.data.items[0]) {",
+											"    pm.collectionVariables.set('ticketId', j.data.items[0].id);",
+											"  }",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							]
+						},
+						{
+							"name": "Get Support Ticket",
+							"request": {
+								"method": "GET",
+								"header": [
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"url": "{{baseUrl}}/api/v1/admin/support/tickets/{{ticketId}}"
+							}
+						},
+						{
+							"name": "Update Ticket Status",
+							"request": {
+								"method": "PATCH",
+								"header": [
+									{ "key": "Content-Type", "value": "application/json" },
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"status\": \"in_review\"\n}"
+								},
+								"url": "{{baseUrl}}/api/v1/admin/support/tickets/{{ticketId}}/status"
+							}
+						},
+						{
+							"name": "Reply to Ticket",
+							"request": {
+								"method": "POST",
+								"header": [
+									{ "key": "Content-Type", "value": "application/json" },
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"admin_reply\": \"Thanks for reaching out. We are reviewing your request and will update you within 24 hours.\",\n  \"internal_note\": \"Escalate to finance if payment-related.\"\n}"
+								},
+								"url": "{{baseUrl}}/api/v1/admin/support/tickets/{{ticketId}}/reply"
+							}
+						}
+					]
+				},
+				{
+					"name": "Categories",
+					"description": "Marketplace categories — seed with `make seed-categories`. Disabled categories are hidden from business/influencer niche pickers.",
+					"item": [
+						{
+							"name": "List Categories",
+							"request": {
+								"method": "GET",
+								"header": [
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"url": "{{baseUrl}}/api/v1/admin/categories"
+							},
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (pm.response.code === 200) {",
+											"  const j = pm.response.json();",
+											"  if (j.data && j.data.items && j.data.items[0]) {",
+											"    pm.collectionVariables.set('categoryId', j.data.items[0].id);",
+											"  }",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							]
+						},
+						{
+							"name": "Create Category",
+							"request": {
+								"method": "POST",
+								"header": [
+									{ "key": "Content-Type", "value": "application/json" },
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"name\": \"Gaming\",\n  \"description\": \"Video games and esports creators\"\n}"
+								},
+								"url": "{{baseUrl}}/api/v1/admin/categories"
+							},
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (pm.response.code === 201) {",
+											"  const j = pm.response.json();",
+											"  if (j.data && j.data.id) {",
+											"    pm.collectionVariables.set('categoryId', j.data.id);",
+											"  }",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							]
+						},
+						{
+							"name": "Update Category",
+							"request": {
+								"method": "PATCH",
+								"header": [
+									{ "key": "Content-Type", "value": "application/json" },
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"name\": \"Gaming & Esports\"\n}"
+								},
+								"url": "{{baseUrl}}/api/v1/admin/categories/{{categoryId}}"
+							}
+						},
+						{
+							"name": "Disable Category",
+							"request": {
+								"method": "POST",
+								"header": [
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"url": "{{baseUrl}}/api/v1/admin/categories/{{categoryId}}/disable"
+							}
+						},
+						{
+							"name": "Enable Category",
+							"request": {
+								"method": "POST",
+								"header": [
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"url": "{{baseUrl}}/api/v1/admin/categories/{{categoryId}}/enable"
+							}
+						}
+					]
+				},
+				{
+					"name": "Users",
+					"description": "Platform user management — block/unblock/remove (admin accounts cannot be modified).",
+					"item": [
+						{
+							"name": "List Users",
+							"request": {
+								"method": "GET",
+								"header": [
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"url": {
+									"raw": "{{baseUrl}}/api/v1/admin/users?role=&status=&search=&page=1&limit=20",
+									"host": ["{{baseUrl}}"],
+									"path": ["api", "v1", "admin", "users"],
+									"query": [
+										{ "key": "role", "value": "", "description": "business | influencer | admin" },
+										{ "key": "status", "value": "", "description": "active | pending | blocked | removed" },
+										{ "key": "search", "value": "" },
+										{ "key": "page", "value": "1" },
+										{ "key": "limit", "value": "20" }
+									]
+								}
+							},
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (pm.response.code === 200) {",
+											"  const j = pm.response.json();",
+											"  if (j.data && j.data.items && j.data.items[0]) {",
+											"    pm.collectionVariables.set('adminTargetUserId', j.data.items[0].user_id);",
+											"  }",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							]
+						},
+						{
+							"name": "Get User",
+							"request": {
+								"method": "GET",
+								"header": [
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"url": "{{baseUrl}}/api/v1/admin/users/{{adminTargetUserId}}"
+							}
+						},
+						{
+							"name": "Block User",
+							"request": {
+								"method": "POST",
+								"header": [
+									{ "key": "Content-Type", "value": "application/json" },
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"reason\": \"Violated platform terms.\"\n}"
+								},
+								"url": "{{baseUrl}}/api/v1/admin/users/{{adminTargetUserId}}/block"
+							}
+						},
+						{
+							"name": "Unblock User",
+							"request": {
+								"method": "POST",
+								"header": [
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"url": "{{baseUrl}}/api/v1/admin/users/{{adminTargetUserId}}/unblock"
+							}
+						},
+						{
+							"name": "Remove User",
+							"request": {
+								"method": "POST",
+								"header": [
+									{ "key": "Content-Type", "value": "application/json" },
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"reason\": \"Account closed at user request.\"\n}"
+								},
+								"url": "{{baseUrl}}/api/v1/admin/users/{{adminTargetUserId}}/remove"
+							}
+						}
+					]
+				},
+				{
+					"name": "Campaigns",
+					"description": "Moderate all platform campaigns. Flagged status maps to DB paused.",
+					"item": [
+						{
+							"name": "List Campaigns",
+							"request": {
+								"method": "GET",
+								"header": [
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"url": {
+									"raw": "{{baseUrl}}/api/v1/admin/campaigns?status=&niche=&business=&page=1&limit=20",
+									"host": ["{{baseUrl}}"],
+									"path": ["api", "v1", "admin", "campaigns"],
+									"query": [
+										{ "key": "status", "value": "", "description": "draft | pending | active | completed | flagged" },
+										{ "key": "niche", "value": "" },
+										{ "key": "business", "value": "" },
+										{ "key": "page", "value": "1" },
+										{ "key": "limit", "value": "20" }
+									]
+								}
+							},
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (pm.response.code === 200) {",
+											"  const j = pm.response.json();",
+											"  if (j.data && j.data.items && j.data.items[0]) {",
+											"    pm.collectionVariables.set('adminCampaignId', j.data.items[0].id);",
+											"  }",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							]
+						},
+						{
+							"name": "Get Campaign",
+							"request": {
+								"method": "GET",
+								"header": [
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"url": "{{baseUrl}}/api/v1/admin/campaigns/{{adminCampaignId}}"
+							}
+						},
+						{
+							"name": "Pause Campaign",
+							"request": {
+								"method": "POST",
+								"header": [
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"url": "{{baseUrl}}/api/v1/admin/campaigns/{{adminCampaignId}}/pause"
+							}
+						},
+						{
+							"name": "Complete Campaign",
+							"request": {
+								"method": "POST",
+								"header": [
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"url": "{{baseUrl}}/api/v1/admin/campaigns/{{adminCampaignId}}/complete"
+							}
+						},
+						{
+							"name": "Flag Campaign",
+							"request": {
+								"method": "POST",
+								"header": [
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"url": "{{baseUrl}}/api/v1/admin/campaigns/{{adminCampaignId}}/flag"
+							}
+						}
+					]
+				},
+				{
+					"name": "Disputes",
+					"description": "Review contract disputes. Admin notes stored via audit_logs (entity_type dispute_note).",
+					"item": [
+						{
+							"name": "List Disputes (Open)",
+							"request": {
+								"method": "GET",
+								"header": [
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"url": {
+									"raw": "{{baseUrl}}/api/v1/admin/disputes?tab=open&search=&page=1&limit=20",
+									"host": ["{{baseUrl}}"],
+									"path": ["api", "v1", "admin", "disputes"],
+									"query": [
+										{ "key": "tab", "value": "open" },
+										{ "key": "search", "value": "" },
+										{ "key": "page", "value": "1" },
+										{ "key": "limit", "value": "20" }
+									]
+								}
+							},
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (pm.response.code === 200) {",
+											"  const j = pm.response.json();",
+											"  if (j.data && j.data.items && j.data.items[0]) {",
+											"    pm.collectionVariables.set('disputeId', j.data.items[0].id);",
+											"  }",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							]
+						},
+						{
+							"name": "Get Dispute",
+							"request": {
+								"method": "GET",
+								"header": [
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"url": "{{baseUrl}}/api/v1/admin/disputes/{{disputeId}}"
+							}
+						},
+						{
+							"name": "Mark Under Review",
+							"request": {
+								"method": "PATCH",
+								"header": [
+									{ "key": "Content-Type", "value": "application/json" },
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"status\": \"under_review\"\n}"
+								},
+								"url": "{{baseUrl}}/api/v1/admin/disputes/{{disputeId}}/status"
+							}
+						},
+						{
+							"name": "Resolve Dispute",
+							"request": {
+								"method": "PATCH",
+								"header": [
+									{ "key": "Content-Type", "value": "application/json" },
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"status\": \"resolved\"\n}"
+								},
+								"url": "{{baseUrl}}/api/v1/admin/disputes/{{disputeId}}/status"
+							}
+						},
+						{
+							"name": "Update Dispute Notes",
+							"request": {
+								"method": "PATCH",
+								"header": [
+									{ "key": "Content-Type", "value": "application/json" },
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"admin_note\": \"Reviewing signed contract PDF.\",\n  \"resolution_note\": \"Partial credit issued to business.\"\n}"
+								},
+								"url": "{{baseUrl}}/api/v1/admin/disputes/{{disputeId}}/notes"
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "Business",
+			"description": "Business portal — profile, campaigns, recommendations, invites, contracts & dashboard.",
+			"item": [
+				{
+					"name": "Dashboard",
+					"item": [
+						{
+							"name": "Get Dashboard Summary",
+							"request": {
+								"method": "GET",
+								"header": [
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"url": "{{baseUrl}}/api/v1/business/dashboard/summary",
+								"description": "Real KPIs from campaigns, recommendations, contracts & invites. No reach/engagement metrics (frontend mock only)."
+							}
+						}
+					]
+				},
+				{
+					"name": "Profile",
+					"item": [
+						{
+							"name": "Get Profile",
+							"request": {
+								"method": "GET",
+								"header": [
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"url": "{{baseUrl}}/api/v1/business/profile"
+							}
+						},
+						{
+							"name": "Update Profile",
+							"request": {
+								"method": "PUT",
+								"header": [
+									{ "key": "Content-Type", "value": "application/json" },
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"owner_full_name\": \"Yohannes Bekele\",\n  \"business_name\": \"Betu Cosmetics\",\n  \"description\": \"Ethiopian beauty brand focused on skincare and cosmetics for urban audiences.\",\n  \"industry\": \"Beauty\",\n  \"business_type\": \"Retail\",\n  \"city\": \"Addis Ababa\",\n  \"preferred_platforms\": [\"instagram\", \"tiktok\"],\n  \"website_url\": \"https://example.com\",\n  \"social_links\": {\n    \"instagram\": \"https://instagram.com/betu\"\n  }\n}"
+								},
+								"url": "{{baseUrl}}/api/v1/business/profile"
+							}
+						},
+						{
+							"name": "Upload Logo",
+							"request": {
+								"method": "POST",
+								"header": [
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "file",
+											"type": "file",
+											"src": [],
+											"description": "JPEG, PNG, or WebP — max 5 MB"
+										}
+									]
+								},
+								"url": "{{baseUrl}}/api/v1/business/profile/logo"
+							}
+						},
+						{
+							"name": "Complete Profile",
+							"request": {
+								"method": "POST",
+								"header": [
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"url": "{{baseUrl}}/api/v1/business/profile/complete",
+								"description": "Sets status active. is_verified stays false until admin verifies."
+							}
+						}
+					]
+				},
+				{
+					"name": "Campaigns",
+					"description": "Requires completed business profile (status=active). Run `make seed-categories` for niche resolution.",
+					"item": [
+						{
+							"name": "Create Campaign",
+							"request": {
+								"method": "POST",
+								"header": [
+									{ "key": "Content-Type", "value": "application/json" },
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"title\": \"Betu Cosmetics Launch\",\n  \"goal\": \"Product launch\",\n  \"description\": \"We are launching a new skincare line targeting urban Ethiopian women with authentic creator reviews and tutorials.\",\n  \"niche\": \"Beauty\",\n  \"target_audience\": \"Women 18-30 in urban areas\",\n  \"city\": \"Addis Ababa\",\n  \"platforms\": [\"instagram\", \"tiktok\"],\n  \"budget_min_etb\": 25000,\n  \"budget_max_etb\": 50000,\n  \"creator_size_preference\": \"mid\",\n  \"number_of_creators_needed\": 3,\n  \"deliverables\": [\n    { \"type\": \"instagram_reel\", \"quantity\": 2 },\n    { \"type\": \"instagram_story\", \"quantity\": 3 }\n  ],\n  \"start_date\": \"2026-07-01\",\n  \"end_date\": \"2026-08-01\",\n  \"additional_notes\": \"Prefer creators with skincare content history.\"\n}"
+								},
+								"url": "{{baseUrl}}/api/v1/business/campaigns",
+								"description": "Creates campaign in draft status."
+							},
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (pm.response.code === 201) {",
+											"  const j = pm.response.json();",
+											"  if (j.data && j.data.campaign && j.data.campaign.id) {",
+											"    pm.collectionVariables.set('campaignId', j.data.campaign.id);",
+											"  }",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							]
+						},
+						{
+							"name": "List Campaigns",
+							"request": {
+								"method": "GET",
+								"header": [
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"url": {
+									"raw": "{{baseUrl}}/api/v1/business/campaigns?status=&page=1&limit=20",
+									"host": ["{{baseUrl}}"],
+									"path": ["api", "v1", "business", "campaigns"],
+									"query": [
+										{ "key": "status", "value": "" },
+										{ "key": "page", "value": "1" },
+										{ "key": "limit", "value": "20" }
+									]
+								}
+							}
+						},
+						{
+							"name": "Get Campaign",
+							"request": {
+								"method": "GET",
+								"header": [
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"url": "{{baseUrl}}/api/v1/business/campaigns/{{campaignId}}"
+							}
+						},
+						{
+							"name": "Update Campaign",
+							"request": {
+								"method": "PUT",
+								"header": [
+									{ "key": "Content-Type", "value": "application/json" },
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"title\": \"Betu Cosmetics Launch (Updated)\",\n  \"goal\": \"Product launch\",\n  \"description\": \"Updated campaign brief for our new skincare line with expanded deliverables and timeline.\",\n  \"niche\": \"Beauty\",\n  \"target_audience\": \"Women 18-35 in urban areas\",\n  \"city\": \"Addis Ababa\",\n  \"platforms\": [\"instagram\", \"tiktok\"],\n  \"budget_min_etb\": 30000,\n  \"budget_max_etb\": 60000,\n  \"creator_size_preference\": \"mid\",\n  \"number_of_creators_needed\": 4,\n  \"deliverables\": [\n    { \"type\": \"instagram_reel\", \"quantity\": 3 },\n    { \"type\": \"instagram_story\", \"quantity\": 4 }\n  ],\n  \"start_date\": \"2026-07-01\",\n  \"end_date\": \"2026-08-15\"\n}"
+								},
+								"url": "{{baseUrl}}/api/v1/business/campaigns/{{campaignId}}"
+							}
+						},
+						{
+							"name": "Publish Campaign",
+							"request": {
+								"method": "POST",
+								"header": [
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"url": "{{baseUrl}}/api/v1/business/campaigns/{{campaignId}}/publish",
+								"description": "Draft → active. Requires complete campaign fields."
+							}
+						},
+						{
+							"name": "Cancel Campaign",
+							"request": {
+								"method": "POST",
+								"header": [
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"url": "{{baseUrl}}/api/v1/business/campaigns/{{campaignId}}/cancel",
+								"description": "Cancels campaign and pending invites."
+							}
+						}
+					]
+				},
+				{
+					"name": "Recommendations & Invites",
+					"description": "Requires published (active) campaign and at least one admin-verified influencer.",
+					"item": [
+						{
+							"name": "Generate Recommendations",
+							"request": {
+								"method": "POST",
+								"header": [
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"url": "{{baseUrl}}/api/v1/business/campaigns/{{campaignId}}/recommendations/generate",
+								"description": "Scores eligible influencers and stores top matches in campaign_recommendations."
+							}
+						},
+						{
+							"name": "List Recommendations",
+							"request": {
+								"method": "GET",
+								"header": [
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"url": {
+									"raw": "{{baseUrl}}/api/v1/business/campaigns/{{campaignId}}/recommendations?search=&niche=&platform=&min_score=78&sort=match&page=1&limit=20",
+									"host": ["{{baseUrl}}"],
+									"path": ["api", "v1", "business", "campaigns", "{{campaignId}}", "recommendations"],
+									"query": [
+										{ "key": "search", "value": "" },
+										{ "key": "niche", "value": "" },
+										{ "key": "platform", "value": "" },
+										{ "key": "min_score", "value": "78" },
+										{ "key": "sort", "value": "match" },
+										{ "key": "page", "value": "1" },
+										{ "key": "limit", "value": "20" }
+									]
+								}
+							},
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (pm.response.code === 200) {",
+											"  const j = pm.response.json();",
+											"  if (j.data && j.data.items && j.data.items.length > 0) {",
+											"    pm.collectionVariables.set('influencerUserId', j.data.items[0].influencer_user_id);",
+											"  }",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							]
+						},
+						{
+							"name": "Get Creator Profile",
+							"request": {
+								"method": "GET",
+								"header": [
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"url": {
+									"raw": "{{baseUrl}}/api/v1/business/influencers/{{influencerUserId}}?campaign_id={{campaignId}}",
+									"host": ["{{baseUrl}}"],
+									"path": ["api", "v1", "business", "influencers", "{{influencerUserId}}"],
+									"query": [
+										{ "key": "campaign_id", "value": "{{campaignId}}" }
+									]
+								}
+							}
+						},
+						{
+							"name": "Send Invite",
+							"request": {
+								"method": "POST",
+								"header": [
+									{ "key": "Content-Type", "value": "application/json" },
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"influencer_user_id\": \"{{influencerUserId}}\",\n  \"message\": \"We'd love to collaborate on our summer launch campaign.\"\n}"
+								},
+								"url": "{{baseUrl}}/api/v1/business/campaigns/{{campaignId}}/invites"
+							},
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (pm.response.code === 201) {",
+											"  const j = pm.response.json();",
+											"  if (j.data && j.data.id) {",
+											"    pm.collectionVariables.set('inviteId', j.data.id);",
+											"  }",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							]
+						},
+						{
+							"name": "List Invites",
+							"request": {
+								"method": "GET",
+								"header": [
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"url": "{{baseUrl}}/api/v1/business/campaigns/{{campaignId}}/invites"
+							}
+						},
+						{
+							"name": "Cancel Invite",
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"url": "{{baseUrl}}/api/v1/business/campaigns/{{campaignId}}/invites/{{inviteId}}",
+								"description": "Only pending invites can be cancelled."
+							}
+						}
+					]
+				},
+				{
+					"name": "Contracts",
+					"description": "Requires accepted invite. Business must be admin-verified. Pay uses manual_stub (Chapa later).",
+					"item": [
+						{
+							"name": "Create Contract",
+							"request": {
+								"method": "POST",
+								"header": [
+									{ "key": "Content-Type", "value": "application/json" },
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"invite_id\": \"{{inviteId}}\",\n  \"title\": \"Betu Cosmetics Launch — Creator Collab\",\n  \"amount_etb\": 30000,\n  \"description\": \"Two reels and three stories promoting the new skincare line.\",\n  \"deliverables\": [\n    { \"type\": \"instagram_reel\", \"quantity\": 2 },\n    { \"type\": \"instagram_story\", \"quantity\": 3 }\n  ],\n  \"start_date\": \"2026-07-01\",\n  \"end_date\": \"2026-07-31\"\n}"
+								},
+								"url": "{{baseUrl}}/api/v1/business/contracts"
+							},
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (pm.response.code === 201) {",
+											"  const j = pm.response.json();",
+											"  if (j.data && j.data.contract && j.data.contract.id) {",
+											"    pm.collectionVariables.set('contractId', j.data.contract.id);",
+											"  }",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							]
+						},
+						{
+							"name": "List Contracts",
+							"request": {
+								"method": "GET",
+								"header": [
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"url": {
+									"raw": "{{baseUrl}}/api/v1/business/contracts?status=&page=1&limit=20",
+									"host": ["{{baseUrl}}"],
+									"path": ["api", "v1", "business", "contracts"],
+									"query": [
+										{ "key": "status", "value": "" },
+										{ "key": "page", "value": "1" },
+										{ "key": "limit", "value": "20" }
+									]
+								}
+							}
+						},
+						{
+							"name": "Get Contract",
+							"request": {
+								"method": "GET",
+								"header": [
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"url": "{{baseUrl}}/api/v1/business/contracts/{{contractId}}"
+							}
+						},
+						{
+							"name": "Pay Contract (Escrow Stub)",
+							"request": {
+								"method": "POST",
+								"header": [
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"url": "{{baseUrl}}/api/v1/business/contracts/{{contractId}}/pay",
+								"description": "After influencer accepts. Records payment as paid (escrow held). Chapa integration later."
+							}
+						},
+						{
+							"name": "Approve Work",
+							"request": {
+								"method": "POST",
+								"header": [
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"url": "{{baseUrl}}/api/v1/business/contracts/{{contractId}}/approve-work",
+								"description": "Releases payout to influencer (amount - 5% fee). Payout status pending until bank transfer."
+							}
+						},
+						{
+							"name": "Cancel Contract",
+							"request": {
+								"method": "POST",
+								"header": [
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"url": "{{baseUrl}}/api/v1/business/contracts/{{contractId}}/cancel",
+								"description": "Only before payment (pending_influencer or accepted)."
+							}
+						}
+					]
+				},
+				{
+					"name": "Support",
+					"description": "Support tickets — uses support_tickets + support_messages tables.",
+					"item": [
+						{
+							"name": "List Campaign Options",
+							"request": {
+								"method": "GET",
+								"header": [
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"url": "{{baseUrl}}/api/v1/business/support/campaign-options",
+								"description": "Dropdown options for related campaign field."
+							}
+						},
+						{
+							"name": "Create Support Ticket",
+							"request": {
+								"method": "POST",
+								"header": [
+									{ "key": "Content-Type", "value": "application/json" },
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"issue_type\": \"payment_question\",\n  \"subject\": \"Contract payment question\",\n  \"message\": \"A contract shows as funded but the milestone payment UI is greyed out. Can someone clarify the release timeline?\",\n  \"priority\": \"medium\",\n  \"related_campaign_id\": null\n}"
+								},
+								"url": "{{baseUrl}}/api/v1/business/support/tickets"
+							},
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (pm.response.code === 201) {",
+											"  const j = pm.response.json();",
+											"  if (j.data && j.data.id) {",
+											"    pm.collectionVariables.set('ticketId', j.data.id);",
+											"  }",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							]
+						},
+						{
+							"name": "List My Tickets",
+							"request": {
+								"method": "GET",
+								"header": [
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"url": "{{baseUrl}}/api/v1/business/support/tickets"
+							}
+						},
+						{
+							"name": "Get Ticket",
+							"request": {
+								"method": "GET",
+								"header": [
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"url": "{{baseUrl}}/api/v1/business/support/tickets/{{ticketId}}"
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "Influencer",
+			"description": "Influencer profile + campaign invites. Run `make seed-categories` once before testing niches.",
+			"item": [
+				{
+					"name": "Profile",
+					"item": [
+						{
+							"name": "Get Profile",
+							"request": {
+								"method": "GET",
+								"header": [
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"url": "{{baseUrl}}/api/v1/influencer/profile"
+							}
+						},
+						{
+							"name": "Update Profile",
+							"request": {
+								"method": "PUT",
+								"header": [
+									{ "key": "Content-Type", "value": "application/json" },
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"creator_name\": \"Biruk Alemu\",\n  \"bio\": \"Tech creator focused on practical reviews, app walkthroughs, and honest recommendations for Ethiopian audiences.\",\n  \"niches\": [\"Tech\"],\n  \"platforms\": [\"youtube\"],\n  \"social_links\": {\n    \"tiktok\": \"https://tiktok.com/@birukcreates\",\n    \"instagram\": \"https://instagram.com/birukcreates\",\n    \"youtube\": \"https://youtube.com/@birukcreates\"\n  },\n  \"followers\": 84000,\n  \"engagement_rate\": 7.2,\n  \"min_price_etb\": 15000,\n  \"max_price_etb\": 35000,\n  \"languages\": [\"Amharic\", \"English\"],\n  \"city\": \"Addis Ababa\"\n}"
+								},
+								"url": "{{baseUrl}}/api/v1/influencer/profile"
+							}
+						},
+						{
+							"name": "Submit Profile",
+							"request": {
+								"method": "POST",
+								"header": [
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"url": "{{baseUrl}}/api/v1/influencer/profile/submit",
+								"description": "Requires complete profile. Sets status to pending_approval."
+							}
+						},
+						{
+							"name": "Upload Avatar",
+							"request": {
+								"method": "POST",
+								"header": [
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "file",
+											"type": "file",
+											"src": [],
+											"description": "JPEG, PNG, or WebP — max 5 MB. Requires MinIO running and S3_* env vars set."
+										}
+									]
+								},
+								"url": "{{baseUrl}}/api/v1/influencer/profile/avatar",
+								"description": "Multipart upload. Updates profile_image_url. Start MinIO: make up"
+							}
+						},
+						{
+							"name": "Upload Portfolio Sample",
+							"request": {
+								"method": "POST",
+								"header": [
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "file",
+											"type": "file",
+											"src": [],
+											"description": "Image (JPEG/PNG/WebP max 10 MB) or video (MP4/WebM max 100 MB). Max 3 samples per profile."
+										}
+									]
+								},
+								"url": "{{baseUrl}}/api/v1/influencer/profile/portfolio",
+								"description": "Run make migrate-portfolio once. Requires MinIO + S3_* env."
+							}
+						},
+						{
+							"name": "Delete Portfolio Sample",
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"url": "{{baseUrl}}/api/v1/influencer/profile/portfolio/{{portfolioItemId}}",
+								"description": "Set portfolioItemId from upload response item.id"
+							}
+						}
+					]
+				},
+				{
+					"name": "Invites",
+					"description": "Login as influencer after business sends invite. Accept requires admin-verified profile.",
+					"item": [
+						{
+							"name": "List Invites",
+							"request": {
+								"method": "GET",
+								"header": [
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"url": {
+									"raw": "{{baseUrl}}/api/v1/influencer/invites?status=",
+									"host": ["{{baseUrl}}"],
+									"path": ["api", "v1", "influencer", "invites"],
+									"query": [
+										{ "key": "status", "value": "", "description": "pending | accepted | rejected | cancelled" }
+									]
+								}
+							},
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (pm.response.code === 200) {",
+											"  const j = pm.response.json();",
+											"  if (j.data && j.data.items && j.data.items.length > 0) {",
+											"    pm.collectionVariables.set('inviteId', j.data.items[0].id);",
+											"  }",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							]
+						},
+						{
+							"name": "Get Invite",
+							"request": {
+								"method": "GET",
+								"header": [
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"url": "{{baseUrl}}/api/v1/influencer/invites/{{inviteId}}"
+							}
+						},
+						{
+							"name": "Accept Invite",
+							"request": {
+								"method": "POST",
+								"header": [
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"url": "{{baseUrl}}/api/v1/influencer/invites/{{inviteId}}/accept",
+								"description": "Requires active + verified influencer. Campaign must be active."
+							}
+						},
+						{
+							"name": "Reject Invite",
+							"request": {
+								"method": "POST",
+								"header": [
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"url": "{{baseUrl}}/api/v1/influencer/invites/{{inviteId}}/reject"
+							}
+						}
+					]
+				},
+				{
+					"name": "Contracts",
+					"description": "Accept contract after business creates it from accepted invite.",
+					"item": [
+						{
+							"name": "List Contracts",
+							"request": {
+								"method": "GET",
+								"header": [
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"url": {
+									"raw": "{{baseUrl}}/api/v1/influencer/contracts?status=&page=1&limit=20",
+									"host": ["{{baseUrl}}"],
+									"path": ["api", "v1", "influencer", "contracts"],
+									"query": [
+										{ "key": "status", "value": "" },
+										{ "key": "page", "value": "1" },
+										{ "key": "limit", "value": "20" }
+									]
+								}
+							},
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (pm.response.code === 200) {",
+											"  const j = pm.response.json();",
+											"  if (j.data && j.data.items && j.data.items.length > 0) {",
+											"    pm.collectionVariables.set('contractId', j.data.items[0].id);",
+											"  }",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							]
+						},
+						{
+							"name": "Get Contract",
+							"request": {
+								"method": "GET",
+								"header": [
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"url": "{{baseUrl}}/api/v1/influencer/contracts/{{contractId}}"
+							}
+						},
+						{
+							"name": "Accept Contract",
+							"request": {
+								"method": "POST",
+								"header": [
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"url": "{{baseUrl}}/api/v1/influencer/contracts/{{contractId}}/accept"
+							}
+						},
+						{
+							"name": "Reject Contract",
+							"request": {
+								"method": "POST",
+								"header": [
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"url": "{{baseUrl}}/api/v1/influencer/contracts/{{contractId}}/reject"
+							}
+						}
+					]
+				},
+				{
+					"name": "Dashboard",
+					"item": [
+						{
+							"name": "Get Dashboard Summary",
+							"request": {
+								"method": "GET",
+								"header": [
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"url": "{{baseUrl}}/api/v1/influencer/dashboard/summary",
+								"description": "Real KPIs: invites, contracts, profile score, earnings. No messages or earnings chart (frontend mock)."
+							}
+						}
+					]
+				},
+				{
+					"name": "Support",
+					"item": [
+						{
+							"name": "List Invite Options",
+							"request": {
+								"method": "GET",
+								"header": [
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"url": "{{baseUrl}}/api/v1/influencer/support/invite-options"
+							}
+						},
+						{
+							"name": "Create Support Ticket",
+							"request": {
+								"method": "POST",
+								"header": [
+									{ "key": "Content-Type", "value": "application/json" },
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"issue_type\": \"profile_approval\",\n  \"subject\": \"Profile approval pending\",\n  \"message\": \"Submitted verification last week. Status still shows pending — is anything missing?\",\n  \"priority\": \"high\",\n  \"related_invite_id\": null\n}"
+								},
+								"url": "{{baseUrl}}/api/v1/influencer/support/tickets"
+							},
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (pm.response.code === 201) {",
+											"  const j = pm.response.json();",
+											"  if (j.data && j.data.id) {",
+											"    pm.collectionVariables.set('ticketId', j.data.id);",
+											"  }",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							]
+						},
+						{
+							"name": "List My Tickets",
+							"request": {
+								"method": "GET",
+								"header": [
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"url": "{{baseUrl}}/api/v1/influencer/support/tickets"
+							}
+						},
+						{
+							"name": "Get Ticket",
+							"request": {
+								"method": "GET",
+								"header": [
+									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+								],
+								"url": "{{baseUrl}}/api/v1/influencer/support/tickets/{{ticketId}}"
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "Marketplace",
+			"description": "Marketplace / chat APIs — routes planned; not all wired in server yet.",
+			"item": [
+				{
+					"name": "Get Conversation (stub)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+						],
+						"url": "{{baseUrl}}/api/v1/market/get_conversation",
+						"description": "Stub — wire in initiator/route.go when implemented."
+					}
+				}
+			]
+		}
+	]
+}
