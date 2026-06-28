@@ -203,7 +203,9 @@ func formatTextArray(vals []string) string {
 		if i > 0 {
 			b.WriteByte(',')
 		}
-		b.WriteString(`"` + strings.ReplaceAll(v, `"`, `\"`) + `"`)
+		b.WriteByte('"')
+		b.WriteString(strings.ReplaceAll(v, `"`, `\"`))
+		b.WriteByte('"')
 	}
 	b.WriteByte('}')
 	return b.String()

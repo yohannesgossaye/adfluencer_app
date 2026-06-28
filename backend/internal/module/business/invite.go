@@ -5,6 +5,7 @@ import (
 	"adinfluence_service_app/internal/constant/model"
 	authDto "adinfluence_service_app/internal/constant/model/dto/auth"
 	businessDto "adinfluence_service_app/internal/constant/model/dto/business"
+	commonDto "adinfluence_service_app/internal/constant/model/dto/common"
 	influencerDto "adinfluence_service_app/internal/constant/model/dto/influencer"
 	"context"
 	"errors"
@@ -90,7 +91,7 @@ func buildInfluencerView(rec *influencerDto.ProfileRecord) *businessDto.Business
 	}
 }
 
-func (m *businessModule) CreateInvite(ctx context.Context, userID, campaignID string, req businessDto.CreateInviteRequest, meta authDto.SessionMeta) (*businessDto.CreateInviteResponse, error) {
+func (m *businessModule) CreateInvite(ctx context.Context, userID, campaignID string, req businessDto.CreateInviteRequest, meta authDto.SessionMeta) (*commonDto.CreatedIDResponse, error) {
 	if err := m.requireActiveBusiness(ctx, userID); err != nil {
 		return nil, err
 	}
@@ -111,14 +112,13 @@ func (m *businessModule) CreateInvite(ctx context.Context, userID, campaignID st
 	}
 
 	inviteID := utils.GenerateUUID()
-	created, err := m.business.CreateInvite(ctx, businessDto.CreateInviteInput{
+	if err := m.business.CreateInvite(ctx, businessDto.CreateInviteInput{
 		ID:               inviteID,
 		CampaignID:       campaignID,
 		BusinessUserID:   userID,
 		InfluencerUserID: req.InfluencerUserID,
 		Message:          businessDto.OptionalInviteMessage(req.Message),
-	})
-	if err != nil {
+	}); err != nil {
 		return nil, mapInviteError(err)
 	}
 
@@ -133,11 +133,7 @@ func (m *businessModule) CreateInvite(ctx context.Context, userID, campaignID st
 		UserAgent:    meta.UserAgent,
 	})
 
-	return &businessDto.CreateInviteResponse{
-		ID:        created.ID,
-		Status:    created.Status,
-		CreatedAt: created.CreatedAt,
-	}, nil
+	return &commonDto.CreatedIDResponse{ID: inviteID}, nil
 }
 
 func (m *businessModule) ListInvites(ctx context.Context, userID, campaignID string) (*businessDto.ListInvitesResponse, error) {

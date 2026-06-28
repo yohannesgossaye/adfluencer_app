@@ -5,6 +5,7 @@ import (
 	"adinfluence_service_app/internal/constant/model"
 	authDto "adinfluence_service_app/internal/constant/model/dto/auth"
 	businessDto "adinfluence_service_app/internal/constant/model/dto/business"
+	commonDto "adinfluence_service_app/internal/constant/model/dto/common"
 	"adinfluence_service_app/internal/module/business/helper"
 	"context"
 	"errors"
@@ -12,7 +13,7 @@ import (
 	"adinfluence_service_app/platform/utils"
 )
 
-func (m *businessModule) CreateCampaign(ctx context.Context, userID string, req businessDto.CreateCampaignRequest, meta authDto.SessionMeta) (*businessDto.CampaignMutationResponse, error) {
+func (m *businessModule) CreateCampaign(ctx context.Context, userID string, req businessDto.CreateCampaignRequest, meta authDto.SessionMeta) (*commonDto.CreatedIDResponse, error) {
 	if err := m.requireActiveBusiness(ctx, userID); err != nil {
 		return nil, err
 	}
@@ -32,13 +33,13 @@ func (m *businessModule) CreateCampaign(ctx context.Context, userID string, req 
 		return nil, err
 	}
 
-	input, err := helper.BuildSaveCampaignInput(userID, utils.GenerateUUID(), req, &category.ID)
+	campaignID := utils.GenerateUUID()
+	input, err := helper.BuildSaveCampaignInput(userID, campaignID, req, &category.ID)
 	if err != nil {
 		return nil, err
 	}
 
-	rec, err := m.business.CreateCampaign(ctx, input)
-	if err != nil {
+	if err := m.business.CreateCampaign(ctx, input); err != nil {
 		return nil, err
 	}
 
@@ -47,14 +48,13 @@ func (m *businessModule) CreateCampaign(ctx context.Context, userID string, req 
 		TargetUserID: &userID,
 		Action:       string(model.ProfileUpdateAction),
 		EntityType:   "campaign",
-		EntityID:     &rec.ID,
+		EntityID:     &campaignID,
 		Description:  "business campaign created",
 		IPAddress:    meta.IPAddress,
 		UserAgent:    meta.UserAgent,
 	})
 
-	res := helper.CampaignMutation(*rec)
-	return &res, nil
+	return &commonDto.CreatedIDResponse{ID: campaignID}, nil
 }
 
 func (m *businessModule) ListCampaigns(ctx context.Context, userID string, query businessDto.ListCampaignsQuery) (*businessDto.ListCampaignsResponse, error) {
@@ -217,7 +217,7 @@ func (m *businessModule) CancelCampaign(ctx context.Context, userID, campaignID 
 func (m *businessModule) requireActiveBusiness(ctx context.Context, userID string) error {
 	user, err := m.auth.GetUserByID(ctx, userID)
 	if err != nil {
-		if errors.Is(err, authDto.ErrUserNotFound) {
+		if errors.Is(err, customErr.ErrUserNotFound) {
 			return customErr.ErrUnauthorized
 		}
 		return err

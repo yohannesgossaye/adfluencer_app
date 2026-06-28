@@ -95,7 +95,7 @@ func (m *userAuthModule) Login(ctx context.Context, req authDto.LoginRequest, me
 
 	cred, err := m.persistence.GetUserByEmail(ctx, email)
 	if err != nil {
-		if errors.Is(err, authDto.ErrUserNotFound) {
+		if errors.Is(err, customErr.ErrUserNotFound) {
 			if lockErr := m.recordLoginFailure(ctx, email); lockErr != nil {
 				return nil, lockErr
 			}
@@ -173,7 +173,7 @@ func (m *userAuthModule) Login(ctx context.Context, req authDto.LoginRequest, me
 
 func (m *userAuthModule) RefreshToken(ctx context.Context, req authDto.RefreshTokenRequest, meta authDto.SessionMeta) (*authDto.RefreshTokenResponse, error) {
 	if req.RefreshToken == "" {
-		return nil, authDto.ErrInvalidRefreshToken
+		return nil, customErr.ErrInvalidRefreshToken
 	}
 
 	hash := jwt.HashRefreshToken(req.RefreshToken)
@@ -191,7 +191,7 @@ func (m *userAuthModule) RefreshToken(ctx context.Context, req authDto.RefreshTo
 		user.Status == string(model.RemovedStatus) ||
 		user.Status == string(model.SuspendedStatus) {
 		_ = m.persistence.RevokeSession(ctx, session.ID)
-		return nil, authDto.ErrInvalidRefreshToken
+		return nil, customErr.ErrInvalidRefreshToken
 	}
 
 	profile, err := m.persistence.GetProfileByUserID(ctx, user.ID, user.Role)
@@ -217,7 +217,7 @@ func (m *userAuthModule) RefreshToken(ctx context.Context, req authDto.RefreshTo
 func (m *userAuthModule) GetMe(ctx context.Context, userID string) (*authDto.MeResponse, error) {
 	user, err := m.persistence.GetUserByID(ctx, userID)
 	if err != nil {
-		if errors.Is(err, authDto.ErrUserNotFound) {
+		if errors.Is(err, customErr.ErrUserNotFound) {
 			return nil, customErr.ErrUnauthorized
 		}
 		return nil, err
@@ -286,7 +286,7 @@ func (m *userAuthModule) ForgotPassword(ctx context.Context, req authDto.ForgotP
 
 	cred, err := m.persistence.GetUserByEmail(ctx, email)
 	if err != nil {
-		if errors.Is(err, authDto.ErrUserNotFound) {
+		if errors.Is(err, customErr.ErrUserNotFound) {
 			return nil
 		}
 		return err
@@ -352,7 +352,7 @@ const (
 func (m *userAuthModule) SendVerifyEmail(ctx context.Context, userID string) error {
 	user, err := m.persistence.GetUserByID(ctx, userID)
 	if err != nil {
-		if errors.Is(err, authDto.ErrUserNotFound) {
+		if errors.Is(err, customErr.ErrUserNotFound) {
 			return customErr.ErrUnauthorized
 		}
 		return err
@@ -410,7 +410,7 @@ func (m *userAuthModule) SendVerifyEmail(ctx context.Context, userID string) err
 func (m *userAuthModule) VerifyEmail(ctx context.Context, userID string, req authDto.VerifyEmailRequest) (*authDto.VerifyEmailResponse, error) {
 	user, err := m.persistence.GetUserByID(ctx, userID)
 	if err != nil {
-		if errors.Is(err, authDto.ErrUserNotFound) {
+		if errors.Is(err, customErr.ErrUserNotFound) {
 			return nil, customErr.ErrUnauthorized
 		}
 		return nil, err
@@ -446,7 +446,7 @@ const (
 func (m *userAuthModule) SendVerifyPhone(ctx context.Context, userID string) error {
 	user, err := m.persistence.GetUserByID(ctx, userID)
 	if err != nil {
-		if errors.Is(err, authDto.ErrUserNotFound) {
+		if errors.Is(err, customErr.ErrUserNotFound) {
 			return customErr.ErrUnauthorized
 		}
 		return err
@@ -509,7 +509,7 @@ func (m *userAuthModule) SendVerifyPhone(ctx context.Context, userID string) err
 func (m *userAuthModule) VerifyPhone(ctx context.Context, userID string, req authDto.VerifyPhoneRequest) (*authDto.VerifyPhoneResponse, error) {
 	user, err := m.persistence.GetUserByID(ctx, userID)
 	if err != nil {
-		if errors.Is(err, authDto.ErrUserNotFound) {
+		if errors.Is(err, customErr.ErrUserNotFound) {
 			return nil, customErr.ErrUnauthorized
 		}
 		return nil, err

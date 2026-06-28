@@ -14,7 +14,7 @@ type SupportInviteOption struct {
 
 type SupportPersistence interface {
 	ListBusinessCampaignOptions(ctx context.Context, businessUserID string) ([]businessDto.SupportCampaignOption, error)
-	CreateTicket(ctx context.Context, input businessDto.CreateSupportTicketInput) (*businessDto.SupportTicketRecord, error)
+	CreateTicket(ctx context.Context, input businessDto.CreateSupportTicketInput) error
 	ListTicketsByUser(ctx context.Context, userID string) ([]businessDto.SupportTicketRecord, error)
 	GetTicketByUser(ctx context.Context, userID, ticketID string) (*businessDto.SupportTicketRecord, error)
 	BusinessOwnsCampaign(ctx context.Context, businessUserID, campaignID string) (bool, error)

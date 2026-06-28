@@ -1,14 +1,7 @@
 package auth
 
 import (
-	"errors"
 	"time"
-)
-
-var (
-	ErrInvalidRefreshToken = errors.New("invalid or expired refresh token")
-	ErrUserNotFound        = errors.New("user not found")
-	ErrProfileNotFound     = errors.New("profile not found")
 )
 
 type RefreshTokenRequest struct {

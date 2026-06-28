@@ -6,10 +6,10 @@ import (
 )
 
 var (
-	ErrCampaignNotFound       = errors.New("campaign not found")
-	ErrInvalidCampaignStatus  = errors.New("invalid campaign status")
-	ErrAccountNotActive       = errors.New("account not active")
-	ErrUnknownCategory        = errors.New("unknown category")
+	ErrCampaignNotFound      = errors.New("campaign not found")
+	ErrInvalidCampaignStatus = errors.New("invalid campaign status")
+	ErrAccountNotActive      = errors.New("account not active")
+	ErrUnknownCategory       = errors.New("unknown category")
 )
 
 type CampaignDeliverableInput struct {
@@ -24,7 +24,6 @@ type CampaignDeliverableResponse struct {
 	Quantity    int     `json:"quantity"`
 	Description *string `json:"description,omitempty"`
 }
-
 type CreateCampaignRequest struct {
 	Title                  string                     `json:"title"`
 	Goal                   string                     `json:"goal"`
@@ -34,14 +33,14 @@ type CreateCampaignRequest struct {
 	City                   string                     `json:"city"`
 	Region                 string                     `json:"region,omitempty"`
 	Platforms              []string                   `json:"platforms"`
-	BudgetMinETB             *float64                   `json:"budget_min_etb,omitempty"`
-	BudgetMaxETB             *float64                   `json:"budget_max_etb,omitempty"`
-	CreatorSizePreference    string                     `json:"creator_size_preference"`
-	NumberOfCreatorsNeeded   int                        `json:"number_of_creators_needed"`
-	Deliverables             []CampaignDeliverableInput `json:"deliverables"`
-	StartDate                string                     `json:"start_date"`
-	EndDate                  string                     `json:"end_date"`
-	AdditionalNotes          string                     `json:"additional_notes,omitempty"`
+	BudgetMinETB           *float64                   `json:"budget_min_etb,omitempty"`
+	BudgetMaxETB           *float64                   `json:"budget_max_etb,omitempty"`
+	CreatorSizePreference  string                     `json:"creator_size_preference"`
+	NumberOfCreatorsNeeded int                        `json:"number_of_creators_needed"`
+	Deliverables           []CampaignDeliverableInput `json:"deliverables"`
+	StartDate              string                     `json:"start_date"`
+	EndDate                string                     `json:"end_date"`
+	AdditionalNotes        string                     `json:"additional_notes,omitempty"`
 }
 
 type UpdateCampaignRequest struct {

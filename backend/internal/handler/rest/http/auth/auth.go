@@ -1,8 +1,8 @@
 package auth
 
 import (
-	authDto "adinfluence_service_app/internal/constant/model/dto/auth"
 	customErr "adinfluence_service_app/internal/constant/errors"
+	authDto "adinfluence_service_app/internal/constant/model/dto/auth"
 	"adinfluence_service_app/internal/constant/model/response"
 	"adinfluence_service_app/internal/handler/middleware"
 	"adinfluence_service_app/internal/module"
@@ -203,7 +203,7 @@ func (h *authHandler) Logout(w http.ResponseWriter, r *http.Request) {
 
 	err := h.service.Logout(ctx, userIDFromClaims(claims), req, sessionMetaFromRequest(r))
 	if err != nil {
-		if errors.Is(err, authDto.ErrInvalidRefreshToken) {
+		if errors.Is(err, customErr.ErrInvalidRefreshToken) {
 			h.logger.Warn(ctx, "logout rejected", zap.String("reason", "invalid_refresh_token"))
 			response.SendErrorResponse(w, http.StatusUnauthorized, "invalid_refresh_token", err, err.Error())
 			return

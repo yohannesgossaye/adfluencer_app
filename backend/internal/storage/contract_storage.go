@@ -8,7 +8,7 @@ import (
 type ContractPersistence interface {
 	GetAcceptedInvite(ctx context.Context, businessUserID, inviteID string) (*contractDto.AcceptedInviteRecord, error)
 	ContractExistsForInvite(ctx context.Context, inviteID string) (bool, error)
-	CreateContract(ctx context.Context, input contractDto.SaveContractInput) (*contractDto.Record, error)
+	CreateContract(ctx context.Context, input contractDto.SaveContractInput) error
 
 	GetContractForBusiness(ctx context.Context, businessUserID, contractID string) (*contractDto.Record, error)
 	GetContractForInfluencer(ctx context.Context, influencerUserID, contractID string) (*contractDto.Record, error)

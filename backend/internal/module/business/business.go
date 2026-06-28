@@ -59,7 +59,7 @@ func (m *businessModule) GetProfile(ctx context.Context, userID string, user *au
 func (m *businessModule) UpdateProfile(ctx context.Context, userID string, req businessDto.UpdateProfileRequest, meta authDto.SessionMeta) (*businessDto.GetProfileResponse, error) {
 	user, err := m.auth.GetUserByID(ctx, userID)
 	if err != nil {
-		if errors.Is(err, authDto.ErrUserNotFound) {
+		if errors.Is(err, customErr.ErrUserNotFound) {
 			return nil, customErr.ErrUnauthorized
 		}
 		return nil, err
@@ -125,7 +125,7 @@ func (m *businessModule) UploadLogo(ctx context.Context, userID string, filename
 
 	user, err := m.auth.GetUserByID(ctx, userID)
 	if err != nil {
-		if errors.Is(err, authDto.ErrUserNotFound) {
+		if errors.Is(err, customErr.ErrUserNotFound) {
 			return nil, customErr.ErrUnauthorized
 		}
 		return nil, err
@@ -189,7 +189,7 @@ func (m *businessModule) UploadLogo(ctx context.Context, userID string, filename
 func (m *businessModule) CompleteProfile(ctx context.Context, userID string, meta authDto.SessionMeta) (*businessDto.CompleteProfileResponse, error) {
 	user, err := m.auth.GetUserByID(ctx, userID)
 	if err != nil {
-		if errors.Is(err, authDto.ErrUserNotFound) {
+		if errors.Is(err, customErr.ErrUserNotFound) {
 			return nil, customErr.ErrUnauthorized
 		}
 		return nil, err

@@ -46,10 +46,10 @@ func (p *contractRepo) ContractExistsForInvite(ctx context.Context, inviteID str
 	return exists, nil
 }
 
-func (p *contractRepo) CreateContract(ctx context.Context, input contractDto.SaveContractInput) (*contractDto.Record, error) {
+func (p *contractRepo) CreateContract(ctx context.Context, input contractDto.SaveContractInput) error {
 	tx, err := p.db.BeginTx(ctx, nil)
 	if err != nil {
-		return nil, fmt.Errorf("begin create contract: %w", err)
+		return fmt.Errorf("begin create contract: %w", err)
 	}
 	defer tx.Rollback()
 
@@ -73,7 +73,7 @@ func (p *contractRepo) CreateContract(ctx context.Context, input contractDto.Sav
 		nullDate(input.StartDate),
 		nullDate(input.EndDate),
 	); err != nil {
-		return nil, fmt.Errorf("insert contract: %w", err)
+		return fmt.Errorf("insert contract: %w", err)
 	}
 
 	for _, d := range input.Deliverables {
@@ -84,7 +84,7 @@ func (p *contractRepo) CreateContract(ctx context.Context, input contractDto.Sav
 			normalizeQty(d.Quantity),
 			nullString(trimOptional(d.Description)),
 		); err != nil {
-			return nil, fmt.Errorf("insert contract deliverable: %w", err)
+			return fmt.Errorf("insert contract deliverable: %w", err)
 		}
 	}
 
@@ -96,14 +96,14 @@ func (p *contractRepo) CreateContract(ctx context.Context, input contractDto.Sav
 		input.BusinessUserID,
 		"contract created",
 	); err != nil {
-		return nil, fmt.Errorf("insert contract status history: %w", err)
+		return fmt.Errorf("insert contract status history: %w", err)
 	}
 
 	if err := tx.Commit(); err != nil {
-		return nil, fmt.Errorf("commit create contract: %w", err)
+		return fmt.Errorf("commit create contract: %w", err)
 	}
 
-	return p.GetContractForBusiness(ctx, input.BusinessUserID, input.ID)
+	return nil
 }
 
 func (p *contractRepo) GetContractForBusiness(ctx context.Context, businessUserID, contractID string) (*contractDto.Record, error) {

@@ -28,10 +28,10 @@ func (p *business) ResolveCategoryID(ctx context.Context, nameOrSlug string) (*b
 	return &cat, nil
 }
 
-func (p *business) CreateCampaign(ctx context.Context, input businessDto.SaveCampaignInput) (*businessDto.CampaignRecord, error) {
+func (p *business) CreateCampaign(ctx context.Context, input businessDto.SaveCampaignInput) error {
 	tx, err := p.db.BeginTx(ctx, nil)
 	if err != nil {
-		return nil, fmt.Errorf("begin create campaign: %w", err)
+		return fmt.Errorf("begin create campaign: %w", err)
 	}
 	defer tx.Rollback()
 
@@ -52,21 +52,21 @@ func (p *business) CreateCampaign(ctx context.Context, input businessDto.SaveCam
 		nullDate(input.StartDate),
 		nullDate(input.EndDate),
 	); err != nil {
-		return nil, fmt.Errorf("insert campaign: %w", err)
+		return fmt.Errorf("insert campaign: %w", err)
 	}
 
 	if err := replaceCampaignPlatforms(ctx, tx, input.ID, input.Platforms); err != nil {
-		return nil, err
+		return err
 	}
 	if err := replaceCampaignDeliverables(ctx, tx, input.ID, input.Deliverables); err != nil {
-		return nil, err
+		return err
 	}
 
 	if err := tx.Commit(); err != nil {
-		return nil, fmt.Errorf("commit create campaign: %w", err)
+		return fmt.Errorf("commit create campaign: %w", err)
 	}
 
-	return p.GetCampaignByID(ctx, input.BusinessUserID, input.ID)
+	return nil
 }
 
 func (p *business) ListCampaigns(ctx context.Context, userID string, query businessDto.ListCampaignsQuery) ([]businessDto.CampaignListItem, int, error) {

@@ -44,12 +44,8 @@ func (s *support) ListBusinessCampaignOptions(ctx context.Context, businessUserI
 	return items, rows.Err()
 }
 
-func (s *support) CreateTicket(ctx context.Context, input businessDto.CreateSupportTicketInput) (*businessDto.SupportTicketRecord, error) {
-	var rec businessDto.SupportTicketRecord
-	var resolution sql.NullString
-	var campaignID sql.NullString
-
-	err := s.db.QueryRowContext(ctx, insertSupportTicket,
+func (s *support) CreateTicket(ctx context.Context, input businessDto.CreateSupportTicketInput) error {
+	_, err := s.db.ExecContext(ctx, insertSupportTicket,
 		input.ID,
 		input.UserID,
 		input.Subject,
@@ -57,28 +53,11 @@ func (s *support) CreateTicket(ctx context.Context, input businessDto.CreateSupp
 		input.IssueType,
 		input.Priority,
 		nullUUID(input.RelatedCampaignID),
-	).Scan(
-		&rec.ID,
-		&rec.Subject,
-		&rec.Message,
-		&rec.IssueType,
-		&rec.Priority,
-		&rec.Status,
-		&resolution,
-		&campaignID,
-		&rec.CreatedAt,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("create support ticket: %w", err)
+		return fmt.Errorf("create support ticket: %w", err)
 	}
-	if resolution.Valid {
-		rec.ResolutionNote = &resolution.String
-	}
-	if campaignID.Valid {
-		v := campaignID.String
-		rec.RelatedCampaignID = &v
-	}
-	return &rec, nil
+	return nil
 }
 
 func (s *support) ListTicketsByUser(ctx context.Context, userID string) ([]businessDto.SupportTicketRecord, error) {

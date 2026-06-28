@@ -44,27 +44,12 @@ func (a *admin) GetCategoryByID(ctx context.Context, categoryID string) (*adminD
 	return row, nil
 }
 
-func (a *admin) CreateCategory(ctx context.Context, id, name, slug string, description *string) (*adminDto.CategoryRow, error) {
-	var row adminDto.CategoryRow
-	var desc sql.NullString
-	err := a.db.QueryRowContext(ctx, insertCategory, id, name, slug, nullStringPtr(description)).Scan(
-		&row.ID,
-		&row.Name,
-		&row.Slug,
-		&desc,
-		&row.IsActive,
-		&row.CreatedAt,
-		&row.UpdatedAt,
-	)
+func (a *admin) CreateCategory(ctx context.Context, id, name, slug string, description *string) error {
+	_, err := a.db.ExecContext(ctx, insertCategory, id, name, slug, nullStringPtr(description))
 	if err != nil {
-		return nil, fmt.Errorf("create category: %w", err)
+		return fmt.Errorf("create category: %w", err)
 	}
-	if desc.Valid {
-		row.Description = &desc.String
-	}
-	row.InfluencerCount = 0
-	row.CampaignCount = 0
-	return &row, nil
+	return nil
 }
 
 func (a *admin) UpdateCategory(ctx context.Context, categoryID string, name, slug *string, description *string) error {

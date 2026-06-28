@@ -5,6 +5,7 @@ import (
 	"adinfluence_service_app/internal/constant/model"
 	authDto "adinfluence_service_app/internal/constant/model/dto/auth"
 	businessDto "adinfluence_service_app/internal/constant/model/dto/business"
+	commonDto "adinfluence_service_app/internal/constant/model/dto/common"
 	influencerDto "adinfluence_service_app/internal/constant/model/dto/influencer"
 	supportDto "adinfluence_service_app/internal/constant/model/dto/support"
 	supportPersist "adinfluence_service_app/internal/storage/persist/support"
@@ -36,7 +37,7 @@ func (m *influencerModule) ListSupportInviteOptions(ctx context.Context, userID 
 	return &influencerDto.ListSupportInviteOptionsResponse{Items: items}, nil
 }
 
-func (m *influencerModule) CreateSupportTicket(ctx context.Context, userID string, req influencerDto.CreateSupportTicketRequest, meta authDto.SessionMeta) (*influencerDto.CreateSupportTicketResponse, error) {
+func (m *influencerModule) CreateSupportTicket(ctx context.Context, userID string, req influencerDto.CreateSupportTicketRequest, meta authDto.SessionMeta) (*commonDto.CreatedIDResponse, error) {
 	if err := m.requireActiveInfluencer(ctx, userID); err != nil {
 		return nil, err
 	}
@@ -58,7 +59,7 @@ func (m *influencerModule) CreateSupportTicket(ctx context.Context, userID strin
 	}
 
 	ticketID := utils.GenerateUUID()
-	rec, err := m.support.CreateTicket(ctx, businessDto.CreateSupportTicketInput{
+	if err := m.support.CreateTicket(ctx, businessDto.CreateSupportTicketInput{
 		ID:                ticketID,
 		UserID:            userID,
 		IssueType:         issueType,
@@ -66,8 +67,7 @@ func (m *influencerModule) CreateSupportTicket(ctx context.Context, userID strin
 		Message:           strings.TrimSpace(req.Message),
 		Priority:          priority,
 		RelatedCampaignID: relatedCampaignID,
-	})
-	if err != nil {
+	}); err != nil {
 		return nil, err
 	}
 
@@ -82,11 +82,7 @@ func (m *influencerModule) CreateSupportTicket(ctx context.Context, userID strin
 		UserAgent:    meta.UserAgent,
 	})
 
-	return &influencerDto.CreateSupportTicketResponse{
-		ID:        rec.ID,
-		Status:    rec.Status,
-		CreatedAt: rec.CreatedAt,
-	}, nil
+	return &commonDto.CreatedIDResponse{ID: ticketID}, nil
 }
 
 func (m *influencerModule) ListSupportTickets(ctx context.Context, userID string) (*influencerDto.ListSupportTicketsResponse, error) {

@@ -8,19 +8,19 @@ import (
 	"fmt"
 )
 
-func (p *business) CreateInvite(ctx context.Context, input businessDto.CreateInviteInput) (*businessDto.InviteResponse, error) {
+func (p *business) CreateInvite(ctx context.Context, input businessDto.CreateInviteInput) error {
 	tx, err := p.db.BeginTx(ctx, nil)
 	if err != nil {
-		return nil, fmt.Errorf("begin create invite: %w", err)
+		return fmt.Errorf("begin create invite: %w", err)
 	}
 	defer tx.Rollback()
 
 	var exists bool
 	if err := tx.QueryRowContext(ctx, inviteExistsForCampaign, input.CampaignID, input.InfluencerUserID).Scan(&exists); err != nil {
-		return nil, fmt.Errorf("check invite exists: %w", err)
+		return fmt.Errorf("check invite exists: %w", err)
 	}
 	if exists {
-		return nil, businessDto.ErrInviteAlreadyExists
+		return businessDto.ErrInviteAlreadyExists
 	}
 
 	if _, err := tx.ExecContext(ctx, insertCampaignInvite,
@@ -30,18 +30,14 @@ func (p *business) CreateInvite(ctx context.Context, input businessDto.CreateInv
 		input.InfluencerUserID,
 		nullString(input.Message),
 	); err != nil {
-		return nil, fmt.Errorf("insert invite: %w", err)
+		return fmt.Errorf("insert invite: %w", err)
 	}
 
 	if _, err := tx.ExecContext(ctx, updateRecommendationStatusInvited, input.CampaignID, input.InfluencerUserID); err != nil {
-		return nil, fmt.Errorf("update recommendation invited: %w", err)
+		return fmt.Errorf("update recommendation invited: %w", err)
 	}
 
-	if err := tx.Commit(); err != nil {
-		return nil, fmt.Errorf("commit create invite: %w", err)
-	}
-
-	return p.GetInviteByID(ctx, input.BusinessUserID, input.CampaignID, input.ID)
+	return tx.Commit()
 }
 
 func (p *business) ListInvites(ctx context.Context, businessUserID, campaignID string) ([]businessDto.InviteResponse, error) {

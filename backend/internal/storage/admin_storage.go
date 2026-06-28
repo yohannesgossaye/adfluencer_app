@@ -21,7 +21,7 @@ type AdminPersistence interface {
 
 	ListCategories(ctx context.Context) ([]adminDto.CategoryRow, error)
 	GetCategoryByID(ctx context.Context, categoryID string) (*adminDto.CategoryRow, error)
-	CreateCategory(ctx context.Context, id, name, slug string, description *string) (*adminDto.CategoryRow, error)
+	CreateCategory(ctx context.Context, id, name, slug string, description *string) error
 	UpdateCategory(ctx context.Context, categoryID string, name, slug *string, description *string) error
 	SetCategoryActive(ctx context.Context, categoryID string, active bool) error
 	CategorySlugExists(ctx context.Context, slug, excludeID string) (bool, error)

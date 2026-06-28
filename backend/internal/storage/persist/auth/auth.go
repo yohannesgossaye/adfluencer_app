@@ -144,7 +144,7 @@ func (a *auth) GetUserByEmail(ctx context.Context, email string) (*authDto.UserC
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, authDto.ErrUserNotFound
+			return nil, customErr.ErrUserNotFound
 		}
 		return nil, fmt.Errorf("get user by email: %w", err)
 	}
@@ -195,7 +195,7 @@ func (a *auth) GetSessionByRefreshTokenHash(ctx context.Context, refreshTokenHas
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, authDto.ErrInvalidRefreshToken
+			return nil, customErr.ErrInvalidRefreshToken
 		}
 		return nil, fmt.Errorf("get session: %w", err)
 	}
@@ -231,7 +231,7 @@ func (a *auth) GetUserByID(ctx context.Context, userID string) (*authDto.UserRes
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, authDto.ErrUserNotFound
+			return nil, customErr.ErrUserNotFound
 		}
 		return nil, fmt.Errorf("get user: %w", err)
 	}
@@ -262,7 +262,7 @@ func (a *auth) GetProfileByUserID(ctx context.Context, userID, role string) (*au
 		)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
-				return nil, authDto.ErrProfileNotFound
+				return nil, customErr.ErrProfileNotFound
 			}
 			return nil, fmt.Errorf("get business profile: %w", err)
 		}
@@ -275,7 +275,7 @@ func (a *auth) GetProfileByUserID(ctx context.Context, userID, role string) (*au
 		)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
-				return nil, authDto.ErrProfileNotFound
+				return nil, customErr.ErrProfileNotFound
 			}
 			return nil, fmt.Errorf("get influencer profile: %w", err)
 		}
@@ -287,12 +287,12 @@ func (a *auth) GetProfileByUserID(ctx context.Context, userID, role string) (*au
 		)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
-				return nil, authDto.ErrProfileNotFound
+				return nil, customErr.ErrProfileNotFound
 			}
 			return nil, fmt.Errorf("get admin profile: %w", err)
 		}
 	default:
-		return nil, authDto.ErrProfileNotFound
+		return nil, customErr.ErrProfileNotFound
 	}
 
 	return profile, nil
@@ -346,7 +346,7 @@ func (a *auth) CompletePasswordReset(ctx context.Context, userID, tokenID, passw
 		return fmt.Errorf("update password rows affected: %w", err)
 	}
 	if rows == 0 {
-		return authDto.ErrUserNotFound
+		return customErr.ErrUserNotFound
 	}
 
 	result, err = tx.ExecContext(ctx, markPasswordResetTokenUsed, tokenID, now)
@@ -438,7 +438,7 @@ func (a *auth) CompleteEmailVerification(ctx context.Context, userID, tokenID st
 		return fmt.Errorf("mark email verified rows affected: %w", err)
 	}
 	if rows == 0 {
-		return authDto.ErrUserNotFound
+		return customErr.ErrUserNotFound
 	}
 
 	result, err = tx.ExecContext(ctx, markEmailVerificationTokenUsed, tokenID, now)
@@ -526,7 +526,7 @@ func (a *auth) CompletePhoneVerification(ctx context.Context, userID, tokenID st
 		return fmt.Errorf("mark phone verified rows affected: %w", err)
 	}
 	if rows == 0 {
-		return authDto.ErrUserNotFound
+		return customErr.ErrUserNotFound
 	}
 
 	result, err = tx.ExecContext(ctx, markPhoneVerificationTokenUsed, tokenID, now)

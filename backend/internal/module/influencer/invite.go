@@ -122,7 +122,7 @@ func inviteDetailFromRecord(rec *influencerDto.InviteRecord) *influencerDto.Invi
 func (m *influencerModule) requireActiveInfluencer(ctx context.Context, userID string) error {
 	user, err := m.auth.GetUserByID(ctx, userID)
 	if err != nil {
-		if errors.Is(err, authDto.ErrUserNotFound) {
+		if errors.Is(err, customErr.ErrUserNotFound) {
 			return customErr.ErrUnauthorized
 		}
 		return err

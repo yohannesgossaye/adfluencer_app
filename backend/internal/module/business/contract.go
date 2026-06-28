@@ -5,6 +5,7 @@ import (
 	"adinfluence_service_app/internal/constant/model"
 	authDto "adinfluence_service_app/internal/constant/model/dto/auth"
 	businessDto "adinfluence_service_app/internal/constant/model/dto/business"
+	commonDto "adinfluence_service_app/internal/constant/model/dto/common"
 	contractDto "adinfluence_service_app/internal/constant/model/dto/contract"
 	"adinfluence_service_app/internal/module/business/helper"
 	"context"
@@ -14,7 +15,7 @@ import (
 	"adinfluence_service_app/platform/utils"
 )
 
-func (m *businessModule) CreateContract(ctx context.Context, userID string, req businessDto.CreateContractRequest, meta authDto.SessionMeta) (*businessDto.CreateContractResponse, error) {
+func (m *businessModule) CreateContract(ctx context.Context, userID string, req businessDto.CreateContractRequest, meta authDto.SessionMeta) (*commonDto.CreatedIDResponse, error) {
 	if err := m.requireVerifiedBusiness(ctx, userID); err != nil {
 		return nil, err
 	}
@@ -58,7 +59,7 @@ func (m *businessModule) CreateContract(ctx context.Context, userID string, req 
 		description = &v
 	}
 
-	rec, err := m.contracts.CreateContract(ctx, contractDto.SaveContractInput{
+	if err := m.contracts.CreateContract(ctx, contractDto.SaveContractInput{
 		ID:               contractID,
 		InviteID:         req.InviteID,
 		CampaignID:       invite.CampaignID,
@@ -71,8 +72,7 @@ func (m *businessModule) CreateContract(ctx context.Context, userID string, req 
 		StartDate:        startDate,
 		EndDate:          endDate,
 		Deliverables:     req.Deliverables,
-	})
-	if err != nil {
+	}); err != nil {
 		return nil, mapContractError(err)
 	}
 
@@ -87,7 +87,7 @@ func (m *businessModule) CreateContract(ctx context.Context, userID string, req 
 		UserAgent:    meta.UserAgent,
 	})
 
-	return &businessDto.CreateContractResponse{Contract: rec.DetailResponse}, nil
+	return &commonDto.CreatedIDResponse{ID: contractID}, nil
 }
 
 func (m *businessModule) ListContracts(ctx context.Context, userID string, query contractDto.ListQuery) (*businessDto.ListContractsResponse, error) {

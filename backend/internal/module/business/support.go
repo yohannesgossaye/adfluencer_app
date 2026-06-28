@@ -5,6 +5,7 @@ import (
 	"adinfluence_service_app/internal/constant/model"
 	authDto "adinfluence_service_app/internal/constant/model/dto/auth"
 	businessDto "adinfluence_service_app/internal/constant/model/dto/business"
+	commonDto "adinfluence_service_app/internal/constant/model/dto/common"
 	supportDto "adinfluence_service_app/internal/constant/model/dto/support"
 	supportPersist "adinfluence_service_app/internal/storage/persist/support"
 	"adinfluence_service_app/platform/utils"
@@ -29,7 +30,7 @@ func (m *businessModule) ListSupportCampaignOptions(ctx context.Context, userID 
 	return &businessDto.ListSupportCampaignOptionsResponse{Items: items}, nil
 }
 
-func (m *businessModule) CreateSupportTicket(ctx context.Context, userID string, req businessDto.CreateSupportTicketRequest, meta authDto.SessionMeta) (*businessDto.CreateSupportTicketResponse, error) {
+func (m *businessModule) CreateSupportTicket(ctx context.Context, userID string, req businessDto.CreateSupportTicketRequest, meta authDto.SessionMeta) (*commonDto.CreatedIDResponse, error) {
 	if err := m.requireActiveBusiness(ctx, userID); err != nil {
 		return nil, err
 	}
@@ -54,7 +55,7 @@ func (m *businessModule) CreateSupportTicket(ctx context.Context, userID string,
 	}
 
 	ticketID := utils.GenerateUUID()
-	rec, err := m.support.CreateTicket(ctx, businessDto.CreateSupportTicketInput{
+	if err := m.support.CreateTicket(ctx, businessDto.CreateSupportTicketInput{
 		ID:                ticketID,
 		UserID:            userID,
 		IssueType:         issueType,
@@ -62,8 +63,7 @@ func (m *businessModule) CreateSupportTicket(ctx context.Context, userID string,
 		Message:           strings.TrimSpace(req.Message),
 		Priority:          priority,
 		RelatedCampaignID: relatedCampaignID,
-	})
-	if err != nil {
+	}); err != nil {
 		return nil, err
 	}
 
@@ -78,11 +78,7 @@ func (m *businessModule) CreateSupportTicket(ctx context.Context, userID string,
 		UserAgent:    meta.UserAgent,
 	})
 
-	return &businessDto.CreateSupportTicketResponse{
-		ID:        rec.ID,
-		Status:    rec.Status,
-		CreatedAt: rec.CreatedAt,
-	}, nil
+	return &commonDto.CreatedIDResponse{ID: ticketID}, nil
 }
 
 func (m *businessModule) ListSupportTickets(ctx context.Context, userID string) (*businessDto.ListSupportTicketsResponse, error) {

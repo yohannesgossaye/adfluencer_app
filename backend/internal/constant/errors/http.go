@@ -3,9 +3,19 @@ package errors
 import (
 	"errors"
 	"net/http"
+
+	validation "github.com/go-ozzo/ozzo-validation/v4"
 )
 
 func HTTPStatusFromError(err error) (int, bool) {
+	var valErr validation.Errors
+	if errors.As(err, &valErr) {
+		return http.StatusBadRequest, true
+	}
+	var single validation.Error
+	if errors.As(err, &single) {
+		return http.StatusBadRequest, true
+	}
 	for mappedErr, status := range ErrorMap {
 		if errors.Is(err, mappedErr) {
 			return status, true
@@ -21,6 +31,17 @@ func IsClientError(err error) bool {
 }
 
 func ClientErrorCode(err error) string {
+	var valErr validation.Errors
+	if errors.As(err, &valErr) {
+		return "validation_error"
+	}
+	var single validation.Error
+	if errors.As(err, &single) {
+		if code := single.Code(); code != "" {
+			return code
+		}
+		return "validation_error"
+	}
 	switch {
 	case errors.Is(err, ErrEmailAlreadyExists):
 		return "email_already_exists"

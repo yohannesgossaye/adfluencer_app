@@ -60,7 +60,7 @@ func (m *influencerModule) GetProfile(ctx context.Context, userID string, user *
 func (m *influencerModule) UpdateProfile(ctx context.Context, userID string, req influencerDto.UpdateProfileRequest, meta authDto.SessionMeta) (*influencerDto.GetProfileResponse, error) {
 	user, err := m.auth.GetUserByID(ctx, userID)
 	if err != nil {
-		if errors.Is(err, authDto.ErrUserNotFound) {
+		if errors.Is(err, customErr.ErrUserNotFound) {
 			return nil, customErr.ErrUnauthorized
 		}
 		return nil, err
@@ -157,7 +157,7 @@ func (m *influencerModule) UpdateProfile(ctx context.Context, userID string, req
 func (m *influencerModule) SubmitProfile(ctx context.Context, userID string, meta authDto.SessionMeta) (*influencerDto.SubmitProfileResponse, error) {
 	user, err := m.auth.GetUserByID(ctx, userID)
 	if err != nil {
-		if errors.Is(err, authDto.ErrUserNotFound) {
+		if errors.Is(err, customErr.ErrUserNotFound) {
 			return nil, customErr.ErrUnauthorized
 		}
 		return nil, err
@@ -215,7 +215,7 @@ func (m *influencerModule) UploadAvatar(ctx context.Context, userID string, file
 
 	user, err := m.auth.GetUserByID(ctx, userID)
 	if err != nil {
-		if errors.Is(err, authDto.ErrUserNotFound) {
+		if errors.Is(err, customErr.ErrUserNotFound) {
 			return nil, customErr.ErrUnauthorized
 		}
 		return nil, err
@@ -283,7 +283,7 @@ func (m *influencerModule) UploadPortfolio(ctx context.Context, userID string, f
 
 	user, err := m.auth.GetUserByID(ctx, userID)
 	if err != nil {
-		if errors.Is(err, authDto.ErrUserNotFound) {
+		if errors.Is(err, customErr.ErrUserNotFound) {
 			return nil, customErr.ErrUnauthorized
 		}
 		return nil, err
@@ -371,7 +371,7 @@ func (m *influencerModule) DeletePortfolio(ctx context.Context, userID, itemID s
 
 	user, err := m.auth.GetUserByID(ctx, userID)
 	if err != nil {
-		if errors.Is(err, authDto.ErrUserNotFound) {
+		if errors.Is(err, customErr.ErrUserNotFound) {
 			return nil, customErr.ErrUnauthorized
 		}
 		return nil, err

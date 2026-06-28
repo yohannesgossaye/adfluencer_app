@@ -13,8 +13,6 @@ const (
 	INSERT INTO support_tickets (
 		id, created_by_user_id, subject, message, issue_type, priority, status, related_campaign_id
 	) VALUES ($1, $2, $3, $4, $5::support_issue_type, $6::support_priority, 'open', $7)
-	RETURNING id, subject, message, issue_type::text, priority::text, status::text,
-		resolution_note, related_campaign_id, created_at
 	`
 
 	listSupportTicketsByUser = `

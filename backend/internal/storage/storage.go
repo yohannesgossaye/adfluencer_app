@@ -37,7 +37,3 @@ type AuthPersisitence interface {
 	InsertRateLimitEvent(ctx context.Context, scope, rateKey string) error
 	CountRateLimitEvents(ctx context.Context, scope, rateKey string, since time.Time) (int, error)
 }
-
-// type InfluencerPersistence interface {
-
-// }

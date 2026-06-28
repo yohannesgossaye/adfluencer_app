@@ -75,6 +75,7 @@ var (
 	ErrInvalidUserStatusChange    = errors.New("invalid user status change")
 	ErrDisputeNotFound            = errors.New("dispute not found")
 	ErrInvalidDisputeStatus       = errors.New("invalid dispute status")
+	ErrInvalidRefreshToken        = errors.New("invalid or expired refresh token")
 )
 
 var ErrorMap = map[error]int{
@@ -138,13 +139,14 @@ var ErrorMap = map[error]int{
 	ErrPaymentRequired:            http.StatusConflict,
 	ErrBusinessNotFound:           http.StatusNotFound,
 	ErrBusinessAlreadyVerified:    http.StatusConflict,
-	ErrBusinessNotVerified:      http.StatusConflict,
-	ErrSupportTicketNotFound:    http.StatusNotFound,
-	ErrCategoryNotFound:         http.StatusNotFound,
-	ErrCategoryAlreadyExists:    http.StatusConflict,
-	ErrUserNotFound:             http.StatusNotFound,
-	ErrCannotModifyAdminUser:    http.StatusForbidden,
-	ErrInvalidUserStatusChange:  http.StatusConflict,
-	ErrDisputeNotFound:          http.StatusNotFound,
-	ErrInvalidDisputeStatus:     http.StatusBadRequest,
+	ErrBusinessNotVerified:        http.StatusConflict,
+	ErrSupportTicketNotFound:      http.StatusNotFound,
+	ErrCategoryNotFound:           http.StatusNotFound,
+	ErrCategoryAlreadyExists:      http.StatusConflict,
+	ErrUserNotFound:               http.StatusNotFound,
+	ErrCannotModifyAdminUser:      http.StatusForbidden,
+	ErrInvalidUserStatusChange:    http.StatusConflict,
+	ErrDisputeNotFound:            http.StatusNotFound,
+	ErrInvalidDisputeStatus:       http.StatusBadRequest,
+	ErrInvalidRefreshToken:        http.StatusBadRequest,
 }

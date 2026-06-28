@@ -63,8 +63,12 @@ func (r CreateCampaignRequest) Validate() error {
 			validation.By(validateCreatorSize),
 		),
 		validation.Field(&r.StartDate, validation.By(validateDateField("start_date"))),
-		validation.Field(&r.EndDate, validation.By(validateDateField("end_date"))),
-		validation.Field(&r, validation.By(validateCampaignDateRange)),
+		validation.Field(&r.EndDate,
+			validation.By(validateDateField("end_date")),
+			validation.By(func(value interface{}) error {
+				return validateCampaignDateRange(r)
+			}),
+		),
 		validation.Field(&r.BudgetMinETB, validation.By(validateBudgetRange(&r))),
 		validation.Field(&r.Deliverables, validation.By(validateDeliverables)),
 		validation.Field(&r.NumberOfCreatorsNeeded,

@@ -3,8 +3,9 @@ package admin
 import (
 	customErr "adinfluence_service_app/internal/constant/errors"
 	"adinfluence_service_app/internal/constant/model"
-	authDto "adinfluence_service_app/internal/constant/model/dto/auth"
 	adminDto "adinfluence_service_app/internal/constant/model/dto/admin"
+	commonDto "adinfluence_service_app/internal/constant/model/dto/common"
+	authDto "adinfluence_service_app/internal/constant/model/dto/auth"
 	"adinfluence_service_app/internal/module/admin/helper"
 	adminPersist "adinfluence_service_app/internal/storage/persist/admin"
 	"adinfluence_service_app/platform/utils"
@@ -27,9 +28,9 @@ func (m *adminModule) ListCategories(ctx context.Context) (*adminDto.ListCategor
 	return &adminDto.ListCategoriesResponse{Items: items}, nil
 }
 
-func (m *adminModule) CreateCategory(ctx context.Context, adminUserID string, req adminDto.CreateCategoryRequest, meta authDto.SessionMeta) (*adminDto.CreateCategoryResponse, error) {
+func (m *adminModule) CreateCategory(ctx context.Context, adminUserID string, req adminDto.CreateCategoryRequest, meta authDto.SessionMeta) (*commonDto.CreatedIDResponse, error) {
 	if err := req.Validate(); err != nil {
-		return nil, customErr.ErrBadRequest
+		return nil, err
 	}
 
 	name := strings.TrimSpace(req.Name)
@@ -43,9 +44,8 @@ func (m *adminModule) CreateCategory(ctx context.Context, adminUserID string, re
 	}
 
 	id := utils.GenerateUUID()
-	row, err := m.admin.CreateCategory(ctx, id, name, slug, optionalTrimmed(req.Description))
-	if err != nil {
-		return nil, err
+	if err := m.admin.CreateCategory(ctx, id, name, slug, optionalTrimmed(req.Description)); err != nil {
+		return nil, mapCategoryError(err)
 	}
 
 	m.writeAudit(ctx, authDto.CreateAuditLogInput{
@@ -58,8 +58,7 @@ func (m *adminModule) CreateCategory(ctx context.Context, adminUserID string, re
 		UserAgent:   meta.UserAgent,
 	})
 
-	item := mapCategoryItem(*row)
-	return &adminDto.CreateCategoryResponse{CategoryListItem: item}, nil
+	return &commonDto.CreatedIDResponse{ID: id}, nil
 }
 
 func (m *adminModule) UpdateCategory(ctx context.Context, adminUserID, categoryID string, req adminDto.UpdateCategoryRequest, meta authDto.SessionMeta) (*adminDto.UpdateCategoryResponse, error) {

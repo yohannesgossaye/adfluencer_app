@@ -14,7 +14,7 @@ type BusinessPersistence interface {
 	CreateAuditLog(ctx context.Context, input authDto.CreateAuditLogInput) error
 
 	ResolveCategoryID(ctx context.Context, nameOrSlug string) (*businessDto.CampaignCategoryResponse, error)
-	CreateCampaign(ctx context.Context, input businessDto.SaveCampaignInput) (*businessDto.CampaignRecord, error)
+	CreateCampaign(ctx context.Context, input businessDto.SaveCampaignInput) error
 	ListCampaigns(ctx context.Context, userID string, query businessDto.ListCampaignsQuery) ([]businessDto.CampaignListItem, int, error)
 	GetCampaignByID(ctx context.Context, userID, campaignID string) (*businessDto.CampaignRecord, error)
 	UpdateCampaign(ctx context.Context, input businessDto.SaveCampaignInput) error
@@ -27,7 +27,7 @@ type BusinessPersistence interface {
 	GetRecommendation(ctx context.Context, campaignID, influencerUserID string) (*businessDto.RecommendationRecord, error)
 	IsVerifiedActiveInfluencer(ctx context.Context, userID string) (bool, error)
 
-	CreateInvite(ctx context.Context, input businessDto.CreateInviteInput) (*businessDto.InviteResponse, error)
+	CreateInvite(ctx context.Context, input businessDto.CreateInviteInput) error
 	ListInvites(ctx context.Context, businessUserID, campaignID string) ([]businessDto.InviteResponse, error)
 	GetInviteByID(ctx context.Context, businessUserID, campaignID, inviteID string) (*businessDto.InviteResponse, error)
 	CancelInvite(ctx context.Context, businessUserID, campaignID, inviteID string) error
