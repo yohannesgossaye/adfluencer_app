@@ -11,7 +11,23 @@ const (
 		ip.engagement_rate,
 		ip.min_price_etb,
 		ip.max_price_etb,
-		ip.is_verified
+		ip.is_verified,
+		COALESCE((
+			SELECT array_agg(ipc.category_id::text)
+			FROM influencer_profile_categories ipc
+			WHERE ipc.influencer_user_id = u.id
+		), '{}'),
+		COALESCE((
+			SELECT array_agg(c.name ORDER BY c.name)
+			FROM influencer_profile_categories ipc
+			JOIN categories c ON c.id = ipc.category_id
+			WHERE ipc.influencer_user_id = u.id
+		), '{}'),
+		COALESCE((
+			SELECT array_agg(ipp.platform::text ORDER BY ipp.platform)
+			FROM influencer_profile_platforms ipp
+			WHERE ipp.influencer_user_id = u.id
+		), '{}')
 	FROM users u
 	JOIN influencer_profiles ip ON ip.user_id = u.id
 	WHERE u.role = 'influencer'
@@ -33,13 +49,6 @@ const (
 	ORDER BY c.name
 	`
 
-	getInfluencerPlatforms = `
-	SELECT platform::text
-	FROM influencer_profile_platforms
-	WHERE influencer_user_id = $1
-	ORDER BY platform
-	`
-
 	deleteRecommendedRows = `
 	DELETE FROM campaign_recommendations
 	WHERE campaign_id = $1 AND status = 'recommended'
@@ -56,45 +65,6 @@ const (
 	WHERE campaign_recommendations.status = 'recommended'
 	`
 
-	countCampaignRecommendations = `
-	SELECT COUNT(*)::int
-	FROM campaign_recommendations cr
-	JOIN influencer_profiles ip ON ip.user_id = cr.influencer_user_id
-	LEFT JOIN LATERAL (
-		SELECT c.name
-		FROM influencer_profile_categories ipc
-		JOIN categories c ON c.id = ipc.category_id
-		WHERE ipc.influencer_user_id = cr.influencer_user_id
-		ORDER BY c.name
-		LIMIT 1
-	) primary_niche ON true
-	LEFT JOIN LATERAL (
-		SELECT ci.status::text AS invite_status
-		FROM campaign_invites ci
-		WHERE ci.campaign_id = cr.campaign_id
-			AND ci.influencer_user_id = cr.influencer_user_id
-			AND ci.status IN ('pending', 'accepted')
-		ORDER BY ci.created_at DESC
-		LIMIT 1
-	) inv ON true
-	WHERE cr.campaign_id = $1
-		AND cr.match_score >= $2
-		AND ($3 = '' OR ip.creator_name ILIKE '%' || $3 || '%')
-		AND ($4 = '' OR EXISTS (
-			SELECT 1
-			FROM influencer_profile_categories ipc
-			JOIN categories c ON c.id = ipc.category_id
-			WHERE ipc.influencer_user_id = cr.influencer_user_id
-				AND (LOWER(c.name) = LOWER($4) OR LOWER(c.slug) = LOWER($4))
-		))
-		AND ($5 = '' OR EXISTS (
-			SELECT 1
-			FROM influencer_profile_platforms ipp
-			WHERE ipp.influencer_user_id = cr.influencer_user_id
-				AND ipp.platform::text = LOWER($5)
-		))
-	`
-
 	listCampaignRecommendationsMatch = `
 	SELECT
 		cr.influencer_user_id,
@@ -109,7 +79,13 @@ const (
 		cr.score_breakdown,
 		ip.is_verified,
 		inv.invite_status,
-		cr.rank_position
+		cr.rank_position,
+		COALESCE((
+			SELECT array_agg(ipp.platform::text ORDER BY ipp.platform)
+			FROM influencer_profile_platforms ipp
+			WHERE ipp.influencer_user_id = cr.influencer_user_id
+		), '{}') AS platforms,
+		COUNT(*) OVER()::int AS total_count
 	FROM campaign_recommendations cr
 	JOIN influencer_profiles ip ON ip.user_id = cr.influencer_user_id
 	LEFT JOIN LATERAL (
@@ -163,7 +139,13 @@ const (
 		cr.score_breakdown,
 		ip.is_verified,
 		inv.invite_status,
-		cr.rank_position
+		cr.rank_position,
+		COALESCE((
+			SELECT array_agg(ipp.platform::text ORDER BY ipp.platform)
+			FROM influencer_profile_platforms ipp
+			WHERE ipp.influencer_user_id = cr.influencer_user_id
+		), '{}') AS platforms,
+		COUNT(*) OVER()::int AS total_count
 	FROM campaign_recommendations cr
 	JOIN influencer_profiles ip ON ip.user_id = cr.influencer_user_id
 	LEFT JOIN LATERAL (
@@ -217,7 +199,13 @@ const (
 		cr.score_breakdown,
 		ip.is_verified,
 		inv.invite_status,
-		cr.rank_position
+		cr.rank_position,
+		COALESCE((
+			SELECT array_agg(ipp.platform::text ORDER BY ipp.platform)
+			FROM influencer_profile_platforms ipp
+			WHERE ipp.influencer_user_id = cr.influencer_user_id
+		), '{}') AS platforms,
+		COUNT(*) OVER()::int AS total_count
 	FROM campaign_recommendations cr
 	JOIN influencer_profiles ip ON ip.user_id = cr.influencer_user_id
 	LEFT JOIN LATERAL (
@@ -271,7 +259,13 @@ const (
 		cr.score_breakdown,
 		ip.is_verified,
 		inv.invite_status,
-		cr.rank_position
+		cr.rank_position,
+		COALESCE((
+			SELECT array_agg(ipp.platform::text ORDER BY ipp.platform)
+			FROM influencer_profile_platforms ipp
+			WHERE ipp.influencer_user_id = cr.influencer_user_id
+		), '{}') AS platforms,
+		COUNT(*) OVER()::int AS total_count
 	FROM campaign_recommendations cr
 	JOIN influencer_profiles ip ON ip.user_id = cr.influencer_user_id
 	LEFT JOIN LATERAL (

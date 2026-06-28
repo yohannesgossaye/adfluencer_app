@@ -9,6 +9,7 @@ import (
 	"adinfluence_service_app/internal/module/business/helper"
 	"context"
 	"errors"
+	"time"
 
 	"adinfluence_service_app/platform/utils"
 )
@@ -43,7 +44,7 @@ func (m *businessModule) CreateCampaign(ctx context.Context, userID string, req 
 		return nil, err
 	}
 
-	m.writeAudit(ctx, authDto.CreateAuditLogInput{
+	m.writeAuditAsync(authDto.CreateAuditLogInput{
 		ActorUserID:  &userID,
 		TargetUserID: &userID,
 		Action:       string(model.ProfileUpdateAction),
@@ -98,10 +99,6 @@ func (m *businessModule) UpdateCampaign(ctx context.Context, userID, campaignID 
 		return nil, err
 	}
 
-	if _, err := m.business.GetCampaignByID(ctx, userID, campaignID); err != nil {
-		return nil, mapCampaignError(err)
-	}
-
 	category, err := m.business.ResolveCategoryID(ctx, req.Niche)
 	if err != nil {
 		if errors.Is(err, businessDto.ErrUnknownCategory) {
@@ -124,7 +121,7 @@ func (m *businessModule) UpdateCampaign(ctx context.Context, userID, campaignID 
 		return nil, err
 	}
 
-	m.writeAudit(ctx, authDto.CreateAuditLogInput{
+	m.writeAuditAsync(authDto.CreateAuditLogInput{
 		ActorUserID:  &userID,
 		TargetUserID: &userID,
 		Action:       string(model.ProfileUpdateAction),
@@ -161,12 +158,10 @@ func (m *businessModule) PublishCampaign(ctx context.Context, userID, campaignID
 		return nil, mapCampaignError(err)
 	}
 
-	rec, err = m.business.GetCampaignByID(ctx, userID, campaignID)
-	if err != nil {
-		return nil, err
-	}
+	rec.Status = "active"
+	rec.UpdatedAt = time.Now().UTC()
 
-	m.writeAudit(ctx, authDto.CreateAuditLogInput{
+	m.writeAuditAsync(authDto.CreateAuditLogInput{
 		ActorUserID:  &userID,
 		TargetUserID: &userID,
 		Action:       string(model.StatusChangeAction),
@@ -186,10 +181,6 @@ func (m *businessModule) CancelCampaign(ctx context.Context, userID, campaignID 
 		return nil, err
 	}
 
-	if _, err := m.business.GetCampaignByID(ctx, userID, campaignID); err != nil {
-		return nil, mapCampaignError(err)
-	}
-
 	if err := m.business.CancelCampaign(ctx, userID, campaignID); err != nil {
 		return nil, mapCampaignError(err)
 	}
@@ -199,7 +190,7 @@ func (m *businessModule) CancelCampaign(ctx context.Context, userID, campaignID 
 		return nil, err
 	}
 
-	m.writeAudit(ctx, authDto.CreateAuditLogInput{
+	m.writeAuditAsync(authDto.CreateAuditLogInput{
 		ActorUserID:  &userID,
 		TargetUserID: &userID,
 		Action:       string(model.StatusChangeAction),

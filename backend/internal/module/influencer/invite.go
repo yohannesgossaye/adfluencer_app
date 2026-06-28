@@ -59,7 +59,7 @@ func (m *influencerModule) AcceptInvite(ctx context.Context, userID, inviteID st
 		return nil, mapInviteError(err)
 	}
 
-	m.writeAudit(ctx, authDto.CreateAuditLogInput{
+	m.writeAuditAsync(authDto.CreateAuditLogInput{
 		ActorUserID:  &userID,
 		TargetUserID: &rec.BusinessUserID,
 		Action:       string(model.StatusChangeAction),
@@ -91,7 +91,7 @@ func (m *influencerModule) RejectInvite(ctx context.Context, userID, inviteID st
 		return nil, mapInviteError(err)
 	}
 
-	m.writeAudit(ctx, authDto.CreateAuditLogInput{
+	m.writeAuditAsync(authDto.CreateAuditLogInput{
 		ActorUserID:  &userID,
 		TargetUserID: &rec.BusinessUserID,
 		Action:       string(model.StatusChangeAction),
@@ -138,14 +138,14 @@ func (m *influencerModule) requireVerifiedInfluencer(ctx context.Context, userID
 		return err
 	}
 
-	rec, err := m.influencer.GetProfileByUserID(ctx, userID)
+	verified, err := m.influencer.IsProfileVerified(ctx, userID)
 	if err != nil {
 		if errors.Is(err, influencerDto.ErrProfileNotFound) {
 			return customErr.ErrProfileNotFound
 		}
 		return err
 	}
-	if !rec.IsVerified {
+	if !verified {
 		return customErr.ErrAccountNotVerified
 	}
 	return nil

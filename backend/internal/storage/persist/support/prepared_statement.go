@@ -56,21 +56,6 @@ const (
 	)
 	`
 
-	countAdminSupportTickets = `
-	SELECT COUNT(*)::int
-	FROM support_tickets st
-	INNER JOIN users u ON u.id = st.created_by_user_id
-	WHERE ($1 = '' OR u.role::text = $1)
-		AND ($2 = '' OR st.status::text = $2)
-		AND ($3 = '' OR st.priority::text = $3)
-		AND (
-			$4 = ''
-			OR st.subject ILIKE '%' || $4 || '%'
-			OR st.message ILIKE '%' || $4 || '%'
-			OR u.email ILIKE '%' || $4 || '%'
-		)
-	`
-
 	listAdminSupportTickets = `
 	SELECT
 		st.id,
@@ -87,7 +72,8 @@ const (
 		st.related_campaign_id,
 		c.title,
 		st.created_at,
-		st.updated_at
+		st.updated_at,
+		COUNT(*) OVER()::int AS total_count
 	FROM support_tickets st
 	INNER JOIN users u ON u.id = st.created_by_user_id
 	LEFT JOIN business_profiles bp ON bp.user_id = u.id AND u.role = 'business'

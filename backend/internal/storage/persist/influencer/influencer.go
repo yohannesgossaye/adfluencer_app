@@ -11,6 +11,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"golang.org/x/sync/errgroup"
 )
 
 type influencer struct {
@@ -27,26 +29,42 @@ func (p *influencer) GetProfileByUserID(ctx context.Context, userID string) (*in
 	if err != nil {
 		return nil, err
 	}
-
-	niches, err := p.GetCategoriesForUser(ctx, userID)
-	if err != nil {
-		return nil, err
+	if rec.Languages == nil {
+		rec.Languages = []string{}
 	}
-	platforms, err := p.GetPlatformsForUser(ctx, userID)
-	if err != nil {
+
+	var (
+		niches    []influencerDto.CategoryResponse
+		platforms []string
+		portfolio []influencerDto.PortfolioItem
+	)
+
+	g, ctx := errgroup.WithContext(ctx)
+
+	g.Go(func() error {
+		var err error
+		niches, err = p.GetCategoriesForUser(ctx, userID)
+		return err
+	})
+
+	g.Go(func() error {
+		var err error
+		platforms, err = p.GetPlatformsForUser(ctx, userID)
+		return err
+	})
+
+	g.Go(func() error {
+		var err error
+		portfolio, err = p.ListPortfolioItems(ctx, userID)
+		return err
+	})
+
+	if err := g.Wait(); err != nil {
 		return nil, err
 	}
 
 	rec.Niches = niches
 	rec.Platforms = platforms
-	if rec.Languages == nil {
-		rec.Languages = []string{}
-	}
-
-	portfolio, err := p.ListPortfolioItems(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
 	rec.PortfolioItems = portfolio
 	if rec.PortfolioItems == nil {
 		rec.PortfolioItems = []influencerDto.PortfolioItem{}
@@ -141,6 +159,14 @@ func (p *influencer) UpdateProfile(ctx context.Context, input influencerDto.Upda
 	}
 	defer tx.Rollback()
 
+	var profileID string
+	if err := tx.QueryRowContext(ctx, lockInfluencerProfileForUpdate, input.UserID).Scan(&profileID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return influencerDto.ErrProfileNotFound
+		}
+		return fmt.Errorf("lock influencer profile: %w", err)
+	}
+
 	result, err := tx.ExecContext(ctx, updateInfluencerProfile,
 		input.UserID,
 		input.FullName,
@@ -192,6 +218,23 @@ func (p *influencer) UpdateProfile(ctx context.Context, input influencerDto.Upda
 		return fmt.Errorf("commit profile update: %w", err)
 	}
 	return nil
+}
+
+func dedupeLowerKeys(values []string) []string {
+	seen := make(map[string]struct{}, len(values))
+	out := make([]string, 0, len(values))
+	for _, v := range values {
+		key := strings.ToLower(strings.TrimSpace(v))
+		if key == "" {
+			continue
+		}
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		out = append(out, key)
+	}
+	return out
 }
 
 func (p *influencer) ResolveCategoryIDs(ctx context.Context, namesOrSlugs []string) ([]influencerDto.CategoryResponse, error) {
@@ -380,23 +423,6 @@ func scanPortfolioItem(s portfolioScanner) (influencerDto.PortfolioItem, error) 
 	return item, nil
 }
 
-func dedupeLowerKeys(values []string) []string {
-	seen := make(map[string]struct{}, len(values))
-	out := make([]string, 0, len(values))
-	for _, v := range values {
-		key := strings.ToLower(strings.TrimSpace(v))
-		if key == "" {
-			continue
-		}
-		if _, ok := seen[key]; ok {
-			continue
-		}
-		seen[key] = struct{}{}
-		out = append(out, key)
-	}
-	return out
-}
-
 func (p *influencer) GetCategoriesForUser(ctx context.Context, userID string) ([]influencerDto.CategoryResponse, error) {
 	rows, err := p.db.QueryContext(ctx, getCategoriesForUser, userID)
 	if err != nil {
@@ -431,6 +457,18 @@ func (p *influencer) GetPlatformsForUser(ctx context.Context, userID string) ([]
 		out = append(out, platform)
 	}
 	return out, rows.Err()
+}
+
+func (p *influencer) IsProfileVerified(ctx context.Context, userID string) (bool, error) {
+	var verified bool
+	err := p.db.QueryRowContext(ctx, getInfluencerProfileIsVerified, userID).Scan(&verified)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, influencerDto.ErrProfileNotFound
+		}
+		return false, fmt.Errorf("get influencer profile verified: %w", err)
+	}
+	return verified, nil
 }
 
 func (p *influencer) SubmitProfile(ctx context.Context, userID string) error {
@@ -513,7 +551,9 @@ func formatTextArray(vals []string) string {
 		if i > 0 {
 			b.WriteByte(',')
 		}
-		b.WriteString(`"` + strings.ReplaceAll(v, `"`, `\"`) + `"`)
+		b.WriteByte('"')
+		b.WriteString(strings.ReplaceAll(v, `"`, `\"`))
+		b.WriteByte('"')
 	}
 	b.WriteByte('}')
 	return b.String()

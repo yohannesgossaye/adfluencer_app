@@ -137,7 +137,7 @@ func (m *influencerModule) UpdateProfile(ctx context.Context, userID string, req
 		return nil, err
 	}
 
-	m.writeAudit(ctx, authDto.CreateAuditLogInput{
+	m.writeAuditAsync(authDto.CreateAuditLogInput{
 		ActorUserID:  &userID,
 		TargetUserID: &userID,
 		Action:       string(model.ProfileUpdateAction),
@@ -153,12 +153,7 @@ func (m *influencerModule) UpdateProfile(ctx context.Context, userID string, req
 		return nil, err
 	}
 
-	updatedUser, err := m.auth.GetUserByID(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
-
-	return m.buildResponse(updatedUser, rec), nil
+	return m.buildResponse(user, rec), nil
 }
 
 func (m *influencerModule) SubmitProfile(ctx context.Context, userID string, meta authDto.SessionMeta) (*influencerDto.SubmitProfileResponse, error) {
@@ -197,7 +192,7 @@ func (m *influencerModule) SubmitProfile(ctx context.Context, userID string, met
 	}
 
 	now := time.Now().UTC()
-	m.writeAudit(ctx, authDto.CreateAuditLogInput{
+	m.writeAuditAsync(authDto.CreateAuditLogInput{
 		ActorUserID:  &userID,
 		TargetUserID: &userID,
 		Action:       string(model.StatusChangeAction),
@@ -269,7 +264,7 @@ func (m *influencerModule) UploadAvatar(ctx context.Context, userID string, file
 		}
 	}
 
-	m.writeAudit(ctx, authDto.CreateAuditLogInput{
+	m.writeAuditAsync(authDto.CreateAuditLogInput{
 		ActorUserID:  &userID,
 		TargetUserID: &userID,
 		Action:       string(model.ProfileUpdateAction),
@@ -353,7 +348,7 @@ func (m *influencerModule) UploadPortfolio(ctx context.Context, userID string, f
 		return nil, err
 	}
 
-	m.writeAudit(ctx, authDto.CreateAuditLogInput{
+	m.writeAuditAsync(authDto.CreateAuditLogInput{
 		ActorUserID:  &userID,
 		TargetUserID: &userID,
 		Action:       string(model.ProfileUpdateAction),
@@ -411,7 +406,7 @@ func (m *influencerModule) DeletePortfolio(ctx context.Context, userID, itemID s
 		return nil, err
 	}
 
-	m.writeAudit(ctx, authDto.CreateAuditLogInput{
+	m.writeAuditAsync(authDto.CreateAuditLogInput{
 		ActorUserID:  &userID,
 		TargetUserID: &userID,
 		Action:       string(model.ProfileUpdateAction),
@@ -461,11 +456,5 @@ func ensureEditableStatus(status string) error {
 		return customErr.ErrProfileLocked
 	default:
 		return customErr.ErrProfileLocked
-	}
-}
-
-func (m *influencerModule) writeAudit(ctx context.Context, input authDto.CreateAuditLogInput) {
-	if err := m.influencer.CreateAuditLog(ctx, input); err != nil {
-		m.logger.Warn(ctx, "audit log failed", zap.String("reason", err.Error()))
 	}
 }

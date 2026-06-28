@@ -1,25 +1,6 @@
 package admin
 
 const (
-	countAdminUsers = `
-	SELECT COUNT(*)::int
-	FROM users u
-	LEFT JOIN business_profiles bp ON bp.user_id = u.id AND u.role = 'business'
-	LEFT JOIN influencer_profiles ip ON ip.user_id = u.id AND u.role = 'influencer'
-	WHERE ($1 = '' OR u.role::text = $1)
-		AND (
-			$2 = ''
-			OR ($2 = 'pending' AND u.status IN ('pending_profile', 'pending_approval'))
-			OR ($2 <> 'pending' AND u.status::text = $2)
-		)
-		AND (
-			$3 = ''
-			OR u.email ILIKE '%' || $3 || '%'
-			OR COALESCE(bp.business_name, ip.creator_name, '') ILIKE '%' || $3 || '%'
-			OR COALESCE(bp.owner_full_name, '') ILIKE '%' || $3 || '%'
-		)
-	`
-
 	getAdminUserStats = `
 	SELECT
 		COUNT(*)::int,
@@ -41,7 +22,8 @@ const (
 		u.last_login_at,
 		(SELECT COUNT(*)::int FROM campaigns c WHERE c.business_user_id = u.id),
 		(SELECT COUNT(*)::int FROM contracts ct
-		 WHERE ct.business_user_id = u.id OR ct.influencer_user_id = u.id)
+		 WHERE ct.business_user_id = u.id OR ct.influencer_user_id = u.id),
+		COUNT(*) OVER()::int AS total_count
 	FROM users u
 	LEFT JOIN business_profiles bp ON bp.user_id = u.id AND u.role = 'business'
 	LEFT JOIN influencer_profiles ip ON ip.user_id = u.id AND u.role = 'influencer'

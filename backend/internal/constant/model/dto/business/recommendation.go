@@ -1,6 +1,7 @@
 package business
 
 import (
+	commonDto "adinfluence_service_app/internal/constant/model/dto/common"
 	"errors"
 	"time"
 )
@@ -77,7 +78,7 @@ type RecommendationItem struct {
 
 type ListRecommendationsResponse struct {
 	Items      []RecommendationItem `json:"items"`
-	Pagination PaginationResponse   `json:"pagination"`
+	Pagination commonDto.ListMeta   `json:"pagination"`
 }
 
 type GenerateRecommendationsResponse struct {

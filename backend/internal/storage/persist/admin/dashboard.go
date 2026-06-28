@@ -4,6 +4,8 @@ import (
 	adminDto "adinfluence_service_app/internal/constant/model/dto/admin"
 	"context"
 	"fmt"
+
+	"golang.org/x/sync/errgroup"
 )
 
 func (a *admin) GetDashboardKPIs(ctx context.Context) (*adminDto.DashboardKPIRow, error) {
@@ -103,12 +105,23 @@ func (a *admin) ListDashboardMonthlyRevenue(ctx context.Context, months int) ([]
 }
 
 func (a *admin) ListDashboardAlerts(ctx context.Context, limit int) ([]adminDto.DashboardAlertRow, error) {
-	disputes, err := a.listDisputeAlerts(ctx, limit)
-	if err != nil {
-		return nil, err
-	}
-	tickets, err := a.listSupportAlerts(ctx, limit)
-	if err != nil {
+	var disputes, tickets []adminDto.DashboardAlertRow
+
+	g, ctx := errgroup.WithContext(ctx)
+
+	g.Go(func() error {
+		var err error
+		disputes, err = a.listDisputeAlerts(ctx, limit)
+		return err
+	})
+
+	g.Go(func() error {
+		var err error
+		tickets, err = a.listSupportAlerts(ctx, limit)
+		return err
+	})
+
+	if err := g.Wait(); err != nil {
 		return nil, err
 	}
 

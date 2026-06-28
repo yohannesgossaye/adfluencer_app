@@ -11,6 +11,8 @@ import (
 	"errors"
 	"strings"
 
+	"golang.org/x/sync/errgroup"
+
 	"adinfluence_service_app/platform/utils"
 )
 
@@ -19,31 +21,58 @@ func (m *businessModule) GetInfluencerForBusiness(ctx context.Context, userID, i
 		return nil, err
 	}
 
-	ok, err := m.business.IsVerifiedActiveInfluencer(ctx, influencerUserID)
-	if err != nil {
-		return nil, err
-	}
-	if !ok {
-		return nil, customErr.ErrCreatorNotFound
-	}
+	var (
+		verified bool
+		rec      *influencerDto.ProfileRecord
+	)
 
-	rec, err := m.influencer.GetProfileByUserID(ctx, influencerUserID)
-	if err != nil {
-		if errors.Is(err, influencerDto.ErrProfileNotFound) {
-			return nil, customErr.ErrCreatorNotFound
+	g, ctx := errgroup.WithContext(ctx)
+
+	g.Go(func() error {
+		var err error
+		verified, err = m.business.IsVerifiedActiveInfluencer(ctx, influencerUserID)
+		return err
+	})
+
+	g.Go(func() error {
+		var err error
+		rec, err = m.influencer.GetProfileByUserID(ctx, influencerUserID)
+		if err != nil {
+			if errors.Is(err, influencerDto.ErrProfileNotFound) {
+				return customErr.ErrCreatorNotFound
+			}
 		}
+		return err
+	})
+
+	if err := g.Wait(); err != nil {
 		return nil, err
+	}
+	if !verified {
+		return nil, customErr.ErrCreatorNotFound
 	}
 
 	res := buildInfluencerView(rec)
 	if strings.TrimSpace(campaignID) != "" {
-		if _, err := m.business.GetCampaignByID(ctx, userID, campaignID); err != nil {
-			return nil, mapCampaignError(err)
-		}
-		match, err := m.business.GetRecommendation(ctx, campaignID, influencerUserID)
-		if err != nil {
+		var match *businessDto.RecommendationRecord
+
+		g, ctx := errgroup.WithContext(ctx)
+
+		g.Go(func() error {
+			_, err := m.business.GetCampaignByID(ctx, userID, campaignID)
+			return mapCampaignError(err)
+		})
+
+		g.Go(func() error {
+			var err error
+			match, err = m.business.GetRecommendation(ctx, campaignID, influencerUserID)
+			return err
+		})
+
+		if err := g.Wait(); err != nil {
 			return nil, err
 		}
+
 		if match != nil {
 			score := match.MatchScore
 			breakdown := match.ScoreBreakdown
@@ -122,7 +151,7 @@ func (m *businessModule) CreateInvite(ctx context.Context, userID, campaignID st
 		return nil, mapInviteError(err)
 	}
 
-	m.writeAudit(ctx, authDto.CreateAuditLogInput{
+	m.writeAuditAsync(authDto.CreateAuditLogInput{
 		ActorUserID:  &userID,
 		TargetUserID: &req.InfluencerUserID,
 		Action:       string(model.StatusChangeAction),
@@ -141,13 +170,9 @@ func (m *businessModule) ListInvites(ctx context.Context, userID, campaignID str
 		return nil, err
 	}
 
-	if _, err := m.business.GetCampaignByID(ctx, userID, campaignID); err != nil {
-		return nil, mapCampaignError(err)
-	}
-
 	items, err := m.business.ListInvites(ctx, userID, campaignID)
 	if err != nil {
-		return nil, err
+		return nil, mapCampaignError(err)
 	}
 	if items == nil {
 		items = []businessDto.InviteResponse{}
@@ -169,7 +194,7 @@ func (m *businessModule) CancelInvite(ctx context.Context, userID, campaignID, i
 		return mapInviteError(err)
 	}
 
-	m.writeAudit(ctx, authDto.CreateAuditLogInput{
+	m.writeAuditAsync(authDto.CreateAuditLogInput{
 		ActorUserID:  &userID,
 		TargetUserID: &userID,
 		Action:       string(model.StatusChangeAction),

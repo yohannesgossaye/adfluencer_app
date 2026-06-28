@@ -1,6 +1,9 @@
 package admin
 
-import "time"
+import (
+	commonDto "adinfluence_service_app/internal/constant/model/dto/common"
+	"time"
+)
 
 type ListApplicationsQuery struct {
 	Status string
@@ -24,15 +27,9 @@ type ApplicationListItem struct {
 	BioPreview          string   `json:"bio_preview,omitempty"`
 }
 
-type PaginationResponse struct {
-	Page  int `json:"page"`
-	Limit int `json:"limit"`
-	Total int `json:"total"`
-}
-
 type ListApplicationsResponse struct {
 	Items      []ApplicationListItem `json:"items"`
-	Pagination PaginationResponse    `json:"pagination"`
+	Pagination commonDto.ListMeta    `json:"pagination"`
 }
 
 type ApplicationDetailResponse struct {

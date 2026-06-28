@@ -2,6 +2,7 @@ package helper
 
 import (
 	businessDto "adinfluence_service_app/internal/constant/model/dto/business"
+	commonDto "adinfluence_service_app/internal/constant/model/dto/common"
 	"fmt"
 	"strings"
 	"time"
@@ -134,11 +135,7 @@ func ListCampaignsResponse(items []businessDto.CampaignListItem, query businessD
 	}
 	return businessDto.ListCampaignsResponse{
 		Items: items,
-		Pagination: businessDto.PaginationResponse{
-			Page:  query.Page,
-			Limit: query.Limit,
-			Total: total,
-		},
+		Pagination: commonDto.NewListMeta(query.Page, query.Limit, total),
 	}
 }
 

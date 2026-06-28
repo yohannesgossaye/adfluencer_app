@@ -50,6 +50,19 @@ const (
 	WHERE user_id = $1
 	`
 
+	lockInfluencerProfileForUpdate = `
+	SELECT id
+	FROM influencer_profiles
+	WHERE user_id = $1
+	FOR UPDATE
+	`
+
+	getInfluencerProfileIsVerified = `
+	SELECT is_verified
+	FROM influencer_profiles
+	WHERE user_id = $1
+	`
+
 	resolveCategories = `
 	SELECT id, name, slug
 	FROM categories

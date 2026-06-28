@@ -8,7 +8,8 @@ import (
 
 type BusinessPersistence interface {
 	GetProfileByUserID(ctx context.Context, userID string) (*businessDto.ProfileRecord, error)
-	UpdateProfile(ctx context.Context, input businessDto.UpdateProfileInput) error
+	IsBusinessVerified(ctx context.Context, userID string) (bool, error)
+	UpdateProfile(ctx context.Context, input businessDto.UpdateProfileInput) (*businessDto.ProfileRecord, error)
 	UpdateLogoURL(ctx context.Context, userID, logoURL string) error
 	CompleteProfile(ctx context.Context, userID string) error
 	CreateAuditLog(ctx context.Context, input authDto.CreateAuditLogInput) error

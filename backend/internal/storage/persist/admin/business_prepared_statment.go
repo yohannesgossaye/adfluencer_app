@@ -11,7 +11,8 @@ const (
 		bp.logo_url,
 		u.email,
 		bp.is_verified,
-		u.created_at
+		u.created_at,
+		COUNT(*) OVER()::int AS total_count
 	FROM users u
 	INNER JOIN business_profiles bp ON bp.user_id = u.id
 	WHERE u.role = 'business'
@@ -28,24 +29,6 @@ const (
 		)
 	ORDER BY u.created_at DESC
 	LIMIT $3 OFFSET $4
-	`
-
-	countBusinessVerifications = `
-	SELECT COUNT(*)::int
-	FROM users u
-	INNER JOIN business_profiles bp ON bp.user_id = u.id
-	WHERE u.role = 'business'
-		AND u.status = 'active'
-		AND (
-			($1 = 'pending' AND bp.is_verified = FALSE)
-			OR ($1 = 'verified' AND bp.is_verified = TRUE)
-		)
-		AND (
-			$2 = ''
-			OR bp.business_name ILIKE '%' || $2 || '%'
-			OR bp.owner_full_name ILIKE '%' || $2 || '%'
-			OR u.email ILIKE '%' || $2 || '%'
-		)
 	`
 
 	getBusinessVerification = `

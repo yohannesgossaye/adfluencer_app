@@ -5,6 +5,7 @@ import (
 	"adinfluence_service_app/internal/constant/model"
 	authDto "adinfluence_service_app/internal/constant/model/dto/auth"
 	businessDto "adinfluence_service_app/internal/constant/model/dto/business"
+	commonDto "adinfluence_service_app/internal/constant/model/dto/common"
 	"adinfluence_service_app/internal/module/business/helper"
 	"context"
 
@@ -37,7 +38,7 @@ func (m *businessModule) GenerateRecommendations(ctx context.Context, userID, ca
 		return nil, err
 	}
 
-	m.writeAudit(ctx, authDto.CreateAuditLogInput{
+	m.writeAuditAsync(authDto.CreateAuditLogInput{
 		ActorUserID:  &userID,
 		TargetUserID: &userID,
 		Action:       string(model.ProfileUpdateAction),
@@ -74,11 +75,7 @@ func (m *businessModule) ListRecommendations(ctx context.Context, userID, campai
 
 	return &businessDto.ListRecommendationsResponse{
 		Items: items,
-		Pagination: businessDto.PaginationResponse{
-			Page:  query.Page,
-			Limit: query.Limit,
-			Total: total,
-		},
+		Pagination: commonDto.NewListMeta(query.Page, query.Limit, total),
 	}, nil
 }
 

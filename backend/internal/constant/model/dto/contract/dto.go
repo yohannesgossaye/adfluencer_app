@@ -140,12 +140,6 @@ type ListQuery struct {
 	Limit  int
 }
 
-type PaginationResponse struct {
-	Page  int `json:"page"`
-	Limit int `json:"limit"`
-	Total int `json:"total"`
-}
-
 func (q ListQuery) Normalize() ListQuery {
 	if q.Page < 1 {
 		q.Page = 1

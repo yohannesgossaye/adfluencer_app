@@ -87,13 +87,6 @@ const (
 	WHERE c.id = $1
 	`
 
-	countBusinessContracts = `
-	SELECT COUNT(*)::int
-	FROM contracts c
-	WHERE c.business_user_id = $1
-		AND ($2 = '' OR c.status::text = $2)
-	`
-
 	listBusinessContracts = `
 	SELECT
 		c.id,
@@ -104,7 +97,8 @@ const (
 		ip.creator_name,
 		c.total_business_payable_etb,
 		c.influencer_receivable_etb,
-		c.created_at
+		c.created_at,
+		COUNT(*) OVER()::int AS total_count
 	FROM contracts c
 	JOIN campaigns camp ON camp.id = c.campaign_id
 	JOIN influencer_profiles ip ON ip.user_id = c.influencer_user_id
@@ -112,13 +106,6 @@ const (
 		AND ($2 = '' OR c.status::text = $2)
 	ORDER BY c.created_at DESC
 	LIMIT $3 OFFSET $4
-	`
-
-	countInfluencerContracts = `
-	SELECT COUNT(*)::int
-	FROM contracts c
-	WHERE c.influencer_user_id = $1
-		AND ($2 = '' OR c.status::text = $2)
 	`
 
 	listInfluencerContracts = `
@@ -131,7 +118,8 @@ const (
 		bp.business_name,
 		c.total_business_payable_etb,
 		c.influencer_receivable_etb,
-		c.created_at
+		c.created_at,
+		COUNT(*) OVER()::int AS total_count
 	FROM contracts c
 	JOIN campaigns camp ON camp.id = c.campaign_id
 	JOIN business_profiles bp ON bp.user_id = c.business_user_id

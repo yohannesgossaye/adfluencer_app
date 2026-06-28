@@ -27,18 +27,14 @@ func (a *admin) ListInfluencerApplications(ctx context.Context, query adminDto.L
 	query = query.Normalize()
 	offset := (query.Page - 1) * query.Limit
 
-	var total int
-	if err := a.db.QueryRowContext(ctx, countInfluencerApplications, query.Status, query.Search).Scan(&total); err != nil {
-		return nil, 0, fmt.Errorf("count applications: %w", err)
-	}
-
 	rows, err := a.db.QueryContext(ctx, listInfluencerApplications, query.Status, query.Search, query.Limit, offset)
 	if err != nil {
 		return nil, 0, fmt.Errorf("list applications: %w", err)
 	}
 	defer rows.Close()
 
-	items, err := scanApplicationRows(rows)
+	var total int
+	items, err := scanApplicationRows(rows, &total)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -129,20 +125,83 @@ func (a *admin) CreateAuditLog(ctx context.Context, input authDto.CreateAuditLog
 	return nil
 }
 
-func scanApplicationRows(rows *sql.Rows) ([]adminDto.ApplicationRow, error) {
+func scanApplicationRows(rows *sql.Rows, total *int) ([]adminDto.ApplicationRow, error) {
 	var out []adminDto.ApplicationRow
 	for rows.Next() {
-		row, err := scanApplicationRowFromRows(rows)
+		row, err := scanApplicationListRow(rows, total)
 		if err != nil {
 			return nil, err
 		}
 		out = append(out, *row)
 	}
+	if out == nil {
+		out = []adminDto.ApplicationRow{}
+	}
 	return out, rows.Err()
 }
 
-func scanApplicationRowFromRows(rows *sql.Rows) (*adminDto.ApplicationRow, error) {
-	return scanApplicationRowFromScanner(rows)
+func scanApplicationListRow(s scanner, total *int) (*adminDto.ApplicationRow, error) {
+	var item adminDto.ApplicationRow
+	var statusReason, profileImage, bio, city, audience, approvalNote sql.NullString
+	var engagement, minPrice, maxPrice sql.NullFloat64
+
+	err := s.Scan(
+		&item.UserID,
+		&item.Status,
+		&statusReason,
+		&item.Email,
+		&item.PhoneNumber,
+		&item.UpdatedAt,
+		&item.CreatorName,
+		&profileImage,
+		&bio,
+		&city,
+		&item.TotalFollowers,
+		&engagement,
+		&minPrice,
+		&maxPrice,
+		&audience,
+		&approvalNote,
+		&item.PrimaryNiche,
+		&item.PrimaryPlatform,
+		total,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	if statusReason.Valid {
+		item.StatusReason = &statusReason.String
+	}
+	if profileImage.Valid {
+		item.ProfileImageURL = &profileImage.String
+	}
+	if bio.Valid {
+		item.Bio = &bio.String
+	}
+	if city.Valid {
+		item.City = &city.String
+	}
+	if audience.Valid {
+		item.AudienceDesc = &audience.String
+	}
+	if approvalNote.Valid {
+		item.ApprovalNote = &approvalNote.String
+	}
+	if engagement.Valid {
+		v := engagement.Float64
+		item.EngagementRate = &v
+	}
+	if minPrice.Valid {
+		v := minPrice.Float64
+		item.MinPriceETB = &v
+	}
+	if maxPrice.Valid {
+		v := maxPrice.Float64
+		item.MaxPriceETB = &v
+	}
+
+	return &item, nil
 }
 
 type scanner interface {

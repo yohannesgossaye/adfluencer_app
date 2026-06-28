@@ -52,6 +52,35 @@ const (
 		monthly_marketing_budget = $19,
 		updated_at = NOW()
 	WHERE user_id = $1
+	RETURNING
+		id,
+		user_id,
+		owner_full_name,
+		business_name,
+		legal_business_name,
+		logo_url,
+		description,
+		industry,
+		business_type,
+		business_size,
+		city,
+		region,
+		address,
+		tin_number,
+		website_url,
+		instagram_url,
+		tiktok_url,
+		facebook_url,
+		linkedin_url,
+		preferred_platforms,
+		monthly_marketing_budget,
+		is_verified
+	`
+
+	isBusinessVerified = `
+	SELECT is_verified
+	FROM business_profiles
+	WHERE user_id = $1
 	`
 
 	updateBusinessLogoURL = `

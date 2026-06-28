@@ -1,6 +1,7 @@
 package admin
 
 import (
+	commonDto "adinfluence_service_app/internal/constant/model/dto/common"
 	"errors"
 	"strings"
 	"time"
@@ -69,7 +70,7 @@ type AdminCampaignListItem struct {
 type ListAdminCampaignsResponse struct {
 	Items      []AdminCampaignListItem `json:"items"`
 	Stats      AdminCampaignStats      `json:"stats"`
-	Pagination PaginationResponse      `json:"pagination"`
+	Pagination commonDto.ListMeta      `json:"pagination"`
 }
 
 type AdminCampaignDetailResponse struct {

@@ -18,6 +18,7 @@ type InfluencerPersistence interface {
 	ResolveCategoryIDs(ctx context.Context, namesOrSlugs []string) ([]influencerDto.CategoryResponse, error)
 	GetCategoriesForUser(ctx context.Context, userID string) ([]influencerDto.CategoryResponse, error)
 	GetPlatformsForUser(ctx context.Context, userID string) ([]string, error)
+	IsProfileVerified(ctx context.Context, userID string) (bool, error)
 	SubmitProfile(ctx context.Context, userID string) error
 	CreateAuditLog(ctx context.Context, input authDto.CreateAuditLogInput) error
 

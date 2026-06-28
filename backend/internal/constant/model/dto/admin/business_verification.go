@@ -1,6 +1,9 @@
 package admin
 
-import "time"
+import (
+	commonDto "adinfluence_service_app/internal/constant/model/dto/common"
+	"time"
+)
 
 type ListBusinessVerificationsQuery struct {
 	Status string
@@ -38,7 +41,7 @@ type BusinessVerificationListItem struct {
 
 type ListBusinessVerificationsResponse struct {
 	Items      []BusinessVerificationListItem `json:"items"`
-	Pagination PaginationResponse             `json:"pagination"`
+	Pagination commonDto.ListMeta             `json:"pagination"`
 }
 
 type BusinessVerificationDetailResponse struct {

@@ -21,75 +21,30 @@ func InitBusinessPersistence(db *sql.DB, log utils.Logger) *business {
 }
 
 func (p *business) GetProfileByUserID(ctx context.Context, userID string) (*businessDto.ProfileRecord, error) {
-	var rec businessDto.ProfileRecord
-	var legalName, logo, description, industry, bizType, bizSize sql.NullString
-	var city, region, address, tin, website sql.NullString
-	var instagram, tiktok, facebook, linkedin sql.NullString
-	var platforms []byte
-	var budget sql.NullFloat64
-
-	err := p.db.QueryRowContext(ctx, getBusinessProfileFull, userID).Scan(
-		&rec.ID,
-		&rec.UserID,
-		&rec.OwnerFullName,
-		&rec.BusinessName,
-		&legalName,
-		&logo,
-		&description,
-		&industry,
-		&bizType,
-		&bizSize,
-		&city,
-		&region,
-		&address,
-		&tin,
-		&website,
-		&instagram,
-		&tiktok,
-		&facebook,
-		&linkedin,
-		&platforms,
-		&budget,
-		&rec.IsVerified,
-	)
+	rec, err := scanBusinessProfile(p.db.QueryRowContext(ctx, getBusinessProfileFull, userID))
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, businessDto.ErrProfileNotFound
 		}
 		return nil, fmt.Errorf("get business profile: %w", err)
 	}
-
-	rec.LegalBusinessName = nullStringPtr(legalName)
-	rec.LogoURL = nullStringPtr(logo)
-	rec.Description = nullStringPtr(description)
-	rec.Industry = nullStringPtr(industry)
-	rec.BusinessType = nullStringPtr(bizType)
-	rec.BusinessSize = nullStringPtr(bizSize)
-	rec.City = nullStringPtr(city)
-	rec.Region = nullStringPtr(region)
-	rec.Address = nullStringPtr(address)
-	rec.TINNumber = nullStringPtr(tin)
-	rec.WebsiteURL = nullStringPtr(website)
-	rec.SocialLinks = businessDto.SocialLinks{
-		Instagram: instagram.String,
-		TikTok:    tiktok.String,
-		Facebook:  facebook.String,
-		LinkedIn:  linkedin.String,
-	}
-	rec.PreferredPlatforms = parseTextArray(platforms)
-	if rec.PreferredPlatforms == nil {
-		rec.PreferredPlatforms = []string{}
-	}
-	if budget.Valid {
-		v := budget.Float64
-		rec.MonthlyMarketingBudget = &v
-	}
-
-	return &rec, nil
+	return rec, nil
 }
 
-func (p *business) UpdateProfile(ctx context.Context, input businessDto.UpdateProfileInput) error {
-	res, err := p.db.ExecContext(ctx, updateBusinessProfile,
+func (p *business) IsBusinessVerified(ctx context.Context, userID string) (bool, error) {
+	var verified bool
+	err := p.db.QueryRowContext(ctx, isBusinessVerified, userID).Scan(&verified)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, businessDto.ErrProfileNotFound
+		}
+		return false, fmt.Errorf("get business verified: %w", err)
+	}
+	return verified, nil
+}
+
+func (p *business) UpdateProfile(ctx context.Context, input businessDto.UpdateProfileInput) (*businessDto.ProfileRecord, error) {
+	rec, err := scanBusinessProfile(p.db.QueryRowContext(ctx, updateBusinessProfile,
 		input.UserID,
 		input.OwnerFullName,
 		input.BusinessName,
@@ -109,18 +64,14 @@ func (p *business) UpdateProfile(ctx context.Context, input businessDto.UpdatePr
 		nullString(input.LinkedInURL),
 		formatTextArray(input.PreferredPlatforms),
 		nullFloat(input.MonthlyMarketingBudget),
-	)
+	))
 	if err != nil {
-		return fmt.Errorf("update business profile: %w", err)
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, businessDto.ErrProfileNotFound
+		}
+		return nil, fmt.Errorf("update business profile: %w", err)
 	}
-	n, err := res.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("update business profile rows: %w", err)
-	}
-	if n == 0 {
-		return businessDto.ErrProfileNotFound
-	}
-	return nil
+	return rec, nil
 }
 
 func (p *business) UpdateLogoURL(ctx context.Context, userID, logoURL string) error {
@@ -238,4 +189,72 @@ func nullUUID(id *string) sql.NullString {
 		return sql.NullString{}
 	}
 	return sql.NullString{String: *id, Valid: true}
+}
+
+type businessProfileScanner interface {
+	Scan(dest ...any) error
+}
+
+func scanBusinessProfile(s businessProfileScanner) (*businessDto.ProfileRecord, error) {
+	var rec businessDto.ProfileRecord
+	var legalName, logo, description, industry, bizType, bizSize sql.NullString
+	var city, region, address, tin, website sql.NullString
+	var instagram, tiktok, facebook, linkedin sql.NullString
+	var platforms []byte
+	var budget sql.NullFloat64
+
+	if err := s.Scan(
+		&rec.ID,
+		&rec.UserID,
+		&rec.OwnerFullName,
+		&rec.BusinessName,
+		&legalName,
+		&logo,
+		&description,
+		&industry,
+		&bizType,
+		&bizSize,
+		&city,
+		&region,
+		&address,
+		&tin,
+		&website,
+		&instagram,
+		&tiktok,
+		&facebook,
+		&linkedin,
+		&platforms,
+		&budget,
+		&rec.IsVerified,
+	); err != nil {
+		return nil, err
+	}
+
+	rec.LegalBusinessName = nullStringPtr(legalName)
+	rec.LogoURL = nullStringPtr(logo)
+	rec.Description = nullStringPtr(description)
+	rec.Industry = nullStringPtr(industry)
+	rec.BusinessType = nullStringPtr(bizType)
+	rec.BusinessSize = nullStringPtr(bizSize)
+	rec.City = nullStringPtr(city)
+	rec.Region = nullStringPtr(region)
+	rec.Address = nullStringPtr(address)
+	rec.TINNumber = nullStringPtr(tin)
+	rec.WebsiteURL = nullStringPtr(website)
+	rec.SocialLinks = businessDto.SocialLinks{
+		Instagram: instagram.String,
+		TikTok:    tiktok.String,
+		Facebook:  facebook.String,
+		LinkedIn:  linkedin.String,
+	}
+	rec.PreferredPlatforms = parseTextArray(platforms)
+	if rec.PreferredPlatforms == nil {
+		rec.PreferredPlatforms = []string{}
+	}
+	if budget.Valid {
+		v := budget.Float64
+		rec.MonthlyMarketingBudget = &v
+	}
+
+	return &rec, nil
 }

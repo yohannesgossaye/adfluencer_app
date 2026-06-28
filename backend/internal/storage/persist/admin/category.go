@@ -52,19 +52,15 @@ func (a *admin) CreateCategory(ctx context.Context, id, name, slug string, descr
 	return nil
 }
 
-func (a *admin) UpdateCategory(ctx context.Context, categoryID string, name, slug *string, description *string) error {
-	result, err := a.db.ExecContext(ctx, updateCategory, categoryID, nullStringPtr(name), nullStringPtr(slug), nullStringPtr(description))
+func (a *admin) UpdateCategory(ctx context.Context, categoryID string, name, slug *string, description *string) (*adminDto.CategoryRow, error) {
+	row, err := scanCategoryRow(a.db.QueryRowContext(ctx, updateCategory, categoryID, nullStringPtr(name), nullStringPtr(slug), nullStringPtr(description)))
 	if err != nil {
-		return fmt.Errorf("update category: %w", err)
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrCategoryNotFound
+		}
+		return nil, fmt.Errorf("update category: %w", err)
 	}
-	n, err := result.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("update category rows: %w", err)
-	}
-	if n == 0 {
-		return ErrCategoryNotFound
-	}
-	return nil
+	return row, nil
 }
 
 func (a *admin) SetCategoryActive(ctx context.Context, categoryID string, active bool) error {

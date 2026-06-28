@@ -16,10 +16,11 @@ const (
 		ci.status::text,
 		ci.message,
 		ci.created_at
-	FROM campaign_invites ci
-	JOIN influencer_profiles ip ON ip.user_id = ci.influencer_user_id
-	WHERE ci.campaign_id = $1 AND ci.business_user_id = $2
-	ORDER BY ci.created_at DESC
+	FROM campaigns camp
+	LEFT JOIN campaign_invites ci ON ci.campaign_id = camp.id AND ci.business_user_id = camp.business_user_id
+	LEFT JOIN influencer_profiles ip ON ip.user_id = ci.influencer_user_id
+	WHERE camp.id = $1 AND camp.business_user_id = $2
+	ORDER BY ci.created_at DESC NULLS LAST
 	`
 
 	getCampaignInviteByID = `

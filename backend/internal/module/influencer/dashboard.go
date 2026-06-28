@@ -4,6 +4,8 @@ import (
 	influencerDto "adinfluence_service_app/internal/constant/model/dto/influencer"
 	"adinfluence_service_app/internal/module/influencer/helper"
 	"context"
+
+	"golang.org/x/sync/errgroup"
 )
 
 func (m *influencerModule) GetDashboardSummary(ctx context.Context, userID string) (*influencerDto.DashboardSummaryResponse, error) {
@@ -11,35 +13,47 @@ func (m *influencerModule) GetDashboardSummary(ctx context.Context, userID strin
 		return nil, err
 	}
 
-	rec, err := m.influencer.GetProfileByUserID(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
+	var (
+		rec       *influencerDto.ProfileRecord
+		kpis      *influencerDto.DashboardKPIRow
+		invites   []influencerDto.DashboardInviteRow
+		contracts []influencerDto.DashboardContractRow
+	)
 
-	kpis, err := m.influencer.GetDashboardKPIs(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
+	g, ctx := errgroup.WithContext(ctx)
 
-	invites, err := m.influencer.ListDashboardPendingInvites(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
+	g.Go(func() error {
+		var err error
+		rec, err = m.influencer.GetProfileByUserID(ctx, userID)
+		return err
+	})
 
-	contracts, err := m.influencer.ListDashboardActiveContracts(ctx, userID)
-	if err != nil {
+	g.Go(func() error {
+		var err error
+		kpis, err = m.influencer.GetDashboardKPIs(ctx, userID)
+		return err
+	})
+
+	g.Go(func() error {
+		var err error
+		invites, err = m.influencer.ListDashboardPendingInvites(ctx, userID)
+		return err
+	})
+
+	g.Go(func() error {
+		var err error
+		contracts, err = m.influencer.ListDashboardActiveContracts(ctx, userID)
+		return err
+	})
+
+	if err := g.Wait(); err != nil {
 		return nil, err
 	}
 
 	detail := rec.ProfileDetailResponse
-	platforms, err := m.influencer.GetPlatformsForUser(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
-
 	completeness := helper.BuildCompleteness(helper.CompletenessInput{
 		Profile:   detail,
-		Platforms: platforms,
+		Platforms: rec.Platforms,
 	})
 
 	completedEarnings := kpis.PaidOutEarningsETB

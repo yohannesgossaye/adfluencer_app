@@ -76,7 +76,7 @@ func (m *businessModule) CreateContract(ctx context.Context, userID string, req 
 		return nil, mapContractError(err)
 	}
 
-	m.writeAudit(ctx, authDto.CreateAuditLogInput{
+	m.writeAuditAsync(authDto.CreateAuditLogInput{
 		ActorUserID:  &userID,
 		TargetUserID: &invite.InfluencerUserID,
 		Action:       string(model.ProfileUpdateAction),
@@ -103,11 +103,7 @@ func (m *businessModule) ListContracts(ctx context.Context, userID string, query
 
 	return &businessDto.ListContractsResponse{
 		Items: items,
-		Pagination: contractDto.PaginationResponse{
-			Page:  query.Page,
-			Limit: query.Limit,
-			Total: total,
-		},
+		Pagination: commonDto.NewListMeta(query.Page, query.Limit, total),
 	}, nil
 }
 
@@ -140,7 +136,7 @@ func (m *businessModule) PayContract(ctx context.Context, userID, contractID str
 		return nil, err
 	}
 
-	m.writeAudit(ctx, authDto.CreateAuditLogInput{
+	m.writeAuditAsync(authDto.CreateAuditLogInput{
 		ActorUserID:  &userID,
 		TargetUserID: &rec.InfluencerUserID,
 		Action:       string(model.PaymentStatusChangeAction),
@@ -173,7 +169,7 @@ func (m *businessModule) ApproveWork(ctx context.Context, userID, contractID str
 		return nil, err
 	}
 
-	m.writeAudit(ctx, authDto.CreateAuditLogInput{
+	m.writeAuditAsync(authDto.CreateAuditLogInput{
 		ActorUserID:  &userID,
 		TargetUserID: &rec.InfluencerUserID,
 		Action:       string(model.ContractStatusChangeAction),
@@ -204,7 +200,7 @@ func (m *businessModule) CancelContract(ctx context.Context, userID, contractID 
 		return nil, err
 	}
 
-	m.writeAudit(ctx, authDto.CreateAuditLogInput{
+	m.writeAuditAsync(authDto.CreateAuditLogInput{
 		ActorUserID:  &userID,
 		TargetUserID: &userID,
 		Action:       string(model.ContractStatusChangeAction),
@@ -223,11 +219,11 @@ func (m *businessModule) requireVerifiedBusiness(ctx context.Context, userID str
 		return err
 	}
 
-	rec, err := m.business.GetProfileByUserID(ctx, userID)
+	verified, err := m.business.IsBusinessVerified(ctx, userID)
 	if err != nil {
 		return err
 	}
-	if !rec.IsVerified {
+	if !verified {
 		return customErr.ErrAccountNotVerified
 	}
 	return nil

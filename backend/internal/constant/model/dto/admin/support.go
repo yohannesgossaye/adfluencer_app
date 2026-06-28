@@ -1,6 +1,7 @@
 package admin
 
 import (
+	commonDto "adinfluence_service_app/internal/constant/model/dto/common"
 	supportDto "adinfluence_service_app/internal/constant/model/dto/support"
 	"strings"
 	"time"
@@ -61,7 +62,7 @@ type SupportTicketListItem struct {
 type ListSupportTicketsResponse struct {
 	Items      []SupportTicketListItem `json:"items"`
 	Stats      SupportTicketStats      `json:"stats"`
-	Pagination PaginationResponse      `json:"pagination"`
+	Pagination commonDto.ListMeta      `json:"pagination"`
 }
 
 type SupportTicketDetailResponse struct {

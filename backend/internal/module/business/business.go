@@ -77,7 +77,7 @@ func (m *businessModule) UpdateProfile(ctx context.Context, userID string, req b
 
 	platforms := businessDto.NormalizePlatforms(req.PreferredPlatforms)
 
-	if err := m.business.UpdateProfile(ctx, businessDto.UpdateProfileInput{
+	rec, err := m.business.UpdateProfile(ctx, businessDto.UpdateProfileInput{
 		UserID:                 userID,
 		OwnerFullName:          strings.TrimSpace(req.OwnerFullName),
 		BusinessName:           strings.TrimSpace(req.BusinessName),
@@ -97,11 +97,12 @@ func (m *businessModule) UpdateProfile(ctx context.Context, userID string, req b
 		LinkedInURL:            optionalString(req.SocialLinks.LinkedIn),
 		PreferredPlatforms:     platforms,
 		MonthlyMarketingBudget: req.MonthlyMarketingBudget,
-	}); err != nil {
+	})
+	if err != nil {
 		return nil, err
 	}
 
-	m.writeAudit(ctx, authDto.CreateAuditLogInput{
+	m.writeAuditAsync(authDto.CreateAuditLogInput{
 		ActorUserID:  &userID,
 		TargetUserID: &userID,
 		Action:       string(model.ProfileUpdateAction),
@@ -112,17 +113,7 @@ func (m *businessModule) UpdateProfile(ctx context.Context, userID string, req b
 		UserAgent:    meta.UserAgent,
 	})
 
-	rec, err := m.business.GetProfileByUserID(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
-
-	updatedUser, err := m.auth.GetUserByID(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
-
-	return m.buildResponse(updatedUser, rec), nil
+	return m.buildResponse(user, rec), nil
 }
 
 func (m *businessModule) UploadLogo(ctx context.Context, userID string, filename, contentType string, data []byte, meta authDto.SessionMeta) (*businessDto.UploadLogoResponse, error) {
@@ -179,7 +170,7 @@ func (m *businessModule) UploadLogo(ctx context.Context, userID string, filename
 		}
 	}
 
-	m.writeAudit(ctx, authDto.CreateAuditLogInput{
+	m.writeAuditAsync(authDto.CreateAuditLogInput{
 		ActorUserID:  &userID,
 		TargetUserID: &userID,
 		Action:       string(model.ProfileUpdateAction),
@@ -226,7 +217,7 @@ func (m *businessModule) CompleteProfile(ctx context.Context, userID string, met
 	}
 
 	now := time.Now().UTC()
-	m.writeAudit(ctx, authDto.CreateAuditLogInput{
+	m.writeAuditAsync(authDto.CreateAuditLogInput{
 		ActorUserID:  &userID,
 		TargetUserID: &userID,
 		Action:       string(model.StatusChangeAction),
@@ -298,8 +289,3 @@ func optionalString(v string) *string {
 	return &v
 }
 
-func (m *businessModule) writeAudit(ctx context.Context, input authDto.CreateAuditLogInput) {
-	if err := m.business.CreateAuditLog(ctx, input); err != nil {
-		m.logger.Warn(ctx, "audit log failed", zap.String("reason", err.Error()))
-	}
-}

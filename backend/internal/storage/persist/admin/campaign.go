@@ -28,29 +28,25 @@ func (a *admin) ListAdminCampaigns(ctx context.Context, query adminDto.ListAdmin
 	dbStatus := adminDto.AdminCampaignStatusFilterDB(query.Status)
 	offset := (query.Page - 1) * query.Limit
 
-	var total int
-	if err := a.db.QueryRowContext(ctx, countAdminCampaigns, dbStatus, query.Niche, query.Business).Scan(&total); err != nil {
-		return nil, 0, fmt.Errorf("count admin campaigns: %w", err)
-	}
-
 	rows, err := a.db.QueryContext(ctx, listAdminCampaigns, dbStatus, query.Niche, query.Business, query.Limit, offset)
 	if err != nil {
 		return nil, 0, fmt.Errorf("list admin campaigns: %w", err)
 	}
 	defer rows.Close()
 
+	var total int
 	items := make([]adminDto.AdminCampaignRow, 0)
 	for rows.Next() {
-		row, err := scanAdminCampaignListRow(rows)
+		row, err := scanAdminCampaignListRow(rows, &total)
 		if err != nil {
 			return nil, 0, err
 		}
 		items = append(items, *row)
 	}
-	if items == nil {
-		items = []adminDto.AdminCampaignRow{}
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
 	}
-	return items, total, rows.Err()
+	return items, total, nil
 }
 
 func (a *admin) GetAdminCampaign(ctx context.Context, campaignID string) (*adminDto.AdminCampaignRow, error) {
@@ -76,7 +72,7 @@ func (a *admin) SetAdminCampaignStatus(ctx context.Context, campaignID, status s
 	return nil
 }
 
-func scanAdminCampaignListRow(s scanner) (*adminDto.AdminCampaignRow, error) {
+func scanAdminCampaignListRow(s scanner, total *int) (*adminDto.AdminCampaignRow, error) {
 	var row adminDto.AdminCampaignRow
 	var budgetMin, budgetMax sql.NullFloat64
 	if err := s.Scan(
@@ -96,6 +92,7 @@ func scanAdminCampaignListRow(s scanner) (*adminDto.AdminCampaignRow, error) {
 		&row.ContractsPending,
 		&row.PaymentsPaid,
 		&row.PaymentsPending,
+		total,
 	); err != nil {
 		return nil, err
 	}

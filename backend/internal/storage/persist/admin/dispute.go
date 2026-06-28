@@ -15,17 +15,13 @@ func (a *admin) ListAdminDisputes(ctx context.Context, query adminDto.ListAdminD
 	query = query.Normalize()
 	offset := (query.Page - 1) * query.Limit
 
-	var total int
-	if err := a.db.QueryRowContext(ctx, countAdminDisputes, query.Tab, query.Search).Scan(&total); err != nil {
-		return nil, 0, fmt.Errorf("count admin disputes: %w", err)
-	}
-
 	rows, err := a.db.QueryContext(ctx, listAdminDisputes, query.Tab, query.Search, query.Limit, offset)
 	if err != nil {
 		return nil, 0, fmt.Errorf("list admin disputes: %w", err)
 	}
 	defer rows.Close()
 
+	var total int
 	items := make([]adminDto.DisputeRow, 0)
 	for rows.Next() {
 		var row adminDto.DisputeRow
@@ -39,15 +35,16 @@ func (a *admin) ListAdminDisputes(ctx context.Context, query adminDto.ListAdminD
 			&row.CampaignTitle,
 			&row.BusinessName,
 			&row.InfluencerName,
+			&total,
 		); err != nil {
 			return nil, 0, fmt.Errorf("scan dispute list row: %w", err)
 		}
 		items = append(items, row)
 	}
-	if items == nil {
-		items = []adminDto.DisputeRow{}
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
 	}
-	return items, total, rows.Err()
+	return items, total, nil
 }
 
 func (a *admin) GetAdminDispute(ctx context.Context, disputeID string) (*adminDto.DisputeRow, error) {
@@ -88,6 +85,22 @@ func (a *admin) GetAdminDispute(ctx context.Context, disputeID string) (*adminDt
 		row.ResolvedAt = &t
 	}
 	return &row, nil
+}
+
+func (a *admin) GetDisputeNotes(ctx context.Context, disputeID string) (*adminDto.DisputeNotesSnapshot, error) {
+	var snap adminDto.DisputeNotesSnapshot
+	var resolutionNote sql.NullString
+	err := a.db.QueryRowContext(ctx, getDisputeNotes, disputeID).Scan(&resolutionNote, &snap.AdminNote)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrAdminDisputeNotFound
+		}
+		return nil, fmt.Errorf("get dispute notes: %w", err)
+	}
+	if resolutionNote.Valid {
+		snap.ResolutionNote = &resolutionNote.String
+	}
+	return &snap, nil
 }
 
 func (a *admin) UpdateDisputeStatus(ctx context.Context, disputeID, status, adminUserID string) error {

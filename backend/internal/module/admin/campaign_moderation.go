@@ -5,21 +5,39 @@ import (
 	"adinfluence_service_app/internal/constant/model"
 	authDto "adinfluence_service_app/internal/constant/model/dto/auth"
 	adminDto "adinfluence_service_app/internal/constant/model/dto/admin"
+	commonDto "adinfluence_service_app/internal/constant/model/dto/common"
 	"adinfluence_service_app/internal/module/admin/helper"
 	adminPersist "adinfluence_service_app/internal/storage/persist/admin"
 	"context"
 	"errors"
+
+	"golang.org/x/sync/errgroup"
 )
 
 func (m *adminModule) ListAdminCampaigns(ctx context.Context, query adminDto.ListAdminCampaignsQuery) (*adminDto.ListAdminCampaignsResponse, error) {
 	query = query.Normalize()
-	rows, total, err := m.admin.ListAdminCampaigns(ctx, query)
-	if err != nil {
-		return nil, err
-	}
 
-	stats, err := m.admin.GetAdminCampaignStats(ctx)
-	if err != nil {
+	var (
+		rows  []adminDto.AdminCampaignRow
+		total int
+		stats *adminDto.AdminCampaignStats
+	)
+
+	g, ctx := errgroup.WithContext(ctx)
+
+	g.Go(func() error {
+		var err error
+		rows, total, err = m.admin.ListAdminCampaigns(ctx, query)
+		return err
+	})
+
+	g.Go(func() error {
+		var err error
+		stats, err = m.admin.GetAdminCampaignStats(ctx)
+		return err
+	})
+
+	if err := g.Wait(); err != nil {
 		return nil, err
 	}
 
@@ -31,11 +49,7 @@ func (m *adminModule) ListAdminCampaigns(ctx context.Context, query adminDto.Lis
 	return &adminDto.ListAdminCampaignsResponse{
 		Items: items,
 		Stats: *stats,
-		Pagination: adminDto.PaginationResponse{
-			Page:  query.Page,
-			Limit: query.Limit,
-			Total: total,
-		},
+		Pagination: commonDto.NewListMeta(query.Page, query.Limit, total),
 	}, nil
 }
 
@@ -65,7 +79,7 @@ func (m *adminModule) moderateCampaign(ctx context.Context, adminUserID, campaig
 		return nil, mapCampaignError(err)
 	}
 
-	m.writeAudit(ctx, authDto.CreateAuditLogInput{
+	m.writeAuditAsync(authDto.CreateAuditLogInput{
 		ActorUserID: &adminUserID,
 		Action:      string(model.StatusChangeAction),
 		EntityType:  "campaign",

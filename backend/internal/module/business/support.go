@@ -67,7 +67,7 @@ func (m *businessModule) CreateSupportTicket(ctx context.Context, userID string,
 		return nil, err
 	}
 
-	m.writeAudit(ctx, authDto.CreateAuditLogInput{
+	m.writeAuditAsync(authDto.CreateAuditLogInput{
 		ActorUserID:  &userID,
 		TargetUserID: &userID,
 		Action:       string(model.AdminAction),

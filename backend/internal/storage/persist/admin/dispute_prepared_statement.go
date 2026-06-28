@@ -1,26 +1,6 @@
 package admin
 
 const (
-	countAdminDisputes = `
-	SELECT COUNT(*)::int
-	FROM disputes d
-	INNER JOIN contracts ct ON ct.id = d.contract_id
-	INNER JOIN campaigns camp ON camp.id = ct.campaign_id
-	INNER JOIN business_profiles bp ON bp.user_id = ct.business_user_id
-	INNER JOIN influencer_profiles ip ON ip.user_id = ct.influencer_user_id
-	WHERE (
-			($1 = 'open' AND d.status IN ('open', 'under_review', 'escalated'))
-			OR ($1 = 'resolved' AND d.status IN ('resolved', 'closed'))
-		)
-		AND (
-			$2 = ''
-			OR d.description ILIKE '%' || $2 || '%'
-			OR camp.title ILIKE '%' || $2 || '%'
-			OR bp.business_name ILIKE '%' || $2 || '%'
-			OR ip.creator_name ILIKE '%' || $2 || '%'
-		)
-	`
-
 	listAdminDisputes = `
 	SELECT
 		d.id,
@@ -31,7 +11,8 @@ const (
 		d.created_at,
 		camp.title,
 		bp.business_name,
-		ip.creator_name
+		ip.creator_name,
+		COUNT(*) OVER()::int AS total_count
 	FROM disputes d
 	INNER JOIN contracts ct ON ct.id = d.contract_id
 	INNER JOIN campaigns camp ON camp.id = ct.campaign_id
@@ -102,5 +83,20 @@ const (
 	UPDATE disputes
 	SET resolution_note = $2, updated_at = NOW()
 	WHERE id = $1
+	`
+
+	getDisputeNotes = `
+	SELECT
+		d.resolution_note,
+		COALESCE((
+			SELECT al.description
+			FROM audit_logs al
+			WHERE al.entity_type = 'dispute_note'
+				AND al.entity_id = d.id
+			ORDER BY al.created_at DESC
+			LIMIT 1
+		), '')
+	FROM disputes d
+	WHERE d.id = $1
 	`
 )

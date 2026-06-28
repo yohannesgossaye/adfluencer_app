@@ -1,6 +1,7 @@
 package business
 
 import (
+	commonDto "adinfluence_service_app/internal/constant/model/dto/common"
 	"errors"
 	"time"
 )
@@ -53,10 +54,9 @@ type ListCampaignsQuery struct {
 	Limit  int
 }
 
-type PaginationResponse struct {
-	Page  int `json:"page"`
-	Limit int `json:"limit"`
-	Total int `json:"total"`
+type ListCampaignsResponse struct {
+	Items      []CampaignListItem `json:"items"`
+	Pagination commonDto.ListMeta `json:"pagination"`
 }
 
 type CampaignListItem struct {
@@ -72,11 +72,6 @@ type CampaignListItem struct {
 	InvitesSent     int        `json:"invites_sent"`
 	InvitesAccepted int        `json:"invites_accepted"`
 	CreatedAt       time.Time  `json:"created_at"`
-}
-
-type ListCampaignsResponse struct {
-	Items      []CampaignListItem `json:"items"`
-	Pagination PaginationResponse `json:"pagination"`
 }
 
 type CampaignCategoryResponse struct {

@@ -15,7 +15,12 @@ const (
 		c.budget_max_etb,
 		c.start_date,
 		c.end_date,
-		bp.business_name
+		bp.business_name,
+		COALESCE((
+			SELECT array_agg(cp.platform::text ORDER BY cp.platform)
+			FROM campaign_platforms cp
+			WHERE cp.campaign_id = c.id
+		), '{}') AS platforms
 	FROM campaign_invites ci
 	JOIN campaigns c ON c.id = ci.campaign_id
 	JOIN business_profiles bp ON bp.user_id = ci.business_user_id

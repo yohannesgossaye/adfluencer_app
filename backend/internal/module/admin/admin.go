@@ -4,7 +4,9 @@ import (
 	customErr "adinfluence_service_app/internal/constant/errors"
 	"adinfluence_service_app/internal/constant/model"
 	adminDto "adinfluence_service_app/internal/constant/model/dto/admin"
+	commonDto "adinfluence_service_app/internal/constant/model/dto/common"
 	authDto "adinfluence_service_app/internal/constant/model/dto/auth"
+	influencerDto "adinfluence_service_app/internal/constant/model/dto/influencer"
 	"adinfluence_service_app/internal/module/admin/helper"
 	influencerHelper "adinfluence_service_app/internal/module/influencer/helper"
 	"adinfluence_service_app/internal/storage"
@@ -15,7 +17,7 @@ import (
 	"strings"
 	"time"
 
-	"go.uber.org/zap"
+	"golang.org/x/sync/errgroup"
 )
 
 type adminModule struct {
@@ -48,25 +50,36 @@ func (m *adminModule) ListApplications(ctx context.Context, query adminDto.ListA
 
 	return &adminDto.ListApplicationsResponse{
 		Items: items,
-		Pagination: adminDto.PaginationResponse{
-			Page:  query.Page,
-			Limit: query.Limit,
-			Total: total,
-		},
+		Pagination: commonDto.NewListMeta(query.Page, query.Limit, total),
 	}, nil
 }
 
 func (m *adminModule) GetApplication(ctx context.Context, userID string) (*adminDto.ApplicationDetailResponse, error) {
-	row, err := m.admin.GetInfluencerApplication(ctx, userID)
-	if err != nil {
-		if errors.Is(err, adminPersist.ErrApplicationNotFound) {
-			return nil, customErr.ErrApplicationNotFound
-		}
-		return nil, err
-	}
+	var (
+		row     *adminDto.ApplicationRow
+		profile *influencerDto.ProfileRecord
+	)
 
-	profile, err := m.influencer.GetProfileByUserID(ctx, userID)
-	if err != nil {
+	g, ctx := errgroup.WithContext(ctx)
+
+	g.Go(func() error {
+		var err error
+		row, err = m.admin.GetInfluencerApplication(ctx, userID)
+		if err != nil {
+			if errors.Is(err, adminPersist.ErrApplicationNotFound) {
+				return customErr.ErrApplicationNotFound
+			}
+		}
+		return err
+	})
+
+	g.Go(func() error {
+		var err error
+		profile, err = m.influencer.GetProfileByUserID(ctx, userID)
+		return err
+	})
+
+	if err := g.Wait(); err != nil {
 		return nil, err
 	}
 
@@ -146,7 +159,7 @@ func (m *adminModule) ApproveApplication(ctx context.Context, adminUserID, targe
 	}
 
 	now := time.Now().UTC()
-	m.writeAudit(ctx, authDto.CreateAuditLogInput{
+	m.writeAuditAsync(authDto.CreateAuditLogInput{
 		ActorUserID:  &adminUserID,
 		TargetUserID: &targetUserID,
 		Action:       string(model.ApproveAction),
@@ -178,7 +191,7 @@ func (m *adminModule) RejectApplication(ctx context.Context, adminUserID, target
 		return nil, err
 	}
 
-	m.writeAudit(ctx, authDto.CreateAuditLogInput{
+	m.writeAuditAsync(authDto.CreateAuditLogInput{
 		ActorUserID:  &adminUserID,
 		TargetUserID: &targetUserID,
 		Action:       string(model.RejectAction),
@@ -220,11 +233,5 @@ func mapListItem(row adminDto.ApplicationRow) adminDto.ApplicationListItem {
 		Status:              row.Status,
 		SubmittedAt:         row.UpdatedAt,
 		BioPreview:          helper.BioPreview(row.Bio),
-	}
-}
-
-func (m *adminModule) writeAudit(ctx context.Context, input authDto.CreateAuditLogInput) {
-	if err := m.admin.CreateAuditLog(ctx, input); err != nil {
-		m.logger.Warn(ctx, "audit log failed", zap.String("reason", err.Error()))
 	}
 }

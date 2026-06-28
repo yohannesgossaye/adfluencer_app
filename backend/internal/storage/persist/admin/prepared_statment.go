@@ -33,7 +33,8 @@ const (
 			WHERE ipp.influencer_user_id = u.id
 			ORDER BY ipp.platform
 			LIMIT 1
-		), '') AS primary_platform
+		), '') AS primary_platform,
+		COUNT(*) OVER()::int AS total_count
 	FROM users u
 	JOIN influencer_profiles ip ON ip.user_id = u.id
 	WHERE u.role = 'influencer'
@@ -58,32 +59,6 @@ const (
 		)
 	ORDER BY u.updated_at DESC
 	LIMIT $3 OFFSET $4
-	`
-
-	countInfluencerApplications = `
-	SELECT COUNT(*)
-	FROM users u
-	JOIN influencer_profiles ip ON ip.user_id = u.id
-	WHERE u.role = 'influencer'
-		AND ($1 = '' OR u.status::text = $1)
-		AND (
-			$2 = ''
-			OR ip.creator_name ILIKE '%' || $2 || '%'
-			OR ip.bio ILIKE '%' || $2 || '%'
-			OR EXISTS (
-				SELECT 1
-				FROM influencer_profile_categories ipc
-				JOIN categories c ON c.id = ipc.category_id
-				WHERE ipc.influencer_user_id = u.id
-					AND c.name ILIKE '%' || $2 || '%'
-			)
-			OR EXISTS (
-				SELECT 1
-				FROM influencer_profile_platforms ipp
-				WHERE ipp.influencer_user_id = u.id
-					AND ipp.platform::text ILIKE '%' || $2 || '%'
-			)
-		)
 	`
 
 	getInfluencerApplication = `

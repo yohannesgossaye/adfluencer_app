@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"golang.org/x/sync/errgroup"
 )
 
 func (p *business) ResolveCategoryID(ctx context.Context, nameOrSlug string) (*businessDto.CampaignCategoryResponse, error) {
@@ -73,17 +75,13 @@ func (p *business) ListCampaigns(ctx context.Context, userID string, query busin
 	query = query.Normalize()
 	offset := (query.Page - 1) * query.Limit
 
-	var total int
-	if err := p.db.QueryRowContext(ctx, countBusinessCampaigns, userID, query.Status).Scan(&total); err != nil {
-		return nil, 0, fmt.Errorf("count campaigns: %w", err)
-	}
-
 	rows, err := p.db.QueryContext(ctx, listBusinessCampaigns, userID, query.Status, query.Limit, offset)
 	if err != nil {
 		return nil, 0, fmt.Errorf("list campaigns: %w", err)
 	}
 	defer rows.Close()
 
+	var total int
 	items := make([]businessDto.CampaignListItem, 0)
 	for rows.Next() {
 		var item businessDto.CampaignListItem
@@ -105,6 +103,7 @@ func (p *business) ListCampaigns(ctx context.Context, userID string, query busin
 			&item.InvitesSent,
 			&item.InvitesAccepted,
 			&primaryPlatform,
+			&total,
 		); err != nil {
 			return nil, 0, fmt.Errorf("scan campaign list item: %w", err)
 		}
@@ -132,7 +131,10 @@ func (p *business) ListCampaigns(ctx context.Context, userID string, query busin
 		}
 		items = append(items, item)
 	}
-	return items, total, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
+	}
+	return items, total, nil
 }
 
 func (p *business) GetCampaignByID(ctx context.Context, userID, campaignID string) (*businessDto.CampaignRecord, error) {
@@ -144,12 +146,26 @@ func (p *business) GetCampaignByID(ctx context.Context, userID, campaignID strin
 		return nil, fmt.Errorf("get campaign: %w", err)
 	}
 
-	platforms, err := p.getCampaignPlatforms(ctx, campaignID)
-	if err != nil {
-		return nil, err
-	}
-	deliverables, err := p.getCampaignDeliverables(ctx, campaignID)
-	if err != nil {
+	var (
+		platforms    []string
+		deliverables []businessDto.CampaignDeliverableResponse
+	)
+
+	g, ctx := errgroup.WithContext(ctx)
+
+	g.Go(func() error {
+		var err error
+		platforms, err = p.getCampaignPlatforms(ctx, campaignID)
+		return err
+	})
+
+	g.Go(func() error {
+		var err error
+		deliverables, err = p.getCampaignDeliverables(ctx, campaignID)
+		return err
+	})
+
+	if err := g.Wait(); err != nil {
 		return nil, err
 	}
 

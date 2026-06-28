@@ -46,13 +46,32 @@ const (
 	`
 
 	updateCategory = `
-	UPDATE categories
-	SET
-		name = COALESCE($2, name),
-		slug = COALESCE($3, slug),
-		description = COALESCE($4, description),
-		updated_at = NOW()
-	WHERE id = $1
+	WITH updated AS (
+		UPDATE categories
+		SET
+			name = COALESCE($2, name),
+			slug = COALESCE($3, slug),
+			description = COALESCE($4, description),
+			updated_at = NOW()
+		WHERE id = $1
+		RETURNING id
+	)
+	SELECT
+		c.id,
+		c.name,
+		c.slug,
+		c.description,
+		c.is_active,
+		c.created_at,
+		c.updated_at,
+		(SELECT COUNT(DISTINCT ipc.influencer_user_id)::int
+		 FROM influencer_profile_categories ipc
+		 WHERE ipc.category_id = c.id),
+		(SELECT COUNT(*)::int
+		 FROM campaigns camp
+		 WHERE camp.category_id = c.id)
+	FROM categories c
+	INNER JOIN updated u ON c.id = u.id
 	`
 
 	toggleCategoryActive = `

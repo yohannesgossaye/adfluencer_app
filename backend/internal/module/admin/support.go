@@ -5,22 +5,40 @@ import (
 	"adinfluence_service_app/internal/constant/model"
 	authDto "adinfluence_service_app/internal/constant/model/dto/auth"
 	adminDto "adinfluence_service_app/internal/constant/model/dto/admin"
+	commonDto "adinfluence_service_app/internal/constant/model/dto/common"
 	supportDto "adinfluence_service_app/internal/constant/model/dto/support"
 	supportPersist "adinfluence_service_app/internal/storage/persist/support"
 	"context"
 	"errors"
 	"strings"
+
+	"golang.org/x/sync/errgroup"
 )
 
 func (m *adminModule) ListSupportTickets(ctx context.Context, query adminDto.ListSupportTicketsQuery) (*adminDto.ListSupportTicketsResponse, error) {
 	query = query.Normalize()
-	rows, total, err := m.support.ListAdminTickets(ctx, query)
-	if err != nil {
-		return nil, err
-	}
 
-	stats, err := m.support.GetAdminTicketStats(ctx)
-	if err != nil {
+	var (
+		rows  []adminDto.SupportTicketRow
+		total int
+		stats *adminDto.SupportTicketStats
+	)
+
+	g, ctx := errgroup.WithContext(ctx)
+
+	g.Go(func() error {
+		var err error
+		rows, total, err = m.support.ListAdminTickets(ctx, query)
+		return err
+	})
+
+	g.Go(func() error {
+		var err error
+		stats, err = m.support.GetAdminTicketStats(ctx)
+		return err
+	})
+
+	if err := g.Wait(); err != nil {
 		return nil, err
 	}
 
@@ -32,11 +50,7 @@ func (m *adminModule) ListSupportTickets(ctx context.Context, query adminDto.Lis
 	return &adminDto.ListSupportTicketsResponse{
 		Items: items,
 		Stats: *stats,
-		Pagination: adminDto.PaginationResponse{
-			Page:  query.Page,
-			Limit: query.Limit,
-			Total: total,
-		},
+		Pagination: commonDto.NewListMeta(query.Page, query.Limit, total),
 	}, nil
 }
 
@@ -58,7 +72,7 @@ func (m *adminModule) UpdateSupportTicketStatus(ctx context.Context, adminUserID
 		return nil, mapSupportError(err)
 	}
 
-	m.writeAudit(ctx, authDto.CreateAuditLogInput{
+	m.writeAuditAsync(authDto.CreateAuditLogInput{
 		ActorUserID: &adminUserID,
 		Action:      string(model.StatusChangeAction),
 		EntityType:  "support_ticket",
@@ -94,7 +108,7 @@ func (m *adminModule) ReplySupportTicket(ctx context.Context, adminUserID, ticke
 	if adminReply != nil {
 		desc = "support ticket public reply saved"
 	}
-	m.writeAudit(ctx, authDto.CreateAuditLogInput{
+	m.writeAuditAsync(authDto.CreateAuditLogInput{
 		ActorUserID: &adminUserID,
 		Action:      string(model.AdminAction),
 		EntityType:  "support_ticket",

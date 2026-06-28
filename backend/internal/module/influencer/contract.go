@@ -4,6 +4,7 @@ import (
 	customErr "adinfluence_service_app/internal/constant/errors"
 	"adinfluence_service_app/internal/constant/model"
 	authDto "adinfluence_service_app/internal/constant/model/dto/auth"
+	commonDto "adinfluence_service_app/internal/constant/model/dto/common"
 	contractDto "adinfluence_service_app/internal/constant/model/dto/contract"
 	influencerDto "adinfluence_service_app/internal/constant/model/dto/influencer"
 	"context"
@@ -23,11 +24,7 @@ func (m *influencerModule) ListContracts(ctx context.Context, userID string, que
 
 	return &influencerDto.ListContractsResponse{
 		Items: items,
-		Pagination: contractDto.PaginationResponse{
-			Page:  query.Page,
-			Limit: query.Limit,
-			Total: total,
-		},
+		Pagination: commonDto.NewListMeta(query.Page, query.Limit, total),
 	}, nil
 }
 
@@ -58,7 +55,7 @@ func (m *influencerModule) AcceptContract(ctx context.Context, userID, contractI
 		return nil, mapContractError(err)
 	}
 
-	m.writeAudit(ctx, authDto.CreateAuditLogInput{
+	m.writeAuditAsync(authDto.CreateAuditLogInput{
 		ActorUserID:  &userID,
 		TargetUserID: &rec.BusinessUserID,
 		Action:       string(model.ContractStatusChangeAction),
@@ -91,7 +88,7 @@ func (m *influencerModule) RejectContract(ctx context.Context, userID, contractI
 		return nil, mapContractError(err)
 	}
 
-	m.writeAudit(ctx, authDto.CreateAuditLogInput{
+	m.writeAuditAsync(authDto.CreateAuditLogInput{
 		ActorUserID:  &userID,
 		TargetUserID: &rec.BusinessUserID,
 		Action:       string(model.ContractStatusChangeAction),

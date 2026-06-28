@@ -5,6 +5,8 @@ import (
 	"adinfluence_service_app/internal/constant/model"
 	"adinfluence_service_app/internal/module/business/helper"
 	"context"
+
+	"golang.org/x/sync/errgroup"
 )
 
 func (m *businessModule) GetDashboardSummary(ctx context.Context, userID string) (*businessDto.DashboardSummaryResponse, error) {
@@ -12,23 +14,40 @@ func (m *businessModule) GetDashboardSummary(ctx context.Context, userID string)
 		return nil, err
 	}
 
-	profile, err := m.business.GetProfileByUserID(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
+	var (
+		profile         *businessDto.ProfileRecord
+		kpis            *businessDto.DashboardKPIRow
+		campaigns       []businessDto.DashboardCampaignRow
+		recommendations []businessDto.DashboardRecommendationRow
+	)
 
-	kpis, err := m.business.GetDashboardKPIs(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
+	g, ctx := errgroup.WithContext(ctx)
 
-	campaigns, err := m.business.ListDashboardRecentCampaigns(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
+	g.Go(func() error {
+		var err error
+		profile, err = m.business.GetProfileByUserID(ctx, userID)
+		return err
+	})
 
-	recommendations, err := m.business.ListDashboardTopRecommendations(ctx, userID)
-	if err != nil {
+	g.Go(func() error {
+		var err error
+		kpis, err = m.business.GetDashboardKPIs(ctx, userID)
+		return err
+	})
+
+	g.Go(func() error {
+		var err error
+		campaigns, err = m.business.ListDashboardRecentCampaigns(ctx, userID)
+		return err
+	})
+
+	g.Go(func() error {
+		var err error
+		recommendations, err = m.business.ListDashboardTopRecommendations(ctx, userID)
+		return err
+	})
+
+	if err := g.Wait(); err != nil {
 		return nil, err
 	}
 

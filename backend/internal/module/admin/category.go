@@ -48,7 +48,7 @@ func (m *adminModule) CreateCategory(ctx context.Context, adminUserID string, re
 		return nil, mapCategoryError(err)
 	}
 
-	m.writeAudit(ctx, authDto.CreateAuditLogInput{
+	m.writeAuditAsync(authDto.CreateAuditLogInput{
 		ActorUserID: &adminUserID,
 		Action:      string(model.AdminAction),
 		EntityType:  "category",
@@ -66,10 +66,6 @@ func (m *adminModule) UpdateCategory(ctx context.Context, adminUserID, categoryI
 		return nil, customErr.ErrBadRequest
 	}
 
-	if _, err := m.admin.GetCategoryByID(ctx, categoryID); err != nil {
-		return nil, mapCategoryError(err)
-	}
-
 	var namePtr, slugPtr *string
 	if req.Name != nil {
 		name := strings.TrimSpace(*req.Name)
@@ -85,16 +81,12 @@ func (m *adminModule) UpdateCategory(ctx context.Context, adminUserID, categoryI
 		slugPtr = &slug
 	}
 
-	if err := m.admin.UpdateCategory(ctx, categoryID, namePtr, slugPtr, optionalTrimmedPtr(req.Description)); err != nil {
-		return nil, mapCategoryError(err)
-	}
-
-	row, err := m.admin.GetCategoryByID(ctx, categoryID)
+	row, err := m.admin.UpdateCategory(ctx, categoryID, namePtr, slugPtr, optionalTrimmedPtr(req.Description))
 	if err != nil {
 		return nil, mapCategoryError(err)
 	}
 
-	m.writeAudit(ctx, authDto.CreateAuditLogInput{
+	m.writeAuditAsync(authDto.CreateAuditLogInput{
 		ActorUserID: &adminUserID,
 		Action:      string(model.AdminAction),
 		EntityType:  "category",
@@ -125,7 +117,7 @@ func (m *adminModule) setCategoryActive(ctx context.Context, adminUserID, catego
 	if active {
 		action = "category enabled"
 	}
-	m.writeAudit(ctx, authDto.CreateAuditLogInput{
+	m.writeAuditAsync(authDto.CreateAuditLogInput{
 		ActorUserID: &adminUserID,
 		Action:      string(model.AdminAction),
 		EntityType:  "category",

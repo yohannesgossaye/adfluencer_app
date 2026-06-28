@@ -5,6 +5,7 @@ import (
 	"adinfluence_service_app/internal/constant/model"
 	authDto "adinfluence_service_app/internal/constant/model/dto/auth"
 	adminDto "adinfluence_service_app/internal/constant/model/dto/admin"
+	commonDto "adinfluence_service_app/internal/constant/model/dto/common"
 	supportDto "adinfluence_service_app/internal/constant/model/dto/support"
 	"adinfluence_service_app/internal/module/admin/helper"
 	adminPersist "adinfluence_service_app/internal/storage/persist/admin"
@@ -27,11 +28,7 @@ func (m *adminModule) ListAdminDisputes(ctx context.Context, query adminDto.List
 
 	return &adminDto.ListAdminDisputesResponse{
 		Items: items,
-		Pagination: adminDto.PaginationResponse{
-			Page:  query.Page,
-			Limit: query.Limit,
-			Total: total,
-		},
+		Pagination: commonDto.NewListMeta(query.Page, query.Limit, total),
 	}, nil
 }
 
@@ -54,7 +51,7 @@ func (m *adminModule) UpdateDisputeStatus(ctx context.Context, adminUserID, disp
 		return nil, mapDisputeError(err)
 	}
 
-	m.writeAudit(ctx, authDto.CreateAuditLogInput{
+	m.writeAuditAsync(authDto.CreateAuditLogInput{
 		ActorUserID: &adminUserID,
 		Action:      string(model.StatusChangeAction),
 		EntityType:  "dispute",
@@ -93,12 +90,12 @@ func (m *adminModule) UpdateDisputeNotes(ctx context.Context, adminUserID, dispu
 		}
 	}
 
-	row, err := m.admin.GetAdminDispute(ctx, disputeID)
+	row, err := m.admin.GetDisputeNotes(ctx, disputeID)
 	if err != nil {
 		return nil, mapDisputeError(err)
 	}
 
-	m.writeAudit(ctx, authDto.CreateAuditLogInput{
+	m.writeAuditAsync(authDto.CreateAuditLogInput{
 		ActorUserID: &adminUserID,
 		Action:      string(model.AdminAction),
 		EntityType:  "dispute",

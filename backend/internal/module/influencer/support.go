@@ -71,7 +71,7 @@ func (m *influencerModule) CreateSupportTicket(ctx context.Context, userID strin
 		return nil, err
 	}
 
-	m.writeAudit(ctx, authDto.CreateAuditLogInput{
+	m.writeAuditAsync(authDto.CreateAuditLogInput{
 		ActorUserID:  &userID,
 		TargetUserID: &userID,
 		Action:       string(model.AdminAction),

@@ -23,6 +23,7 @@ func (p *business) ListMatchCandidates(ctx context.Context) ([]businessDto.Match
 		var candidate businessDto.MatchCandidate
 		var profileImage, bio sql.NullString
 		var engagement, minPrice, maxPrice sql.NullFloat64
+		var categoryIDsRaw, categoryNamesRaw, platformsRaw []byte
 
 		if err := rows.Scan(
 			&candidate.UserID,
@@ -34,6 +35,9 @@ func (p *business) ListMatchCandidates(ctx context.Context) ([]businessDto.Match
 			&minPrice,
 			&maxPrice,
 			&candidate.IsVerified,
+			&categoryIDsRaw,
+			&categoryNamesRaw,
+			&platformsRaw,
 		); err != nil {
 			return nil, fmt.Errorf("scan eligible influencer: %w", err)
 		}
@@ -57,22 +61,9 @@ func (p *business) ListMatchCandidates(ctx context.Context) ([]businessDto.Match
 			candidate.MaxPriceETB = &v
 		}
 
-		categoryIDs, err := p.getInfluencerCategoryIDs(ctx, candidate.UserID)
-		if err != nil {
-			return nil, err
-		}
-		categoryNames, err := p.getInfluencerCategoryNames(ctx, candidate.UserID)
-		if err != nil {
-			return nil, err
-		}
-		platforms, err := p.getInfluencerPlatforms(ctx, candidate.UserID)
-		if err != nil {
-			return nil, err
-		}
-
-		candidate.CategoryIDs = categoryIDs
-		candidate.CategoryNames = categoryNames
-		candidate.Platforms = platforms
+		candidate.CategoryIDs = parseTextArray(categoryIDsRaw)
+		candidate.CategoryNames = parseTextArray(categoryNamesRaw)
+		candidate.Platforms = parseTextArray(platformsRaw)
 		candidates = append(candidates, candidate)
 	}
 	if err := rows.Err(); err != nil {
@@ -138,13 +129,6 @@ func (p *business) ListRecommendations(ctx context.Context, campaignID string, q
 	niche := strings.TrimSpace(query.Niche)
 	platform := strings.ToLower(strings.TrimSpace(query.Platform))
 
-	var total int
-	if err := p.db.QueryRowContext(ctx, countCampaignRecommendations,
-		campaignID, query.MinScore, search, niche, platform,
-	).Scan(&total); err != nil {
-		return nil, 0, fmt.Errorf("count recommendations: %w", err)
-	}
-
 	listSQL := listCampaignRecommendationsMatch
 	switch query.Sort {
 	case "followers":
@@ -163,7 +147,8 @@ func (p *business) ListRecommendations(ctx context.Context, campaignID string, q
 	}
 	defer rows.Close()
 
-	items, err := p.scanRecommendationRows(ctx, rows)
+	var total int
+	items, err := p.scanRecommendationRows(rows, &total)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -244,32 +229,14 @@ func (p *business) getInfluencerCategoryNames(ctx context.Context, userID string
 	return names, rows.Err()
 }
 
-func (p *business) getInfluencerPlatforms(ctx context.Context, userID string) ([]string, error) {
-	rows, err := p.db.QueryContext(ctx, getInfluencerPlatforms, userID)
-	if err != nil {
-		return nil, fmt.Errorf("get influencer platforms: %w", err)
-	}
-	defer rows.Close()
-
-	platforms := make([]string, 0)
-	for rows.Next() {
-		var platform string
-		if err := rows.Scan(&platform); err != nil {
-			return nil, fmt.Errorf("scan platform: %w", err)
-		}
-		platforms = append(platforms, platform)
-	}
-	return platforms, rows.Err()
-}
-
-func (p *business) scanRecommendationRows(ctx context.Context, rows *sql.Rows) ([]businessDto.RecommendationItem, error) {
+func (p *business) scanRecommendationRows(rows *sql.Rows, total *int) ([]businessDto.RecommendationItem, error) {
 	items := make([]businessDto.RecommendationItem, 0)
 	for rows.Next() {
 		var item businessDto.RecommendationItem
 		var profileImage sql.NullString
 		var engagement, minPrice, maxPrice sql.NullFloat64
 		var inviteStatus sql.NullString
-		var breakdownRaw []byte
+		var breakdownRaw, platformsRaw []byte
 		var rank sql.NullInt64
 
 		if err := rows.Scan(
@@ -286,6 +253,8 @@ func (p *business) scanRecommendationRows(ctx context.Context, rows *sql.Rows) (
 			&item.IsVerified,
 			&inviteStatus,
 			&rank,
+			&platformsRaw,
+			total,
 		); err != nil {
 			return nil, fmt.Errorf("scan recommendation item: %w", err)
 		}
@@ -316,11 +285,7 @@ func (p *business) scanRecommendationRows(ctx context.Context, rows *sql.Rows) (
 			return nil, fmt.Errorf("unmarshal recommendation breakdown: %w", err)
 		}
 
-		platforms, err := p.getInfluencerPlatforms(ctx, item.InfluencerUserID)
-		if err != nil {
-			return nil, err
-		}
-		item.Platforms = platforms
+		item.Platforms = parseTextArray(platformsRaw)
 		if item.Platforms == nil {
 			item.Platforms = []string{}
 		}

@@ -41,8 +41,6 @@ func InitAuthModule(p storage.AuthPersisitence, tokens *jwt.TokenManager, email 
 	}
 }
 
-const forgotPasswordRateScope = "forgot_password_email"
-
 func (m *userAuthModule) SignUp(ctx context.Context, req authDto.SignUpRequest, meta authDto.SessionMeta) (*authDto.SignupResponse, error) {
 	id := utils.GenerateUUID()
 
@@ -73,22 +71,16 @@ func (m *userAuthModule) SignUp(ctx context.Context, req authDto.SignUpRequest, 
 	}
 
 	res.Tokens = helper.TokenResponse(tokenPair)
-	go func() {
-		auditCtx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-		defer cancel()
-
-		m.writeAudit(auditCtx, authDto.CreateAuditLogInput{
-			ActorUserID:  &res.User.ID,
-			TargetUserID: &res.User.ID,
-			Action:       string(model.SignupAction),
-			EntityType:   "user",
-			EntityID:     &res.User.ID,
-			Description:  "user signed up",
-			IPAddress:    meta.IPAddress,
-			UserAgent:    meta.UserAgent,
-		})
-
-	}()
+	m.writeAuditAsync(authDto.CreateAuditLogInput{
+		ActorUserID:  &res.User.ID,
+		TargetUserID: &res.User.ID,
+		Action:       string(model.SignupAction),
+		EntityType:   "user",
+		EntityID:     &res.User.ID,
+		Description:  "user signed up",
+		IPAddress:    meta.IPAddress,
+		UserAgent:    meta.UserAgent,
+	})
 
 	return res, nil
 }
@@ -158,23 +150,16 @@ func (m *userAuthModule) Login(ctx context.Context, req authDto.LoginRequest, me
 	if next := helper.SafeInternalPath(req.Next); next != "" {
 		redirectTo = next
 	}
-	go func() {
-
-		auditCtx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-		defer cancel()
-
-		m.writeAudit(auditCtx, authDto.CreateAuditLogInput{
-			ActorUserID:  &user.ID,
-			TargetUserID: &user.ID,
-			Action:       string(model.LoginAction),
-			EntityType:   "user",
-			EntityID:     &user.ID,
-			Description:  "user logged in",
-			IPAddress:    meta.IPAddress,
-			UserAgent:    meta.UserAgent,
-		})
-
-	}()
+	m.writeAuditAsync(authDto.CreateAuditLogInput{
+		ActorUserID:  &user.ID,
+		TargetUserID: &user.ID,
+		Action:       string(model.LoginAction),
+		EntityType:   "user",
+		EntityID:     &user.ID,
+		Description:  "user logged in",
+		IPAddress:    meta.IPAddress,
+		UserAgent:    meta.UserAgent,
+	})
 
 	return &authDto.LoginResponse{
 		User:       user,
@@ -267,22 +252,16 @@ func (m *userAuthModule) Logout(ctx context.Context, userID string, req authDto.
 		return err
 	}
 
-	go func() {
-		auditCtx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-		defer cancel()
-
-		m.writeAudit(auditCtx, authDto.CreateAuditLogInput{
-			ActorUserID:  &userID,
-			TargetUserID: &userID,
-			Action:       string(model.LogoutAction),
-			EntityType:   "user",
-			EntityID:     &userID,
-			Description:  "user logged out",
-			IPAddress:    meta.IPAddress,
-			UserAgent:    meta.UserAgent,
-		})
-
-	}()
+	m.writeAuditAsync(authDto.CreateAuditLogInput{
+		ActorUserID:  &userID,
+		TargetUserID: &userID,
+		Action:       string(model.LogoutAction),
+		EntityType:   "user",
+		EntityID:     &userID,
+		Description:  "user logged out",
+		IPAddress:    meta.IPAddress,
+		UserAgent:    meta.UserAgent,
+	})
 
 	return nil
 }
@@ -361,12 +340,6 @@ func (m *userAuthModule) ResetPassword(ctx context.Context, req authDto.ResetPas
 		RedirectTo: "/auth/login",
 	}, nil
 }
-
-const (
-	verifyEmailOTPTTL          = 5 * time.Minute
-	verifyEmailRateLimit       = 3
-	verifyEmailRateLimitWindow = time.Hour
-)
 
 func (m *userAuthModule) SendVerifyEmail(ctx context.Context, userID string) error {
 	user, err := m.persistence.GetUserByID(ctx, userID)
@@ -455,12 +428,6 @@ func (m *userAuthModule) VerifyEmail(ctx context.Context, userID string, req aut
 		},
 	}, nil
 }
-
-const (
-	verifyPhoneOTPTTL          = 5 * time.Minute
-	verifyPhoneRateLimit       = 3
-	verifyPhoneRateLimitWindow = time.Hour
-)
 
 func (m *userAuthModule) SendVerifyPhone(ctx context.Context, userID string) error {
 	user, err := m.persistence.GetUserByID(ctx, userID)
@@ -555,20 +522,6 @@ func (m *userAuthModule) VerifyPhone(ctx context.Context, userID string, req aut
 	}, nil
 }
 
-func checkLoginAllowed(user authDto.UserResponse) error {
-	switch model.UserStatus(user.Status) {
-	case model.BlockedStatus:
-		return customErr.ErrAccountBlocked
-	case model.RemovedStatus:
-		return customErr.ErrAccountRemoved
-	case model.SuspendedStatus:
-		if user.SuspendedUntil != nil && user.SuspendedUntil.After(time.Now().UTC()) {
-			return customErr.ErrAccountSuspended
-		}
-	}
-	return nil
-}
-
 func (m *userAuthModule) issueSession(ctx context.Context, user authDto.UserResponse, profile authDto.ProfileResponse, meta authDto.SessionMeta, refreshTTL time.Duration) (jwt.TokenPair, error) {
 	tokenPair, err := m.tokens.GenerateTokenPair(helper.AccessTokenInput(user, profile))
 	if err != nil {
@@ -591,41 +544,4 @@ func (m *userAuthModule) issueSession(ctx context.Context, user authDto.UserResp
 	}
 
 	return tokenPair, nil
-}
-
-func (m *userAuthModule) writeAudit(ctx context.Context, input authDto.CreateAuditLogInput) {
-	if err := m.persistence.CreateAuditLog(ctx, input); err != nil {
-		m.logger.Warn(ctx, "audit log failed", zap.String("reason", err.Error()))
-	}
-}
-
-func (m *userAuthModule) checkLoginLockout(ctx context.Context, email string) error {
-	lockout, err := m.persistence.GetLoginLockout(ctx, email)
-	if err != nil {
-		return err
-	}
-	if helper.IsLoginLocked(lockout, time.Now().UTC()) {
-		return customErr.ErrLoginLocked
-	}
-	return nil
-}
-
-func (m *userAuthModule) recordLoginFailure(ctx context.Context, email string) error {
-	now := time.Now().UTC()
-
-	lockout, err := m.persistence.GetLoginLockout(ctx, email)
-	if err != nil {
-		return err
-	}
-
-	updated := helper.ApplyFailedLogin(lockout, email, now)
-	if err := m.persistence.SaveLoginLockout(ctx, updated); err != nil {
-		return err
-	}
-
-	if helper.IsLoginLocked(&updated, now) {
-		return customErr.ErrLoginLocked
-	}
-
-	return nil
 }

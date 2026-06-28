@@ -1,6 +1,7 @@
 package admin
 
 import (
+	commonDto "adinfluence_service_app/internal/constant/model/dto/common"
 	customErr "adinfluence_service_app/internal/constant/errors"
 	"strings"
 	"time"
@@ -49,7 +50,7 @@ type AdminDisputeListItem struct {
 
 type ListAdminDisputesResponse struct {
 	Items      []AdminDisputeListItem `json:"items"`
-	Pagination PaginationResponse     `json:"pagination"`
+	Pagination commonDto.ListMeta     `json:"pagination"`
 }
 
 type AdminDisputeDetailResponse struct {
@@ -102,6 +103,11 @@ type UpdateDisputeNotesResponse struct {
 	ID             string  `json:"id"`
 	AdminNote      string  `json:"admin_note,omitempty"`
 	ResolutionNote *string `json:"resolution_note,omitempty"`
+}
+
+type DisputeNotesSnapshot struct {
+	AdminNote      string
+	ResolutionNote *string
 }
 
 type DisputeRow struct {

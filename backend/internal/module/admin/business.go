@@ -5,6 +5,7 @@ import (
 	"adinfluence_service_app/internal/constant/model"
 	authDto "adinfluence_service_app/internal/constant/model/dto/auth"
 	adminDto "adinfluence_service_app/internal/constant/model/dto/admin"
+	commonDto "adinfluence_service_app/internal/constant/model/dto/common"
 	adminPersist "adinfluence_service_app/internal/storage/persist/admin"
 	"context"
 	"errors"
@@ -21,11 +22,7 @@ func (m *adminModule) ListBusinessVerifications(ctx context.Context, query admin
 
 	return &adminDto.ListBusinessVerificationsResponse{
 		Items: items,
-		Pagination: adminDto.PaginationResponse{
-			Page:  query.Page,
-			Limit: query.Limit,
-			Total: total,
-		},
+		Pagination: commonDto.NewListMeta(query.Page, query.Limit, total),
 	}, nil
 }
 
@@ -49,7 +46,7 @@ func (m *adminModule) VerifyBusiness(ctx context.Context, adminUserID, targetUse
 		desc = desc + ": " + note
 	}
 
-	m.writeAudit(ctx, authDto.CreateAuditLogInput{
+	m.writeAuditAsync(authDto.CreateAuditLogInput{
 		ActorUserID:  &adminUserID,
 		TargetUserID: &targetUserID,
 		Action:       string(model.ApproveAction),
@@ -77,7 +74,7 @@ func (m *adminModule) RevokeBusinessVerification(ctx context.Context, adminUserI
 		desc = desc + ": " + reason
 	}
 
-	m.writeAudit(ctx, authDto.CreateAuditLogInput{
+	m.writeAuditAsync(authDto.CreateAuditLogInput{
 		ActorUserID:  &adminUserID,
 		TargetUserID: &targetUserID,
 		Action:       string(model.RejectAction),

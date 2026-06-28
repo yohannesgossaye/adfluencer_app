@@ -93,29 +93,25 @@ func (s *support) ListAdminTickets(ctx context.Context, query adminDto.ListSuppo
 	query = query.Normalize()
 	offset := (query.Page - 1) * query.Limit
 
-	var total int
-	if err := s.db.QueryRowContext(ctx, countAdminSupportTickets, query.Role, query.Status, query.Priority, query.Search).Scan(&total); err != nil {
-		return nil, 0, fmt.Errorf("count support tickets: %w", err)
-	}
-
 	rows, err := s.db.QueryContext(ctx, listAdminSupportTickets, query.Role, query.Status, query.Priority, query.Search, query.Limit, offset)
 	if err != nil {
 		return nil, 0, fmt.Errorf("list admin support tickets: %w", err)
 	}
 	defer rows.Close()
 
+	var total int
 	items := make([]adminDto.SupportTicketRow, 0)
 	for rows.Next() {
-		row, err := scanAdminListRow(rows)
+		row, err := scanAdminListRow(rows, &total)
 		if err != nil {
 			return nil, 0, err
 		}
 		items = append(items, *row)
 	}
-	if items == nil {
-		items = []adminDto.SupportTicketRow{}
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
 	}
-	return items, total, rows.Err()
+	return items, total, nil
 }
 
 func (s *support) GetAdminTicketStats(ctx context.Context) (*adminDto.SupportTicketStats, error) {
@@ -238,7 +234,7 @@ func scanBusinessTicketRow(row scanner) (*businessDto.SupportTicketRecord, error
 	return &rec, nil
 }
 
-func scanAdminListRow(row scanner) (*adminDto.SupportTicketRow, error) {
+func scanAdminListRow(row scanner, total *int) (*adminDto.SupportTicketRow, error) {
 	var rec adminDto.SupportTicketRow
 	var resolution, campaignID, campaignTitle sql.NullString
 	if err := row.Scan(
@@ -257,6 +253,7 @@ func scanAdminListRow(row scanner) (*adminDto.SupportTicketRow, error) {
 		&campaignTitle,
 		&rec.CreatedAt,
 		&rec.UpdatedAt,
+		total,
 	); err != nil {
 		return nil, err
 	}

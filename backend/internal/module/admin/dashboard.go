@@ -4,6 +4,8 @@ import (
 	adminDto "adinfluence_service_app/internal/constant/model/dto/admin"
 	"context"
 	"strings"
+
+	"golang.org/x/sync/errgroup"
 )
 
 const (
@@ -14,35 +16,55 @@ const (
 )
 
 func (m *adminModule) GetDashboardSummary(ctx context.Context) (*adminDto.DashboardSummaryResponse, error) {
-	kpis, err := m.admin.GetDashboardKPIs(ctx)
-	if err != nil {
+	var (
+		kpis     *adminDto.DashboardKPIRow
+		pending  []adminDto.DashboardPendingApprovalRow
+		activity []adminDto.DashboardActivityRow
+		trend    []adminDto.DashboardMonthlyRevenueRow
+		alerts   []adminDto.DashboardAlertRow
+	)
+
+	g, ctx := errgroup.WithContext(ctx)
+
+	g.Go(func() error {
+		var err error
+		kpis, err = m.admin.GetDashboardKPIs(ctx)
+		return err
+	})
+
+	g.Go(func() error {
+		var err error
+		pending, err = m.admin.ListDashboardPendingApprovals(ctx, dashboardPendingLimit)
+		return err
+	})
+
+	g.Go(func() error {
+		var err error
+		activity, err = m.admin.ListDashboardRecentActivity(ctx, dashboardActivityLimit)
+		return err
+	})
+
+	g.Go(func() error {
+		var err error
+		trend, err = m.admin.ListDashboardMonthlyRevenue(ctx, dashboardTrendMonths)
+		return err
+	})
+
+	g.Go(func() error {
+		var err error
+		alerts, err = m.admin.ListDashboardAlerts(ctx, dashboardAlertLimit)
+		return err
+	})
+
+	if err := g.Wait(); err != nil {
 		return nil, err
 	}
 
-	pending, err := m.admin.ListDashboardPendingApprovals(ctx, dashboardPendingLimit)
-	if err != nil {
-		return nil, err
-	}
-
-	activity, err := m.admin.ListDashboardRecentActivity(ctx, dashboardActivityLimit)
-	if err != nil {
-		return nil, err
-	}
 	for i := range activity {
 		activity[i].Label = activityLabel(activity[i].Action)
 		if strings.TrimSpace(activity[i].Detail) == "" {
 			activity[i].Detail = activity[i].Label
 		}
-	}
-
-	trend, err := m.admin.ListDashboardMonthlyRevenue(ctx, dashboardTrendMonths)
-	if err != nil {
-		return nil, err
-	}
-
-	alerts, err := m.admin.ListDashboardAlerts(ctx, dashboardAlertLimit)
-	if err != nil {
-		return nil, err
 	}
 
 	return &adminDto.DashboardSummaryResponse{
@@ -62,11 +84,11 @@ func (m *adminModule) GetDashboardSummary(ctx context.Context) (*adminDto.Dashbo
 		PendingApprovals: pending,
 		RecentActivity:   activity,
 		RevenueSummary: adminDto.DashboardRevenueSummary{
-			TotalCampaignValueETB:          kpis.TotalCampaignValueETB,
-			TotalPlatformFeesETB:           kpis.TotalPlatformFeesETB,
-			PlatformFeePercentBusiness:     5.0,
-			PlatformFeePercentInfluencer:   5.0,
-			MonthlyTrend:                   trend,
+			TotalCampaignValueETB:        kpis.TotalCampaignValueETB,
+			TotalPlatformFeesETB:         kpis.TotalPlatformFeesETB,
+			PlatformFeePercentBusiness:   5.0,
+			PlatformFeePercentInfluencer: 5.0,
+			MonthlyTrend:                 trend,
 		},
 		Alerts: alerts,
 	}, nil

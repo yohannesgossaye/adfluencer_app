@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"golang.org/x/sync/errgroup"
 )
 
 type contractRepo struct {
@@ -187,22 +189,38 @@ func (p *contractRepo) loadContract(ctx context.Context, contractID, role, userI
 		rec.CompletedAt = &t
 	}
 
-	deliverables, err := p.getDeliverables(ctx, rec.ID)
-	if err != nil {
+	var (
+		deliverables []contractDto.DeliverableResponse
+		payment      *contractDto.PaymentSummary
+		payout       *contractDto.PayoutSummary
+	)
+
+	g, ctx := errgroup.WithContext(ctx)
+
+	g.Go(func() error {
+		var err error
+		deliverables, err = p.getDeliverables(ctx, rec.ID)
+		return err
+	})
+
+	g.Go(func() error {
+		var err error
+		payment, err = p.getPaymentSummary(ctx, rec.ID)
+		return err
+	})
+
+	g.Go(func() error {
+		var err error
+		payout, err = p.getPayoutSummary(ctx, rec.ID)
+		return err
+	})
+
+	if err := g.Wait(); err != nil {
 		return nil, err
 	}
+
 	rec.Deliverables = deliverables
-
-	payment, err := p.getPaymentSummary(ctx, rec.ID)
-	if err != nil {
-		return nil, err
-	}
 	rec.Payment = payment
-
-	payout, err := p.getPayoutSummary(ctx, rec.ID)
-	if err != nil {
-		return nil, err
-	}
 	rec.Payout = payout
 
 	return &rec, nil
@@ -212,18 +230,14 @@ func (p *contractRepo) ListContractsForBusiness(ctx context.Context, businessUse
 	query = query.Normalize()
 	offset := (query.Page - 1) * query.Limit
 
-	var total int
-	if err := p.db.QueryRowContext(ctx, countBusinessContracts, businessUserID, query.Status).Scan(&total); err != nil {
-		return nil, 0, fmt.Errorf("count business contracts: %w", err)
-	}
-
 	rows, err := p.db.QueryContext(ctx, listBusinessContracts, businessUserID, query.Status, query.Limit, offset)
 	if err != nil {
 		return nil, 0, fmt.Errorf("list business contracts: %w", err)
 	}
 	defer rows.Close()
 
-	items, err := scanBusinessContractList(rows)
+	var total int
+	items, err := scanBusinessContractList(rows, &total)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -234,18 +248,14 @@ func (p *contractRepo) ListContractsForInfluencer(ctx context.Context, influence
 	query = query.Normalize()
 	offset := (query.Page - 1) * query.Limit
 
-	var total int
-	if err := p.db.QueryRowContext(ctx, countInfluencerContracts, influencerUserID, query.Status).Scan(&total); err != nil {
-		return nil, 0, fmt.Errorf("count influencer contracts: %w", err)
-	}
-
 	rows, err := p.db.QueryContext(ctx, listInfluencerContracts, influencerUserID, query.Status, query.Limit, offset)
 	if err != nil {
 		return nil, 0, fmt.Errorf("list influencer contracts: %w", err)
 	}
 	defer rows.Close()
 
-	items, err := scanInfluencerContractList(rows)
+	var total int
+	items, err := scanInfluencerContractList(rows, &total)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -507,7 +517,7 @@ func (p *contractRepo) getPayoutSummary(ctx context.Context, contractID string) 
 	return &payout, nil
 }
 
-func scanBusinessContractList(rows *sql.Rows) ([]contractDto.ListItem, error) {
+func scanBusinessContractList(rows *sql.Rows, total *int) ([]contractDto.ListItem, error) {
 	items := make([]contractDto.ListItem, 0)
 	for rows.Next() {
 		var item contractDto.ListItem
@@ -521,6 +531,7 @@ func scanBusinessContractList(rows *sql.Rows) ([]contractDto.ListItem, error) {
 			&item.TotalBusinessPayable,
 			&item.InfluencerReceivable,
 			&item.CreatedAt,
+			total,
 		); err != nil {
 			return nil, fmt.Errorf("scan business contract list: %w", err)
 		}
@@ -532,7 +543,7 @@ func scanBusinessContractList(rows *sql.Rows) ([]contractDto.ListItem, error) {
 	return items, rows.Err()
 }
 
-func scanInfluencerContractList(rows *sql.Rows) ([]contractDto.ListItem, error) {
+func scanInfluencerContractList(rows *sql.Rows, total *int) ([]contractDto.ListItem, error) {
 	items := make([]contractDto.ListItem, 0)
 	for rows.Next() {
 		var item contractDto.ListItem
@@ -546,6 +557,7 @@ func scanInfluencerContractList(rows *sql.Rows) ([]contractDto.ListItem, error) 
 			&item.TotalBusinessPayable,
 			&item.InfluencerReceivable,
 			&item.CreatedAt,
+			total,
 		); err != nil {
 			return nil, fmt.Errorf("scan influencer contract list: %w", err)
 		}

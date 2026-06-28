@@ -18,15 +18,10 @@ func (p *influencer) ListInvites(ctx context.Context, influencerUserID string, q
 
 	items := make([]influencerDto.InviteListItem, 0)
 	for rows.Next() {
-		item, campaignID, err := scanInviteListRow(rows)
+		item, err := scanInviteListRow(rows)
 		if err != nil {
 			return nil, err
 		}
-		platforms, err := p.getCampaignPlatforms(ctx, campaignID)
-		if err != nil {
-			return nil, err
-		}
-		item.Campaign.Platforms = platforms
 		items = append(items, item)
 	}
 	if err := rows.Err(); err != nil {
@@ -139,13 +134,14 @@ func (p *influencer) respondInvite(ctx context.Context, influencerUserID, invite
 	}, nil
 }
 
-func scanInviteListRow(rows *sql.Rows) (influencerDto.InviteListItem, string, error) {
+func scanInviteListRow(rows *sql.Rows) (influencerDto.InviteListItem, error) {
 	var item influencerDto.InviteListItem
 	var message sql.NullString
 	var respondedAt sql.NullTime
 	var budgetMin, budgetMax sql.NullFloat64
 	var startDate, endDate sql.NullTime
 	var campaignID string
+	var platformsRaw []byte
 
 	if err := rows.Scan(
 		&item.ID,
@@ -161,11 +157,16 @@ func scanInviteListRow(rows *sql.Rows) (influencerDto.InviteListItem, string, er
 		&startDate,
 		&endDate,
 		&item.Campaign.BusinessName,
+		&platformsRaw,
 	); err != nil {
-		return influencerDto.InviteListItem{}, "", fmt.Errorf("scan invite list item: %w", err)
+		return influencerDto.InviteListItem{}, fmt.Errorf("scan invite list item: %w", err)
 	}
 
 	item.Campaign.ID = campaignID
+	item.Campaign.Platforms = parseTextArray(platformsRaw)
+	if item.Campaign.Platforms == nil {
+		item.Campaign.Platforms = []string{}
+	}
 	if message.Valid {
 		item.Message = &message.String
 	}
@@ -190,7 +191,7 @@ func scanInviteListRow(rows *sql.Rows) (influencerDto.InviteListItem, string, er
 		item.Campaign.EndDate = &t
 	}
 
-	return item, campaignID, nil
+	return item, nil
 }
 
 func (p *influencer) getCampaignPlatforms(ctx context.Context, campaignID string) ([]string, error) {

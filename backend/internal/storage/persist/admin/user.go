@@ -30,29 +30,25 @@ func (a *admin) ListUsers(ctx context.Context, query adminDto.ListUsersQuery) ([
 	query = query.Normalize()
 	offset := (query.Page - 1) * query.Limit
 
-	var total int
-	if err := a.db.QueryRowContext(ctx, countAdminUsers, query.Role, query.Status, query.Search).Scan(&total); err != nil {
-		return nil, 0, fmt.Errorf("count users: %w", err)
-	}
-
 	rows, err := a.db.QueryContext(ctx, listAdminUsers, query.Role, query.Status, query.Search, query.Limit, offset)
 	if err != nil {
 		return nil, 0, fmt.Errorf("list users: %w", err)
 	}
 	defer rows.Close()
 
+	var total int
 	items := make([]adminDto.UserRow, 0)
 	for rows.Next() {
-		row, err := scanUserRow(rows)
+		row, err := scanUserListRow(rows, &total)
 		if err != nil {
 			return nil, 0, err
 		}
 		items = append(items, *row)
 	}
-	if items == nil {
-		items = []adminDto.UserRow{}
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
 	}
-	return items, total, rows.Err()
+	return items, total, nil
 }
 
 func (a *admin) GetUser(ctx context.Context, userID string) (*adminDto.UserRow, error) {
@@ -157,6 +153,35 @@ func (a *admin) userExists(ctx context.Context, userID string) (bool, error) {
 		return false, fmt.Errorf("check user exists: %w", err)
 	}
 	return exists, nil
+}
+
+func scanUserListRow(s scanner, total *int) (*adminDto.UserRow, error) {
+	var row adminDto.UserRow
+	var reason sql.NullString
+	var lastLogin sql.NullTime
+	if err := s.Scan(
+		&row.ID,
+		&row.Email,
+		&row.Role,
+		&row.Status,
+		&reason,
+		&row.DisplayName,
+		&row.CreatedAt,
+		&lastLogin,
+		&row.CampaignsCount,
+		&row.ContractsCount,
+		total,
+	); err != nil {
+		return nil, err
+	}
+	if reason.Valid {
+		row.StatusReason = &reason.String
+	}
+	if lastLogin.Valid {
+		t := lastLogin.Time
+		row.LastLoginAt = &t
+	}
+	return &row, nil
 }
 
 func scanUserRow(s scanner) (*adminDto.UserRow, error) {

@@ -8,16 +8,6 @@ const (
 		(SELECT COUNT(*)::int FROM campaigns WHERE status = 'paused')
 	`
 
-	countAdminCampaigns = `
-	SELECT COUNT(*)::int
-	FROM campaigns c
-	INNER JOIN business_profiles bp ON bp.user_id = c.business_user_id
-	LEFT JOIN categories cat ON cat.id = c.category_id
-	WHERE ($1 = '' OR c.status::text = $1)
-		AND ($2 = '' OR cat.name ILIKE '%' || $2 || '%' OR cat.slug ILIKE '%' || $2 || '%')
-		AND ($3 = '' OR bp.business_name ILIKE '%' || $3 || '%')
-	`
-
 	listAdminCampaigns = `
 	SELECT
 		c.id,
@@ -35,7 +25,8 @@ const (
 		COALESCE(ct.active_count, 0),
 		COALESCE(ct.pending_count, 0),
 		COALESCE(pay.paid_count, 0),
-		COALESCE(pay.pending_count, 0)
+		COALESCE(pay.pending_count, 0),
+		COUNT(*) OVER()::int AS total_count
 	FROM campaigns c
 	INNER JOIN business_profiles bp ON bp.user_id = c.business_user_id
 	LEFT JOIN categories cat ON cat.id = c.category_id

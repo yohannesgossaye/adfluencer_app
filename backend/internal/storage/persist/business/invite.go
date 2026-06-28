@@ -48,15 +48,22 @@ func (p *business) ListInvites(ctx context.Context, businessUserID, campaignID s
 	defer rows.Close()
 
 	items := make([]businessDto.InviteResponse, 0)
+	var rowCount int
 	for rows.Next() {
-		item, err := scanInviteRow(rows)
+		rowCount++
+		item, ok, err := scanInviteListRow(rows)
 		if err != nil {
 			return nil, err
 		}
-		items = append(items, item)
+		if ok {
+			items = append(items, item)
+		}
 	}
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("iterate invites: %w", err)
+	}
+	if rowCount == 0 {
+		return nil, businessDto.ErrCampaignNotFound
 	}
 	return items, nil
 }
@@ -88,24 +95,39 @@ func (p *business) CancelInvite(ctx context.Context, businessUserID, campaignID,
 	return nil
 }
 
-func scanInviteRow(rows *sql.Rows) (businessDto.InviteResponse, error) {
+func scanInviteListRow(rows *sql.Rows) (businessDto.InviteResponse, bool, error) {
 	var item businessDto.InviteResponse
+	var inviteID sql.NullString
+	var influencerUserID sql.NullString
+	var creatorName sql.NullString
+	var status sql.NullString
 	var message sql.NullString
+	var createdAt sql.NullTime
 	if err := rows.Scan(
-		&item.ID,
+		&inviteID,
 		&item.CampaignID,
-		&item.InfluencerUserID,
-		&item.CreatorName,
-		&item.Status,
+		&influencerUserID,
+		&creatorName,
+		&status,
 		&message,
-		&item.CreatedAt,
+		&createdAt,
 	); err != nil {
-		return businessDto.InviteResponse{}, fmt.Errorf("scan invite: %w", err)
+		return businessDto.InviteResponse{}, false, fmt.Errorf("scan invite: %w", err)
 	}
+	if !inviteID.Valid {
+		return businessDto.InviteResponse{}, false, nil
+	}
+	item.ID = inviteID.String
+	item.InfluencerUserID = influencerUserID.String
+	item.CreatorName = creatorName.String
+	item.Status = status.String
 	if message.Valid {
 		item.Message = &message.String
 	}
-	return item, nil
+	if createdAt.Valid {
+		item.CreatedAt = createdAt.Time
+	}
+	return item, true, nil
 }
 
 func scanInviteFromRow(row *sql.Row) (businessDto.InviteResponse, error) {

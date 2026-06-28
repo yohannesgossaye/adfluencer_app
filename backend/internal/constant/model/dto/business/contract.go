@@ -1,6 +1,7 @@
 package business
 
 import (
+	commonDto "adinfluence_service_app/internal/constant/model/dto/common"
 	contractDto "adinfluence_service_app/internal/constant/model/dto/contract"
 	"strings"
 	"time"
@@ -42,7 +43,7 @@ type CreateContractResponse struct {
 
 type ListContractsResponse struct {
 	Items      []contractDto.ListItem       `json:"items"`
-	Pagination contractDto.PaginationResponse `json:"pagination"`
+	Pagination commonDto.ListMeta         `json:"pagination"`
 }
 
 type PayContractResponse struct {

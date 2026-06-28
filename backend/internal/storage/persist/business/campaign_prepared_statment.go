@@ -61,13 +61,6 @@ const (
 	WHERE c.id = $1 AND c.business_user_id = $2
 	`
 
-	countBusinessCampaigns = `
-	SELECT COUNT(*)::int
-	FROM campaigns c
-	WHERE c.business_user_id = $1
-		AND ($2 = '' OR c.status::text = $2)
-	`
-
 	listBusinessCampaigns = `
 	SELECT
 		c.id,
@@ -88,7 +81,8 @@ const (
 			WHERE cp.campaign_id = c.id
 			ORDER BY cp.platform
 			LIMIT 1
-		)
+		),
+		COUNT(*) OVER()::int AS total_count
 	FROM campaigns c
 	JOIN business_profiles bp ON bp.user_id = c.business_user_id
 	LEFT JOIN LATERAL (

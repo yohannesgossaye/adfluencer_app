@@ -18,17 +18,13 @@ func (a *admin) ListBusinessVerifications(ctx context.Context, query adminDto.Li
 	offset := (query.Page - 1) * query.Limit
 	search := strings.TrimSpace(query.Search)
 
-	var total int
-	if err := a.db.QueryRowContext(ctx, countBusinessVerifications, query.Status, search).Scan(&total); err != nil {
-		return nil, 0, fmt.Errorf("count business verifications: %w", err)
-	}
-
 	rows, err := a.db.QueryContext(ctx, listBusinessVerifications, query.Status, search, query.Limit, offset)
 	if err != nil {
 		return nil, 0, fmt.Errorf("list business verifications: %w", err)
 	}
 	defer rows.Close()
 
+	var total int
 	items := make([]adminDto.BusinessVerificationListItem, 0)
 	for rows.Next() {
 		var item adminDto.BusinessVerificationListItem
@@ -44,6 +40,7 @@ func (a *admin) ListBusinessVerifications(ctx context.Context, query adminDto.Li
 			&item.Email,
 			&item.IsVerified,
 			&item.RegisteredAt,
+			&total,
 		); err != nil {
 			return nil, 0, fmt.Errorf("scan business verification: %w", err)
 		}
@@ -58,10 +55,10 @@ func (a *admin) ListBusinessVerifications(ctx context.Context, query adminDto.Li
 		}
 		items = append(items, item)
 	}
-	if items == nil {
-		items = []adminDto.BusinessVerificationListItem{}
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
 	}
-	return items, total, rows.Err()
+	return items, total, nil
 }
 
 func (a *admin) GetBusinessVerification(ctx context.Context, userID string) (*adminDto.BusinessVerificationRow, error) {

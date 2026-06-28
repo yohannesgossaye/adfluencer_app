@@ -5,21 +5,39 @@ import (
 	"adinfluence_service_app/internal/constant/model"
 	authDto "adinfluence_service_app/internal/constant/model/dto/auth"
 	adminDto "adinfluence_service_app/internal/constant/model/dto/admin"
+	commonDto "adinfluence_service_app/internal/constant/model/dto/common"
 	adminPersist "adinfluence_service_app/internal/storage/persist/admin"
 	"context"
 	"errors"
 	"strings"
+
+	"golang.org/x/sync/errgroup"
 )
 
 func (m *adminModule) ListUsers(ctx context.Context, query adminDto.ListUsersQuery) (*adminDto.ListUsersResponse, error) {
 	query = query.Normalize()
-	rows, total, err := m.admin.ListUsers(ctx, query)
-	if err != nil {
-		return nil, err
-	}
 
-	stats, err := m.admin.GetUserStats(ctx)
-	if err != nil {
+	var (
+		rows  []adminDto.UserRow
+		total int
+		stats *adminDto.UserStats
+	)
+
+	g, ctx := errgroup.WithContext(ctx)
+
+	g.Go(func() error {
+		var err error
+		rows, total, err = m.admin.ListUsers(ctx, query)
+		return err
+	})
+
+	g.Go(func() error {
+		var err error
+		stats, err = m.admin.GetUserStats(ctx)
+		return err
+	})
+
+	if err := g.Wait(); err != nil {
 		return nil, err
 	}
 
@@ -31,11 +49,7 @@ func (m *adminModule) ListUsers(ctx context.Context, query adminDto.ListUsersQue
 	return &adminDto.ListUsersResponse{
 		Items: items,
 		Stats: *stats,
-		Pagination: adminDto.PaginationResponse{
-			Page:  query.Page,
-			Limit: query.Limit,
-			Total: total,
-		},
+		Pagination: commonDto.NewListMeta(query.Page, query.Limit, total),
 	}, nil
 }
 
@@ -56,7 +70,7 @@ func (m *adminModule) BlockUser(ctx context.Context, adminUserID, targetUserID s
 		return nil, mapUserError(err)
 	}
 
-	m.writeAudit(ctx, authDto.CreateAuditLogInput{
+	m.writeAuditAsync(authDto.CreateAuditLogInput{
 		ActorUserID:  &adminUserID,
 		TargetUserID: &targetUserID,
 		Action:       string(model.BlockAction),
@@ -75,7 +89,7 @@ func (m *adminModule) UnblockUser(ctx context.Context, adminUserID, targetUserID
 		return nil, mapUserError(err)
 	}
 
-	m.writeAudit(ctx, authDto.CreateAuditLogInput{
+	m.writeAuditAsync(authDto.CreateAuditLogInput{
 		ActorUserID:  &adminUserID,
 		TargetUserID: &targetUserID,
 		Action:       string(model.UnblockAction),
@@ -94,7 +108,7 @@ func (m *adminModule) RemoveUser(ctx context.Context, adminUserID, targetUserID 
 		return nil, mapUserError(err)
 	}
 
-	m.writeAudit(ctx, authDto.CreateAuditLogInput{
+	m.writeAuditAsync(authDto.CreateAuditLogInput{
 		ActorUserID:  &adminUserID,
 		TargetUserID: &targetUserID,
 		Action:       string(model.DeleteAction),
