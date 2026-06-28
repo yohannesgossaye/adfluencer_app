@@ -7,7 +7,6 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"go.uber.org/zap"
 )
 
 func (h *adminHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
@@ -26,7 +25,7 @@ func (h *adminHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 
 	res, err := h.service.ListUsers(ctx, query)
 	if err != nil {
-		h.handleError(w, ctx, "list users", err)
+		writeError(w, err)
 		return
 	}
 
@@ -42,7 +41,7 @@ func (h *adminHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 	userID := chi.URLParam(r, "user_id")
 	res, err := h.service.GetUser(ctx, userID)
 	if err != nil {
-		h.handleError(w, ctx, "get user", err)
+		writeError(w, err)
 		return
 	}
 
@@ -51,10 +50,11 @@ func (h *adminHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 
 func (h *adminHandler) BlockUser(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	adminID, ok := h.requireAdmin(w, r)
+	admin, ok := h.requireAdmin(w, r)
 	if !ok {
 		return
 	}
+	adminID := admin.UserID
 
 	r.Body = http.MaxBytesReader(w, r.Body, maxAdminBodySize)
 	var req adminDto.BlockUserRequest
@@ -66,44 +66,38 @@ func (h *adminHandler) BlockUser(w http.ResponseWriter, r *http.Request) {
 	targetUserID := chi.URLParam(r, "user_id")
 	res, err := h.service.BlockUser(ctx, adminID, targetUserID, req, sessionMetaFromRequest(r))
 	if err != nil {
-		h.handleError(w, ctx, "block user", err)
+		writeError(w, err)
 		return
 	}
 
-	h.logger.Info(ctx, "user blocked",
-		zap.String("admin_id", adminID),
-		zap.String("user_id", targetUserID),
-	)
 	response.SendSuccessResponse(w, r, http.StatusOK, "user blocked successfully", res, nil)
 }
 
 func (h *adminHandler) UnblockUser(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	adminID, ok := h.requireAdmin(w, r)
+	admin, ok := h.requireAdmin(w, r)
 	if !ok {
 		return
 	}
+	adminID := admin.UserID
 
 	targetUserID := chi.URLParam(r, "user_id")
 	res, err := h.service.UnblockUser(ctx, adminID, targetUserID, sessionMetaFromRequest(r))
 	if err != nil {
-		h.handleError(w, ctx, "unblock user", err)
+		writeError(w, err)
 		return
 	}
 
-	h.logger.Info(ctx, "user unblocked",
-		zap.String("admin_id", adminID),
-		zap.String("user_id", targetUserID),
-	)
 	response.SendSuccessResponse(w, r, http.StatusOK, "user unblocked successfully", res, nil)
 }
 
 func (h *adminHandler) RemoveUser(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	adminID, ok := h.requireAdmin(w, r)
+	admin, ok := h.requireAdmin(w, r)
 	if !ok {
 		return
 	}
+	adminID := admin.UserID
 
 	r.Body = http.MaxBytesReader(w, r.Body, maxAdminBodySize)
 	var req adminDto.RemoveUserRequest
@@ -115,13 +109,9 @@ func (h *adminHandler) RemoveUser(w http.ResponseWriter, r *http.Request) {
 	targetUserID := chi.URLParam(r, "user_id")
 	res, err := h.service.RemoveUser(ctx, adminID, targetUserID, req, sessionMetaFromRequest(r))
 	if err != nil {
-		h.handleError(w, ctx, "remove user", err)
+		writeError(w, err)
 		return
 	}
 
-	h.logger.Info(ctx, "user removed",
-		zap.String("admin_id", adminID),
-		zap.String("user_id", targetUserID),
-	)
 	response.SendSuccessResponse(w, r, http.StatusOK, "user removed successfully", res, nil)
 }

@@ -11,9 +11,7 @@ import (
 	"adinfluence_service_app/internal/handler/middleware"
 	"adinfluence_service_app/platform/jwt"
 	"adinfluence_service_app/platform/mail"
-	platformStorage "adinfluence_service_app/platform/storage"
 	"adinfluence_service_app/platform/sms"
-	"adinfluence_service_app/platform/utils"
 
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
@@ -110,29 +108,4 @@ func Initiator(ctx context.Context) {
 	}
 
 	logger.Info(ctx, "server stopped gracefully")
-}
-
-func initFileStorage(ctx context.Context, cfg S3Config, logger utils.Logger) platformStorage.Service {
-	storageCfg := platformStorage.Config{
-		Endpoint:     cfg.Endpoint,
-		Region:       cfg.Region,
-		AccessKeyID:  cfg.AccessKeyID,
-		SecretKey:    cfg.SecretKey,
-		Bucket:       cfg.Bucket,
-		PublicURL:    cfg.PublicURL,
-		UsePathStyle: cfg.UsePathStyle,
-	}
-	if !storageCfg.Enabled() {
-		logger.Warn(ctx, "s3 not configured — avatar upload disabled until S3_* env vars are set")
-		return platformStorage.NewNoop()
-	}
-
-	s3, err := platformStorage.NewS3(storageCfg)
-	if err != nil {
-		logger.Warn(ctx, "s3 init failed — avatar upload disabled", zap.String("reason", err.Error()))
-		return platformStorage.NewNoop()
-	}
-
-	logger.Info(ctx, "s3 storage ready", zap.String("bucket", cfg.Bucket), zap.String("endpoint", cfg.Endpoint))
-	return s3
 }

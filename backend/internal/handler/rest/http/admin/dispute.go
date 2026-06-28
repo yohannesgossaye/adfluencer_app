@@ -8,7 +8,6 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"go.uber.org/zap"
 )
 
 func (h *adminHandler) ListAdminDisputes(w http.ResponseWriter, r *http.Request) {
@@ -26,7 +25,7 @@ func (h *adminHandler) ListAdminDisputes(w http.ResponseWriter, r *http.Request)
 
 	res, err := h.service.ListAdminDisputes(ctx, query)
 	if err != nil {
-		h.handleError(w, ctx, "list admin disputes", err)
+		writeError(w, err)
 		return
 	}
 
@@ -42,7 +41,7 @@ func (h *adminHandler) GetAdminDispute(w http.ResponseWriter, r *http.Request) {
 	disputeID := chi.URLParam(r, "dispute_id")
 	res, err := h.service.GetAdminDispute(ctx, disputeID)
 	if err != nil {
-		h.handleError(w, ctx, "get admin dispute", err)
+		writeError(w, err)
 		return
 	}
 
@@ -51,10 +50,11 @@ func (h *adminHandler) GetAdminDispute(w http.ResponseWriter, r *http.Request) {
 
 func (h *adminHandler) UpdateDisputeStatus(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	adminID, ok := h.requireAdmin(w, r)
+	admin, ok := h.requireAdmin(w, r)
 	if !ok {
 		return
 	}
+	adminID := admin.UserID
 
 	r.Body = http.MaxBytesReader(w, r.Body, maxAdminBodySize)
 	var req adminDto.UpdateDisputeStatusRequest
@@ -70,20 +70,20 @@ func (h *adminHandler) UpdateDisputeStatus(w http.ResponseWriter, r *http.Reques
 	disputeID := chi.URLParam(r, "dispute_id")
 	res, err := h.service.UpdateDisputeStatus(ctx, adminID, disputeID, req, sessionMetaFromRequest(r))
 	if err != nil {
-		h.handleError(w, ctx, "update dispute status", err)
+		writeError(w, err)
 		return
 	}
 
-	h.logger.Info(ctx, "dispute status updated", zap.String("admin_id", adminID), zap.String("dispute_id", disputeID))
 	response.SendSuccessResponse(w, r, http.StatusOK, "dispute status updated successfully", res, nil)
 }
 
 func (h *adminHandler) UpdateDisputeNotes(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	adminID, ok := h.requireAdmin(w, r)
+	admin, ok := h.requireAdmin(w, r)
 	if !ok {
 		return
 	}
+	adminID := admin.UserID
 
 	r.Body = http.MaxBytesReader(w, r.Body, maxAdminBodySize)
 	var req adminDto.UpdateDisputeNotesRequest
@@ -95,7 +95,7 @@ func (h *adminHandler) UpdateDisputeNotes(w http.ResponseWriter, r *http.Request
 	disputeID := chi.URLParam(r, "dispute_id")
 	res, err := h.service.UpdateDisputeNotes(ctx, adminID, disputeID, req, sessionMetaFromRequest(r))
 	if err != nil {
-		h.handleError(w, ctx, "update dispute notes", err)
+		writeError(w, err)
 		return
 	}
 

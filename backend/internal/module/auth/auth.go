@@ -73,16 +73,23 @@ func (m *userAuthModule) SignUp(ctx context.Context, req authDto.SignUpRequest, 
 	}
 
 	res.Tokens = helper.TokenResponse(tokenPair)
-	m.writeAudit(ctx, authDto.CreateAuditLogInput{
-		ActorUserID:  &res.User.ID,
-		TargetUserID: &res.User.ID,
-		Action:       string(model.SignupAction),
-		EntityType:   "user",
-		EntityID:     &res.User.ID,
-		Description:  "user signed up",
-		IPAddress:    meta.IPAddress,
-		UserAgent:    meta.UserAgent,
-	})
+	go func() {
+		auditCtx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+		defer cancel()
+
+		m.writeAudit(auditCtx, authDto.CreateAuditLogInput{
+			ActorUserID:  &res.User.ID,
+			TargetUserID: &res.User.ID,
+			Action:       string(model.SignupAction),
+			EntityType:   "user",
+			EntityID:     &res.User.ID,
+			Description:  "user signed up",
+			IPAddress:    meta.IPAddress,
+			UserAgent:    meta.UserAgent,
+		})
+
+	}()
+
 	return res, nil
 }
 
@@ -151,17 +158,23 @@ func (m *userAuthModule) Login(ctx context.Context, req authDto.LoginRequest, me
 	if next := helper.SafeInternalPath(req.Next); next != "" {
 		redirectTo = next
 	}
+	go func() {
 
-	m.writeAudit(ctx, authDto.CreateAuditLogInput{
-		ActorUserID:  &user.ID,
-		TargetUserID: &user.ID,
-		Action:       string(model.LoginAction),
-		EntityType:   "user",
-		EntityID:     &user.ID,
-		Description:  "user logged in",
-		IPAddress:    meta.IPAddress,
-		UserAgent:    meta.UserAgent,
-	})
+		auditCtx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+		defer cancel()
+
+		m.writeAudit(auditCtx, authDto.CreateAuditLogInput{
+			ActorUserID:  &user.ID,
+			TargetUserID: &user.ID,
+			Action:       string(model.LoginAction),
+			EntityType:   "user",
+			EntityID:     &user.ID,
+			Description:  "user logged in",
+			IPAddress:    meta.IPAddress,
+			UserAgent:    meta.UserAgent,
+		})
+
+	}()
 
 	return &authDto.LoginResponse{
 		User:       user,
@@ -254,16 +267,22 @@ func (m *userAuthModule) Logout(ctx context.Context, userID string, req authDto.
 		return err
 	}
 
-	m.writeAudit(ctx, authDto.CreateAuditLogInput{
-		ActorUserID:  &userID,
-		TargetUserID: &userID,
-		Action:       string(model.LogoutAction),
-		EntityType:   "user",
-		EntityID:     &userID,
-		Description:  "user logged out",
-		IPAddress:    meta.IPAddress,
-		UserAgent:    meta.UserAgent,
-	})
+	go func() {
+		auditCtx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+		defer cancel()
+
+		m.writeAudit(auditCtx, authDto.CreateAuditLogInput{
+			ActorUserID:  &userID,
+			TargetUserID: &userID,
+			Action:       string(model.LogoutAction),
+			EntityType:   "user",
+			EntityID:     &userID,
+			Description:  "user logged out",
+			IPAddress:    meta.IPAddress,
+			UserAgent:    meta.UserAgent,
+		})
+
+	}()
 
 	return nil
 }

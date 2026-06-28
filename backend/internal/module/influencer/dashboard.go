@@ -1,13 +1,12 @@
 package influencer
 
 import (
-	authDto "adinfluence_service_app/internal/constant/model/dto/auth"
 	influencerDto "adinfluence_service_app/internal/constant/model/dto/influencer"
 	"adinfluence_service_app/internal/module/influencer/helper"
 	"context"
 )
 
-func (m *influencerModule) GetDashboardSummary(ctx context.Context, userID string, user *authDto.UserResponse) (*influencerDto.DashboardSummaryResponse, error) {
+func (m *influencerModule) GetDashboardSummary(ctx context.Context, userID string) (*influencerDto.DashboardSummaryResponse, error) {
 	if err := m.requireActiveInfluencer(ctx, userID); err != nil {
 		return nil, err
 	}

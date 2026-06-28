@@ -1,33 +1,27 @@
 package business
 
 import (
-	authDto "adinfluence_service_app/internal/constant/model/dto/auth"
 	customErr "adinfluence_service_app/internal/constant/errors"
+	authDto "adinfluence_service_app/internal/constant/model/dto/auth"
 	businessDto "adinfluence_service_app/internal/constant/model/dto/business"
 	"adinfluence_service_app/internal/constant/model/response"
 	"adinfluence_service_app/internal/handler/middleware"
+	"adinfluence_service_app/internal/handler/rest/httputil"
 	"adinfluence_service_app/internal/module"
-	"adinfluence_service_app/platform/jwt"
 	"adinfluence_service_app/platform/utils"
-	"context"
 	"encoding/json"
-	"errors"
 	"io"
 	"net/http"
-
-	"go.uber.org/zap"
 )
 
 type businessHandler struct {
 	service module.BusinessService
-	auth    module.AuthService
 	logger  utils.Logger
 }
 
-func InitBusinessHandler(s module.BusinessService, auth module.AuthService, log utils.Logger) *businessHandler {
+func InitBusinessHandler(s module.BusinessService, log utils.Logger) *businessHandler {
 	return &businessHandler{
 		service: s,
-		auth:    auth,
 		logger:  log,
 	}
 }
@@ -36,23 +30,16 @@ const maxProfileBodySize = 1 << 20
 
 func (h *businessHandler) GetProfile(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	userID, ok := h.requireBusiness(w, r)
+	user, ok := h.requireBusiness(w, r)
 	if !ok {
 		return
 	}
 
-	user, err := h.auth.GetMe(ctx, userID)
+	res, err := h.service.GetProfile(ctx, user.UserID)
 	if err != nil {
-		h.handleError(w, ctx, "get profile", userID, err)
+		writeError(w, err)
 		return
 	}
-
-	res, err := h.service.GetProfile(ctx, userID, &user.User)
-	if err != nil {
-		h.handleError(w, ctx, "get profile", userID, err)
-		return
-	}
-
 	response.SendSuccessResponse(w, r, http.StatusOK, "profile retrieved successfully", res, nil)
 }
 
@@ -60,17 +47,17 @@ func (h *businessHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) 
 	ctx := r.Context()
 	r.Body = http.MaxBytesReader(w, r.Body, maxProfileBodySize)
 
-	userID, ok := h.requireBusiness(w, r)
+	user, ok := h.requireBusiness(w, r)
 	if !ok {
 		return
 	}
+	userID := user.UserID
 
 	var req businessDto.UpdateProfileRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		response.SendErrorResponse(w, http.StatusBadRequest, "invalid_request", err, "invalid request body")
 		return
 	}
-
 	if err := req.Validate(); err != nil {
 		response.SendErrorResponse(w, http.StatusBadRequest, customErr.ClientErrorCode(err), err, err.Error())
 		return
@@ -78,11 +65,9 @@ func (h *businessHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) 
 
 	res, err := h.service.UpdateProfile(ctx, userID, req, sessionMetaFromRequest(r))
 	if err != nil {
-		h.handleError(w, ctx, "update profile", userID, err)
+		writeError(w, err)
 		return
 	}
-
-	h.logger.Info(ctx, "business profile updated", zap.String("user_id", userID))
 	response.SendSuccessResponse(w, r, http.StatusOK, "profile updated successfully", res, nil)
 }
 
@@ -90,10 +75,11 @@ func (h *businessHandler) UploadLogo(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	r.Body = http.MaxBytesReader(w, r.Body, maxLogoBodySize)
 
-	userID, ok := h.requireBusiness(w, r)
+	user, ok := h.requireBusiness(w, r)
 	if !ok {
 		return
 	}
+	userID := user.UserID
 
 	filename, contentType, data, ok := parseMultipartFile(w, r, maxLogoBodySize)
 	if !ok {
@@ -102,28 +88,25 @@ func (h *businessHandler) UploadLogo(w http.ResponseWriter, r *http.Request) {
 
 	res, err := h.service.UploadLogo(ctx, userID, filename, contentType, data, sessionMetaFromRequest(r))
 	if err != nil {
-		h.handleError(w, ctx, "upload logo", userID, err)
+		writeError(w, err)
 		return
 	}
-
-	h.logger.Info(ctx, "business logo uploaded", zap.String("user_id", userID))
 	response.SendSuccessResponse(w, r, http.StatusOK, "logo uploaded successfully", res, nil)
 }
 
 func (h *businessHandler) CompleteProfile(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	userID, ok := h.requireBusiness(w, r)
+	user, ok := h.requireBusiness(w, r)
 	if !ok {
 		return
 	}
+	userID := user.UserID
 
 	res, err := h.service.CompleteProfile(ctx, userID, sessionMetaFromRequest(r))
 	if err != nil {
-		h.handleError(w, ctx, "complete profile", userID, err)
+		writeError(w, err)
 		return
 	}
-
-	h.logger.Info(ctx, "business profile completed", zap.String("user_id", userID))
 	response.SendSuccessResponse(w, r, http.StatusOK, "profile completed successfully", res, nil)
 }
 
@@ -155,28 +138,21 @@ func parseMultipartFile(w http.ResponseWriter, r *http.Request, maxSize int64) (
 	return filename, contentType, data, true
 }
 
-func (h *businessHandler) requireBusiness(w http.ResponseWriter, r *http.Request) (string, bool) {
-	claims, ok := middleware.GetAccessClaims(r.Context())
-	if !ok {
-		response.SendErrorResponse(w, http.StatusUnauthorized, "unauthorized", nil, "unauthorized")
-		return "", false
+func (h *businessHandler) requireBusiness(w http.ResponseWriter, r *http.Request) (*middleware.UserPayload, bool) {
+	user, err := middleware.ExtractUserInfo(r.Context())
+	if err != nil {
+		response.SendErrorResponse(w, http.StatusUnauthorized, "unauthorized", err, "unauthorized")
+		return nil, false
 	}
-	if claims.Role != string(jwtRoleBusiness()) {
+	if user.Role != jwtRoleBusiness() {
 		response.SendErrorResponse(w, http.StatusForbidden, "forbidden", customErr.ErrForbiddenRole, "business access required")
-		return "", false
+		return nil, false
 	}
-	return userIDFromClaims(claims), true
+	return user, true
 }
 
 func jwtRoleBusiness() string {
 	return "business"
-}
-
-func userIDFromClaims(claims *jwt.AccessClaims) string {
-	if claims.UserID != "" {
-		return claims.UserID
-	}
-	return claims.Subject
 }
 
 func sessionMetaFromRequest(r *http.Request) authDto.SessionMeta {
@@ -186,19 +162,8 @@ func sessionMetaFromRequest(r *http.Request) authDto.SessionMeta {
 	}
 }
 
-func (h *businessHandler) handleError(w http.ResponseWriter, ctx context.Context, action, userID string, err error) {
-	if errors.Is(err, businessDto.ErrProfileNotFound) {
-		response.SendErrorResponse(w, http.StatusNotFound, "profile_not_found", err, err.Error())
-		return
-	}
-	if status, ok := customErr.HTTPStatusFromError(err); ok {
-		h.logger.Warn(ctx, action+" rejected",
-			zap.String("user_id", userID),
-			zap.String("reason", customErr.ClientErrorCode(err)),
-		)
-		response.SendErrorResponse(w, status, customErr.ClientErrorCode(err), err, err.Error())
-		return
-	}
-	h.logger.Error(ctx, action+" failed", zap.String("user_id", userID), zap.String("reason", err.Error()))
-	response.SendErrorResponse(w, http.StatusInternalServerError, "internal_server_error", err, "internal server error")
+func writeError(w http.ResponseWriter, err error) {
+	httputil.WriteServiceError(w, err,
+		httputil.ErrorMapping{Err: businessDto.ErrProfileNotFound, Status: http.StatusNotFound, Code: "profile_not_found"},
+	)
 }

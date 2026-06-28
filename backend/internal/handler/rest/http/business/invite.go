@@ -14,10 +14,11 @@ func (h *businessHandler) CreateInvite(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	r.Body = http.MaxBytesReader(w, r.Body, maxInviteBodySize)
 
-	userID, ok := h.requireBusiness(w, r)
+	user, ok := h.requireBusiness(w, r)
 	if !ok {
 		return
 	}
+	userID := user.UserID
 
 	campaignID := chi.URLParam(r, "campaign_id")
 
@@ -28,7 +29,7 @@ func (h *businessHandler) CreateInvite(w http.ResponseWriter, r *http.Request) {
 
 	res, err := h.service.CreateInvite(ctx, userID, campaignID, req, sessionMetaFromRequest(r))
 	if err != nil {
-		h.handleError(w, ctx, "create invite", userID, err)
+		writeError(w, err)
 		return
 	}
 
@@ -37,15 +38,16 @@ func (h *businessHandler) CreateInvite(w http.ResponseWriter, r *http.Request) {
 
 func (h *businessHandler) ListInvites(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	userID, ok := h.requireBusiness(w, r)
+	user, ok := h.requireBusiness(w, r)
 	if !ok {
 		return
 	}
+	userID := user.UserID
 
 	campaignID := chi.URLParam(r, "campaign_id")
 	res, err := h.service.ListInvites(ctx, userID, campaignID)
 	if err != nil {
-		h.handleError(w, ctx, "list invites", userID, err)
+		writeError(w, err)
 		return
 	}
 
@@ -54,16 +56,17 @@ func (h *businessHandler) ListInvites(w http.ResponseWriter, r *http.Request) {
 
 func (h *businessHandler) CancelInvite(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	userID, ok := h.requireBusiness(w, r)
+	user, ok := h.requireBusiness(w, r)
 	if !ok {
 		return
 	}
+	userID := user.UserID
 
 	campaignID := chi.URLParam(r, "campaign_id")
 	inviteID := chi.URLParam(r, "invite_id")
 
 	if err := h.service.CancelInvite(ctx, userID, campaignID, inviteID, sessionMetaFromRequest(r)); err != nil {
-		h.handleError(w, ctx, "cancel invite", userID, err)
+		writeError(w, err)
 		return
 	}
 

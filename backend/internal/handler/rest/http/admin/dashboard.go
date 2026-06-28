@@ -13,7 +13,7 @@ func (h *adminHandler) GetDashboardSummary(w http.ResponseWriter, r *http.Reques
 
 	res, err := h.service.GetDashboardSummary(ctx)
 	if err != nil {
-		h.handleError(w, ctx, "get dashboard summary", err)
+		writeError(w, err)
 		return
 	}
 

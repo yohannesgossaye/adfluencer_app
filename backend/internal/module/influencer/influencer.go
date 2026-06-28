@@ -42,7 +42,14 @@ func InitInfluencerModule(influencer storage.InfluencerPersistence, contracts st
 	}
 }
 
-func (m *influencerModule) GetProfile(ctx context.Context, userID string, user *authDto.UserResponse) (*influencerDto.GetProfileResponse, error) {
+func (m *influencerModule) GetProfile(ctx context.Context, userID string) (*influencerDto.GetProfileResponse, error) {
+	user, err := m.auth.GetUserByID(ctx, userID)
+	if err != nil {
+		if errors.Is(err, customErr.ErrUserNotFound) {
+			return nil, customErr.ErrUnauthorized
+		}
+		return nil, err
+	}
 	if err := ensureEditableStatus(user.Status); err != nil && user.Status != string(model.PendingApprovalStatus) && user.Status != string(model.ActiveStatus) {
 		if user.Status == string(model.BlockedStatus) || user.Status == string(model.RemovedStatus) {
 			return nil, err

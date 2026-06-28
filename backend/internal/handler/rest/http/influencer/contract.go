@@ -11,10 +11,11 @@ import (
 
 func (h *influencerHandler) ListContracts(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	userID, ok := h.requireInfluencer(w, r)
+	user, ok := h.requireInfluencer(w, r)
 	if !ok {
 		return
 	}
+	userID := user.UserID
 
 	query := contractDto.ListQuery{
 		Status: r.URL.Query().Get("status"),
@@ -24,7 +25,7 @@ func (h *influencerHandler) ListContracts(w http.ResponseWriter, r *http.Request
 
 	res, err := h.service.ListContracts(ctx, userID, query)
 	if err != nil {
-		h.handleError(w, ctx, "list contracts", userID, err)
+		writeError(w, err)
 		return
 	}
 
@@ -33,15 +34,16 @@ func (h *influencerHandler) ListContracts(w http.ResponseWriter, r *http.Request
 
 func (h *influencerHandler) GetContract(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	userID, ok := h.requireInfluencer(w, r)
+	user, ok := h.requireInfluencer(w, r)
 	if !ok {
 		return
 	}
+	userID := user.UserID
 
 	contractID := chi.URLParam(r, "contract_id")
 	res, err := h.service.GetContract(ctx, userID, contractID)
 	if err != nil {
-		h.handleError(w, ctx, "get contract", userID, err)
+		writeError(w, err)
 		return
 	}
 
@@ -50,15 +52,16 @@ func (h *influencerHandler) GetContract(w http.ResponseWriter, r *http.Request) 
 
 func (h *influencerHandler) AcceptContract(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	userID, ok := h.requireInfluencer(w, r)
+	user, ok := h.requireInfluencer(w, r)
 	if !ok {
 		return
 	}
+	userID := user.UserID
 
 	contractID := chi.URLParam(r, "contract_id")
 	res, err := h.service.AcceptContract(ctx, userID, contractID, sessionMetaFromRequest(r))
 	if err != nil {
-		h.handleError(w, ctx, "accept contract", userID, err)
+		writeError(w, err)
 		return
 	}
 
@@ -67,15 +70,16 @@ func (h *influencerHandler) AcceptContract(w http.ResponseWriter, r *http.Reques
 
 func (h *influencerHandler) RejectContract(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	userID, ok := h.requireInfluencer(w, r)
+	user, ok := h.requireInfluencer(w, r)
 	if !ok {
 		return
 	}
+	userID := user.UserID
 
 	contractID := chi.URLParam(r, "contract_id")
 	res, err := h.service.RejectContract(ctx, userID, contractID, sessionMetaFromRequest(r))
 	if err != nil {
-		h.handleError(w, ctx, "reject contract", userID, err)
+		writeError(w, err)
 		return
 	}
 

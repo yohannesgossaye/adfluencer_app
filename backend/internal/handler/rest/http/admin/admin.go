@@ -6,25 +6,27 @@ import (
 	customErr "adinfluence_service_app/internal/constant/errors"
 	"adinfluence_service_app/internal/constant/model/response"
 	"adinfluence_service_app/internal/handler/middleware"
+	"adinfluence_service_app/internal/handler/rest/httputil"
 	"adinfluence_service_app/internal/module"
-	"adinfluence_service_app/platform/jwt"
 	"adinfluence_service_app/platform/utils"
-	"context"
 	"encoding/json"
 	"net/http"
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
-	"go.uber.org/zap"
 )
 
 type adminHandler struct {
 	service module.AdminService
-	logger  utils.Logger
+	logger utils.Logger
 }
 
-func InitAdminHandler(s module.AdminService, log utils.Logger) *adminHandler {
-	return &adminHandler{service: s, logger: log}
+func InitAdminHandler(s module.AdminService,log utils.Logger) *adminHandler {
+	return &adminHandler{
+		service: s,
+		logger: log,
+
+	}
 }
 
 const maxAdminBodySize = 1 << 20
@@ -44,10 +46,9 @@ func (h *adminHandler) ListApplications(w http.ResponseWriter, r *http.Request) 
 
 	res, err := h.service.ListApplications(ctx, query)
 	if err != nil {
-		h.handleError(w, ctx, "list applications", err)
+		writeError(w, err)
 		return
 	}
-
 	response.SendSuccessResponse(w, r, http.StatusOK, "applications retrieved successfully", res, nil)
 }
 
@@ -60,19 +61,19 @@ func (h *adminHandler) GetApplication(w http.ResponseWriter, r *http.Request) {
 	userID := chi.URLParam(r, "user_id")
 	res, err := h.service.GetApplication(ctx, userID)
 	if err != nil {
-		h.handleError(w, ctx, "get application", err)
+		writeError(w, err)
 		return
 	}
-
 	response.SendSuccessResponse(w, r, http.StatusOK, "application retrieved successfully", res, nil)
 }
 
 func (h *adminHandler) ApproveApplication(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	adminID, ok := h.requireAdmin(w, r)
+	admin, ok := h.requireAdmin(w, r)
 	if !ok {
 		return
 	}
+	adminID := admin.UserID
 
 	r.Body = http.MaxBytesReader(w, r.Body, maxAdminBodySize)
 	var req adminDto.ApproveApplicationRequest
@@ -84,23 +85,19 @@ func (h *adminHandler) ApproveApplication(w http.ResponseWriter, r *http.Request
 	targetUserID := chi.URLParam(r, "user_id")
 	res, err := h.service.ApproveApplication(ctx, adminID, targetUserID, req, sessionMetaFromRequest(r))
 	if err != nil {
-		h.handleError(w, ctx, "approve application", err)
+		writeError(w, err)
 		return
 	}
-
-	h.logger.Info(ctx, "influencer application approved",
-		zap.String("admin_id", adminID),
-		zap.String("user_id", targetUserID),
-	)
 	response.SendSuccessResponse(w, r, http.StatusOK, "application approved successfully", res, nil)
 }
 
 func (h *adminHandler) RejectApplication(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	adminID, ok := h.requireAdmin(w, r)
+	admin, ok := h.requireAdmin(w, r)
 	if !ok {
 		return
 	}
+	adminID := admin.UserID
 
 	r.Body = http.MaxBytesReader(w, r.Body, maxAdminBodySize)
 	var req adminDto.RejectApplicationRequest
@@ -116,14 +113,9 @@ func (h *adminHandler) RejectApplication(w http.ResponseWriter, r *http.Request)
 	targetUserID := chi.URLParam(r, "user_id")
 	res, err := h.service.RejectApplication(ctx, adminID, targetUserID, req, sessionMetaFromRequest(r))
 	if err != nil {
-		h.handleError(w, ctx, "reject application", err)
+		writeError(w, err)
 		return
 	}
-
-	h.logger.Info(ctx, "influencer application rejected",
-		zap.String("admin_id", adminID),
-		zap.String("user_id", targetUserID),
-	)
 	response.SendSuccessResponse(w, r, http.StatusOK, "application rejected successfully", res, nil)
 }
 
@@ -146,31 +138,23 @@ func (h *adminHandler) UpdateAdminNotes(w http.ResponseWriter, r *http.Request) 
 
 	targetUserID := chi.URLParam(r, "user_id")
 	if err := h.service.UpdateAdminNotes(ctx, targetUserID, req); err != nil {
-		h.handleError(w, ctx, "update admin notes", err)
+		writeError(w, err)
 		return
 	}
-
 	response.SendSuccessResponse(w, r, http.StatusOK, "admin notes updated successfully", nil, nil)
 }
 
-func (h *adminHandler) requireAdmin(w http.ResponseWriter, r *http.Request) (string, bool) {
-	claims, ok := middleware.GetAccessClaims(r.Context())
-	if !ok {
-		response.SendErrorResponse(w, http.StatusUnauthorized, "unauthorized", nil, "unauthorized")
-		return "", false
+func (h *adminHandler) requireAdmin(w http.ResponseWriter, r *http.Request) (*middleware.UserPayload, bool) {
+	user, err := middleware.ExtractUserInfo(r.Context())
+	if err != nil {
+		response.SendErrorResponse(w, http.StatusUnauthorized, "unauthorized", err, "unauthorized")
+		return nil, false
 	}
-	if claims.Role != "admin" {
+	if user.Role != "admin" {
 		response.SendErrorResponse(w, http.StatusForbidden, "forbidden", customErr.ErrForbiddenRole, "admin access required")
-		return "", false
+		return nil, false
 	}
-	return userIDFromClaims(claims), true
-}
-
-func userIDFromClaims(claims *jwt.AccessClaims) string {
-	if claims.UserID != "" {
-		return claims.UserID
-	}
-	return claims.Subject
+	return user, true
 }
 
 func sessionMetaFromRequest(r *http.Request) authDto.SessionMeta {
@@ -191,12 +175,6 @@ func parseIntDefault(raw string, fallback int) int {
 	return v
 }
 
-func (h *adminHandler) handleError(w http.ResponseWriter, ctx context.Context, action string, err error) {
-	if status, ok := customErr.HTTPStatusFromError(err); ok {
-		h.logger.Warn(ctx, action+" rejected", zap.String("reason", customErr.ClientErrorCode(err)))
-		response.SendErrorResponse(w, status, customErr.ClientErrorCode(err), err, err.Error())
-		return
-	}
-	h.logger.Error(ctx, action+" failed", zap.String("reason", err.Error()))
-	response.SendErrorResponse(w, http.StatusInternalServerError, "internal_server_error", err, "internal server error")
+func writeError(w http.ResponseWriter, err error) {
+	httputil.WriteServiceError(w, err)
 }

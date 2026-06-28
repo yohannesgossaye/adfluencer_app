@@ -2,12 +2,12 @@ package business
 
 import (
 	businessDto "adinfluence_service_app/internal/constant/model/dto/business"
-	authDto "adinfluence_service_app/internal/constant/model/dto/auth"
+	"adinfluence_service_app/internal/constant/model"
 	"adinfluence_service_app/internal/module/business/helper"
 	"context"
 )
 
-func (m *businessModule) GetDashboardSummary(ctx context.Context, userID string, user *authDto.UserResponse) (*businessDto.DashboardSummaryResponse, error) {
+func (m *businessModule) GetDashboardSummary(ctx context.Context, userID string) (*businessDto.DashboardSummaryResponse, error) {
 	if err := m.requireActiveBusiness(ctx, userID); err != nil {
 		return nil, err
 	}
@@ -33,7 +33,7 @@ func (m *businessModule) GetDashboardSummary(ctx context.Context, userID string,
 	}
 
 	detail := profile.ProfileDetailResponse
-	marketplace := helper.BuildMarketplaceAccess(detail, user.Status)
+	marketplace := helper.BuildMarketplaceAccess(detail, string(model.ActiveStatus))
 
 	return &businessDto.DashboardSummaryResponse{
 		Greeting: businessDto.DashboardGreeting{

@@ -14,20 +14,14 @@ const maxSupportBodySize = 1 << 20
 
 func (h *influencerHandler) GetDashboardSummary(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	userID, ok := h.requireInfluencer(w, r)
+	user, ok := h.requireInfluencer(w, r)
 	if !ok {
 		return
 	}
 
-	user, err := h.auth.GetMe(ctx, userID)
+	res, err := h.service.GetDashboardSummary(ctx, user.UserID)
 	if err != nil {
-		h.handleError(w, ctx, "get dashboard summary", userID, err)
-		return
-	}
-
-	res, err := h.service.GetDashboardSummary(ctx, userID, &user.User)
-	if err != nil {
-		h.handleError(w, ctx, "get dashboard summary", userID, err)
+		writeError(w, err)
 		return
 	}
 
@@ -36,14 +30,15 @@ func (h *influencerHandler) GetDashboardSummary(w http.ResponseWriter, r *http.R
 
 func (h *influencerHandler) ListSupportInviteOptions(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	userID, ok := h.requireInfluencer(w, r)
+	user, ok := h.requireInfluencer(w, r)
 	if !ok {
 		return
 	}
+	userID := user.UserID
 
 	res, err := h.service.ListSupportInviteOptions(ctx, userID)
 	if err != nil {
-		h.handleError(w, ctx, "list support invite options", userID, err)
+		writeError(w, err)
 		return
 	}
 
@@ -54,10 +49,11 @@ func (h *influencerHandler) CreateSupportTicket(w http.ResponseWriter, r *http.R
 	ctx := r.Context()
 	r.Body = http.MaxBytesReader(w, r.Body, maxSupportBodySize)
 
-	userID, ok := h.requireInfluencer(w, r)
+	user, ok := h.requireInfluencer(w, r)
 	if !ok {
 		return
 	}
+	userID := user.UserID
 
 	var req influencerDto.CreateSupportTicketRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -71,7 +67,7 @@ func (h *influencerHandler) CreateSupportTicket(w http.ResponseWriter, r *http.R
 
 	res, err := h.service.CreateSupportTicket(ctx, userID, req, sessionMetaFromRequest(r))
 	if err != nil {
-		h.handleError(w, ctx, "create support ticket", userID, err)
+		writeError(w, err)
 		return
 	}
 
@@ -80,14 +76,15 @@ func (h *influencerHandler) CreateSupportTicket(w http.ResponseWriter, r *http.R
 
 func (h *influencerHandler) ListSupportTickets(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	userID, ok := h.requireInfluencer(w, r)
+	user, ok := h.requireInfluencer(w, r)
 	if !ok {
 		return
 	}
+	userID := user.UserID
 
 	res, err := h.service.ListSupportTickets(ctx, userID)
 	if err != nil {
-		h.handleError(w, ctx, "list support tickets", userID, err)
+		writeError(w, err)
 		return
 	}
 
@@ -96,15 +93,16 @@ func (h *influencerHandler) ListSupportTickets(w http.ResponseWriter, r *http.Re
 
 func (h *influencerHandler) GetSupportTicket(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	userID, ok := h.requireInfluencer(w, r)
+	user, ok := h.requireInfluencer(w, r)
 	if !ok {
 		return
 	}
+	userID := user.UserID
 
 	ticketID := chi.URLParam(r, "ticket_id")
 	res, err := h.service.GetSupportTicket(ctx, userID, ticketID)
 	if err != nil {
-		h.handleError(w, ctx, "get support ticket", userID, err)
+		writeError(w, err)
 		return
 	}
 

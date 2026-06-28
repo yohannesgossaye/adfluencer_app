@@ -43,7 +43,14 @@ func InitBusinessModule(business storage.BusinessPersistence, influencer storage
 	}
 }
 
-func (m *businessModule) GetProfile(ctx context.Context, userID string, user *authDto.UserResponse) (*businessDto.GetProfileResponse, error) {
+func (m *businessModule) GetProfile(ctx context.Context, userID string) (*businessDto.GetProfileResponse, error) {
+	user, err := m.auth.GetUserByID(ctx, userID)
+	if err != nil {
+		if errors.Is(err, customErr.ErrUserNotFound) {
+			return nil, customErr.ErrUnauthorized
+		}
+		return nil, err
+	}
 	if err := ensureReadableStatus(user.Status); err != nil {
 		return nil, err
 	}

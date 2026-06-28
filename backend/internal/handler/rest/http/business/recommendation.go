@@ -11,15 +11,16 @@ import (
 
 func (h *businessHandler) GenerateRecommendations(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	userID, ok := h.requireBusiness(w, r)
+	user, ok := h.requireBusiness(w, r)
 	if !ok {
 		return
 	}
+	userID := user.UserID
 
 	campaignID := chi.URLParam(r, "campaign_id")
 	res, err := h.service.GenerateRecommendations(ctx, userID, campaignID, sessionMetaFromRequest(r))
 	if err != nil {
-		h.handleError(w, ctx, "generate recommendations", userID, err)
+		writeError(w, err)
 		return
 	}
 
@@ -28,10 +29,11 @@ func (h *businessHandler) GenerateRecommendations(w http.ResponseWriter, r *http
 
 func (h *businessHandler) ListRecommendations(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	userID, ok := h.requireBusiness(w, r)
+	user, ok := h.requireBusiness(w, r)
 	if !ok {
 		return
 	}
+	userID := user.UserID
 
 	campaignID := chi.URLParam(r, "campaign_id")
 	query := businessDto.ListRecommendationsQuery{
@@ -46,7 +48,7 @@ func (h *businessHandler) ListRecommendations(w http.ResponseWriter, r *http.Req
 
 	res, err := h.service.ListRecommendations(ctx, userID, campaignID, query)
 	if err != nil {
-		h.handleError(w, ctx, "list recommendations", userID, err)
+		writeError(w, err)
 		return
 	}
 
@@ -55,17 +57,18 @@ func (h *businessHandler) ListRecommendations(w http.ResponseWriter, r *http.Req
 
 func (h *businessHandler) GetInfluencerForBusiness(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	userID, ok := h.requireBusiness(w, r)
+	user, ok := h.requireBusiness(w, r)
 	if !ok {
 		return
 	}
+	userID := user.UserID
 
 	influencerUserID := chi.URLParam(r, "user_id")
 	campaignID := r.URL.Query().Get("campaign_id")
 
 	res, err := h.service.GetInfluencerForBusiness(ctx, userID, influencerUserID, campaignID)
 	if err != nil {
-		h.handleError(w, ctx, "get influencer", userID, err)
+		writeError(w, err)
 		return
 	}
 

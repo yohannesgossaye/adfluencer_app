@@ -25,7 +25,7 @@ type AuthService interface {
 }
 
 type InfluencerService interface {
-	GetProfile(ctx context.Context, userID string, user *authDto.UserResponse) (*influencerDto.GetProfileResponse, error)
+	GetProfile(ctx context.Context, userID string) (*influencerDto.GetProfileResponse, error)
 	UpdateProfile(ctx context.Context, userID string, req influencerDto.UpdateProfileRequest, meta authDto.SessionMeta) (*influencerDto.GetProfileResponse, error)
 	SubmitProfile(ctx context.Context, userID string, meta authDto.SessionMeta) (*influencerDto.SubmitProfileResponse, error)
 	UploadAvatar(ctx context.Context, userID string, filename, contentType string, data []byte, meta authDto.SessionMeta) (*influencerDto.UploadAvatarResponse, error)
@@ -39,7 +39,7 @@ type InfluencerService interface {
 	GetContract(ctx context.Context, userID, contractID string) (*contractDto.DetailResponse, error)
 	AcceptContract(ctx context.Context, userID, contractID string, meta authDto.SessionMeta) (*influencerDto.RespondContractResponse, error)
 	RejectContract(ctx context.Context, userID, contractID string, meta authDto.SessionMeta) (*influencerDto.RespondContractResponse, error)
-	GetDashboardSummary(ctx context.Context, userID string, user *authDto.UserResponse) (*influencerDto.DashboardSummaryResponse, error)
+	GetDashboardSummary(ctx context.Context, userID string) (*influencerDto.DashboardSummaryResponse, error)
 	ListSupportInviteOptions(ctx context.Context, userID string) (*influencerDto.ListSupportInviteOptionsResponse, error)
 	CreateSupportTicket(ctx context.Context, userID string, req influencerDto.CreateSupportTicketRequest, meta authDto.SessionMeta) (*commonDto.CreatedIDResponse, error)
 	ListSupportTickets(ctx context.Context, userID string) (*influencerDto.ListSupportTicketsResponse, error)
@@ -83,7 +83,7 @@ type AdminService interface {
 }
 
 type BusinessService interface {
-	GetProfile(ctx context.Context, userID string, user *authDto.UserResponse) (*businessDto.GetProfileResponse, error)
+	GetProfile(ctx context.Context, userID string) (*businessDto.GetProfileResponse, error)
 	UpdateProfile(ctx context.Context, userID string, req businessDto.UpdateProfileRequest, meta authDto.SessionMeta) (*businessDto.GetProfileResponse, error)
 	UploadLogo(ctx context.Context, userID string, filename, contentType string, data []byte, meta authDto.SessionMeta) (*businessDto.UploadLogoResponse, error)
 	CompleteProfile(ctx context.Context, userID string, meta authDto.SessionMeta) (*businessDto.CompleteProfileResponse, error)
@@ -105,7 +105,7 @@ type BusinessService interface {
 	PayContract(ctx context.Context, userID, contractID string, meta authDto.SessionMeta) (*businessDto.PayContractResponse, error)
 	ApproveWork(ctx context.Context, userID, contractID string, meta authDto.SessionMeta) (*businessDto.ApproveWorkResponse, error)
 	CancelContract(ctx context.Context, userID, contractID string, meta authDto.SessionMeta) (*businessDto.ContractMutationResponse, error)
-	GetDashboardSummary(ctx context.Context, userID string, user *authDto.UserResponse) (*businessDto.DashboardSummaryResponse, error)
+	GetDashboardSummary(ctx context.Context, userID string) (*businessDto.DashboardSummaryResponse, error)
 	ListSupportCampaignOptions(ctx context.Context, userID string) (*businessDto.ListSupportCampaignOptionsResponse, error)
 	CreateSupportTicket(ctx context.Context, userID string, req businessDto.CreateSupportTicketRequest, meta authDto.SessionMeta) (*commonDto.CreatedIDResponse, error)
 	ListSupportTickets(ctx context.Context, userID string) (*businessDto.ListSupportTicketsResponse, error)

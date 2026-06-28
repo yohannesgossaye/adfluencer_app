@@ -13,14 +13,15 @@ const maxSupportBodySize = 1 << 20
 
 func (h *businessHandler) ListSupportCampaignOptions(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	userID, ok := h.requireBusiness(w, r)
+	user, ok := h.requireBusiness(w, r)
 	if !ok {
 		return
 	}
+	userID := user.UserID
 
 	res, err := h.service.ListSupportCampaignOptions(ctx, userID)
 	if err != nil {
-		h.handleError(w, ctx, "list support campaign options", userID, err)
+		writeError(w, err)
 		return
 	}
 
@@ -31,10 +32,11 @@ func (h *businessHandler) CreateSupportTicket(w http.ResponseWriter, r *http.Req
 	ctx := r.Context()
 	r.Body = http.MaxBytesReader(w, r.Body, maxSupportBodySize)
 
-	userID, ok := h.requireBusiness(w, r)
+	user, ok := h.requireBusiness(w, r)
 	if !ok {
 		return
 	}
+	userID := user.UserID
 
 	var req businessDto.CreateSupportTicketRequest
 	if decodeJSON(w, r, &req) {
@@ -47,7 +49,7 @@ func (h *businessHandler) CreateSupportTicket(w http.ResponseWriter, r *http.Req
 
 	res, err := h.service.CreateSupportTicket(ctx, userID, req, sessionMetaFromRequest(r))
 	if err != nil {
-		h.handleError(w, ctx, "create support ticket", userID, err)
+		writeError(w, err)
 		return
 	}
 
@@ -56,14 +58,15 @@ func (h *businessHandler) CreateSupportTicket(w http.ResponseWriter, r *http.Req
 
 func (h *businessHandler) ListSupportTickets(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	userID, ok := h.requireBusiness(w, r)
+	user, ok := h.requireBusiness(w, r)
 	if !ok {
 		return
 	}
+	userID := user.UserID
 
 	res, err := h.service.ListSupportTickets(ctx, userID)
 	if err != nil {
-		h.handleError(w, ctx, "list support tickets", userID, err)
+		writeError(w, err)
 		return
 	}
 
@@ -72,15 +75,16 @@ func (h *businessHandler) ListSupportTickets(w http.ResponseWriter, r *http.Requ
 
 func (h *businessHandler) GetSupportTicket(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	userID, ok := h.requireBusiness(w, r)
+	user, ok := h.requireBusiness(w, r)
 	if !ok {
 		return
 	}
+	userID := user.UserID
 
 	ticketID := chi.URLParam(r, "ticket_id")
 	res, err := h.service.GetSupportTicket(ctx, userID, ticketID)
 	if err != nil {
-		h.handleError(w, ctx, "get support ticket", userID, err)
+		writeError(w, err)
 		return
 	}
 

@@ -15,10 +15,11 @@ func (h *businessHandler) CreateContract(w http.ResponseWriter, r *http.Request)
 	ctx := r.Context()
 	r.Body = http.MaxBytesReader(w, r.Body, maxContractBodySize)
 
-	userID, ok := h.requireBusiness(w, r)
+	user, ok := h.requireBusiness(w, r)
 	if !ok {
 		return
 	}
+	userID := user.UserID
 
 	var req businessDto.CreateContractRequest
 	if decodeJSON(w, r, &req) {
@@ -27,7 +28,7 @@ func (h *businessHandler) CreateContract(w http.ResponseWriter, r *http.Request)
 
 	res, err := h.service.CreateContract(ctx, userID, req, sessionMetaFromRequest(r))
 	if err != nil {
-		h.handleError(w, ctx, "create contract", userID, err)
+		writeError(w, err)
 		return
 	}
 
@@ -36,10 +37,11 @@ func (h *businessHandler) CreateContract(w http.ResponseWriter, r *http.Request)
 
 func (h *businessHandler) ListContracts(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	userID, ok := h.requireBusiness(w, r)
+	user, ok := h.requireBusiness(w, r)
 	if !ok {
 		return
 	}
+	userID := user.UserID
 
 	query := contractDto.ListQuery{
 		Status: r.URL.Query().Get("status"),
@@ -49,7 +51,7 @@ func (h *businessHandler) ListContracts(w http.ResponseWriter, r *http.Request) 
 
 	res, err := h.service.ListContracts(ctx, userID, query)
 	if err != nil {
-		h.handleError(w, ctx, "list contracts", userID, err)
+		writeError(w, err)
 		return
 	}
 
@@ -58,15 +60,16 @@ func (h *businessHandler) ListContracts(w http.ResponseWriter, r *http.Request) 
 
 func (h *businessHandler) GetContract(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	userID, ok := h.requireBusiness(w, r)
+	user, ok := h.requireBusiness(w, r)
 	if !ok {
 		return
 	}
+	userID := user.UserID
 
 	contractID := chi.URLParam(r, "contract_id")
 	res, err := h.service.GetContract(ctx, userID, contractID)
 	if err != nil {
-		h.handleError(w, ctx, "get contract", userID, err)
+		writeError(w, err)
 		return
 	}
 
@@ -75,15 +78,16 @@ func (h *businessHandler) GetContract(w http.ResponseWriter, r *http.Request) {
 
 func (h *businessHandler) PayContract(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	userID, ok := h.requireBusiness(w, r)
+	user, ok := h.requireBusiness(w, r)
 	if !ok {
 		return
 	}
+	userID := user.UserID
 
 	contractID := chi.URLParam(r, "contract_id")
 	res, err := h.service.PayContract(ctx, userID, contractID, sessionMetaFromRequest(r))
 	if err != nil {
-		h.handleError(w, ctx, "pay contract", userID, err)
+		writeError(w, err)
 		return
 	}
 
@@ -92,15 +96,16 @@ func (h *businessHandler) PayContract(w http.ResponseWriter, r *http.Request) {
 
 func (h *businessHandler) ApproveWork(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	userID, ok := h.requireBusiness(w, r)
+	user, ok := h.requireBusiness(w, r)
 	if !ok {
 		return
 	}
+	userID := user.UserID
 
 	contractID := chi.URLParam(r, "contract_id")
 	res, err := h.service.ApproveWork(ctx, userID, contractID, sessionMetaFromRequest(r))
 	if err != nil {
-		h.handleError(w, ctx, "approve work", userID, err)
+		writeError(w, err)
 		return
 	}
 
@@ -109,15 +114,16 @@ func (h *businessHandler) ApproveWork(w http.ResponseWriter, r *http.Request) {
 
 func (h *businessHandler) CancelContract(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	userID, ok := h.requireBusiness(w, r)
+	user, ok := h.requireBusiness(w, r)
 	if !ok {
 		return
 	}
+	userID := user.UserID
 
 	contractID := chi.URLParam(r, "contract_id")
 	res, err := h.service.CancelContract(ctx, userID, contractID, sessionMetaFromRequest(r))
 	if err != nil {
-		h.handleError(w, ctx, "cancel contract", userID, err)
+		writeError(w, err)
 		return
 	}
 

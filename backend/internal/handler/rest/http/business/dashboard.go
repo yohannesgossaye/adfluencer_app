@@ -7,20 +7,14 @@ import (
 
 func (h *businessHandler) GetDashboardSummary(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	userID, ok := h.requireBusiness(w, r)
+	user, ok := h.requireBusiness(w, r)
 	if !ok {
 		return
 	}
 
-	user, err := h.auth.GetMe(ctx, userID)
+	res, err := h.service.GetDashboardSummary(ctx, user.UserID)
 	if err != nil {
-		h.handleError(w, ctx, "get dashboard summary", userID, err)
-		return
-	}
-
-	res, err := h.service.GetDashboardSummary(ctx, userID, &user.User)
-	if err != nil {
-		h.handleError(w, ctx, "get dashboard summary", userID, err)
+		writeError(w, err)
 		return
 	}
 

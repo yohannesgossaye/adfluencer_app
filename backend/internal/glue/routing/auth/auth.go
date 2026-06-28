@@ -11,6 +11,7 @@ import (
 
 func AuthRoutes(router chi.Router, rest handler.AuthHandler, authMiddleware middleware.AuthMiddleware) {
 	router.Route("/auth", func(r chi.Router) {
+		auth := []func(next http.Handler) http.Handler{authMiddleware.AuthenticateToken}
 		routes := []glue.Route{
 			{
 				Method:  http.MethodPost,
@@ -38,52 +39,40 @@ func AuthRoutes(router chi.Router, rest handler.AuthHandler, authMiddleware midd
 				Handler: rest.ResetPassword,
 			},
 			{
-				Method:  http.MethodGet,
-				Path:    "/me",
-				Handler: rest.GetMe,
-				Middlewares: []func(next http.Handler) http.Handler{
-					authMiddleware.AuthenticateToken,
-				},
+				Method:      http.MethodGet,
+				Path:        "/me",
+				Handler:     rest.GetMe,
+				Middlewares: auth,
 			},
 			{
-				Method:  http.MethodPost,
-				Path:    "/logout",
-				Handler: rest.Logout,
-				Middlewares: []func(next http.Handler) http.Handler{
-					authMiddleware.AuthenticateToken,
-				},
+				Method:      http.MethodPost,
+				Path:        "/logout",
+				Handler:     rest.Logout,
+				Middlewares: auth,
 			},
 			{
-				Method:  http.MethodPost,
-				Path:    "/send-verify-email",
-				Handler: rest.SendVerifyEmail,
-				Middlewares: []func(next http.Handler) http.Handler{
-					authMiddleware.AuthenticateToken,
-				},
+				Method:      http.MethodPost,
+				Path:        "/send-verify-email",
+				Handler:     rest.SendVerifyEmail,
+				Middlewares: auth,
 			},
 			{
-				Method:  http.MethodPost,
-				Path:    "/verify-email",
-				Handler: rest.VerifyEmail,
-				Middlewares: []func(next http.Handler) http.Handler{
-					authMiddleware.AuthenticateToken,
-				},
+				Method:      http.MethodPost,
+				Path:        "/verify-email",
+				Handler:     rest.VerifyEmail,
+				Middlewares: auth,
 			},
 			{
-				Method:  http.MethodPost,
-				Path:    "/send-verify-phone",
-				Handler: rest.SendVerifyPhone,
-				Middlewares: []func(next http.Handler) http.Handler{
-					authMiddleware.AuthenticateToken,
-				},
+				Method:      http.MethodPost,
+				Path:        "/send-verify-phone",
+				Handler:     rest.SendVerifyPhone,
+				Middlewares: auth,
 			},
 			{
-				Method:  http.MethodPost,
-				Path:    "/verify-phone",
-				Handler: rest.VerifyPhone,
-				Middlewares: []func(next http.Handler) http.Handler{
-					authMiddleware.AuthenticateToken,
-				},
+				Method:      http.MethodPost,
+				Path:        "/verify-phone",
+				Handler:     rest.VerifyPhone,
+				Middlewares: auth,
 			},
 		}
 		glue.RegisterRoutes(r, routes)

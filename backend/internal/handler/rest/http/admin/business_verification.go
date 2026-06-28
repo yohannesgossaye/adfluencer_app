@@ -7,7 +7,6 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"go.uber.org/zap"
 )
 
 func (h *adminHandler) ListBusinessVerifications(w http.ResponseWriter, r *http.Request) {
@@ -25,7 +24,7 @@ func (h *adminHandler) ListBusinessVerifications(w http.ResponseWriter, r *http.
 
 	res, err := h.service.ListBusinessVerifications(ctx, query)
 	if err != nil {
-		h.handleError(w, ctx, "list business verifications", err)
+		writeError(w, err)
 		return
 	}
 
@@ -41,7 +40,7 @@ func (h *adminHandler) GetBusinessVerification(w http.ResponseWriter, r *http.Re
 	userID := chi.URLParam(r, "user_id")
 	res, err := h.service.GetBusinessVerification(ctx, userID)
 	if err != nil {
-		h.handleError(w, ctx, "get business verification", err)
+		writeError(w, err)
 		return
 	}
 
@@ -50,10 +49,11 @@ func (h *adminHandler) GetBusinessVerification(w http.ResponseWriter, r *http.Re
 
 func (h *adminHandler) VerifyBusiness(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	adminID, ok := h.requireAdmin(w, r)
+	admin, ok := h.requireAdmin(w, r)
 	if !ok {
 		return
 	}
+	adminID := admin.UserID
 
 	r.Body = http.MaxBytesReader(w, r.Body, maxAdminBodySize)
 	var req adminDto.VerifyBusinessRequest
@@ -65,23 +65,20 @@ func (h *adminHandler) VerifyBusiness(w http.ResponseWriter, r *http.Request) {
 	targetUserID := chi.URLParam(r, "user_id")
 	res, err := h.service.VerifyBusiness(ctx, adminID, targetUserID, req, sessionMetaFromRequest(r))
 	if err != nil {
-		h.handleError(w, ctx, "verify business", err)
+		writeError(w, err)
 		return
 	}
 
-	h.logger.Info(ctx, "business verified",
-		zap.String("admin_id", adminID),
-		zap.String("user_id", targetUserID),
-	)
 	response.SendSuccessResponse(w, r, http.StatusOK, "business verified successfully", res, nil)
 }
 
 func (h *adminHandler) RevokeBusinessVerification(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	adminID, ok := h.requireAdmin(w, r)
+	admin, ok := h.requireAdmin(w, r)
 	if !ok {
 		return
 	}
+	adminID := admin.UserID
 
 	r.Body = http.MaxBytesReader(w, r.Body, maxAdminBodySize)
 	var req adminDto.RevokeBusinessVerificationRequest
@@ -93,13 +90,9 @@ func (h *adminHandler) RevokeBusinessVerification(w http.ResponseWriter, r *http
 	targetUserID := chi.URLParam(r, "user_id")
 	res, err := h.service.RevokeBusinessVerification(ctx, adminID, targetUserID, req, sessionMetaFromRequest(r))
 	if err != nil {
-		h.handleError(w, ctx, "revoke business verification", err)
+		writeError(w, err)
 		return
 	}
 
-	h.logger.Info(ctx, "business verification revoked",
-		zap.String("admin_id", adminID),
-		zap.String("user_id", targetUserID),
-	)
 	response.SendSuccessResponse(w, r, http.StatusOK, "business verification revoked successfully", res, nil)
 }

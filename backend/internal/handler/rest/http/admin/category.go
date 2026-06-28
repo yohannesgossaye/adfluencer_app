@@ -8,7 +8,6 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"go.uber.org/zap"
 )
 
 func (h *adminHandler) ListCategories(w http.ResponseWriter, r *http.Request) {
@@ -19,7 +18,7 @@ func (h *adminHandler) ListCategories(w http.ResponseWriter, r *http.Request) {
 
 	res, err := h.service.ListCategories(ctx)
 	if err != nil {
-		h.handleError(w, ctx, "list categories", err)
+		writeError(w, err)
 		return
 	}
 
@@ -28,10 +27,11 @@ func (h *adminHandler) ListCategories(w http.ResponseWriter, r *http.Request) {
 
 func (h *adminHandler) CreateCategory(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	adminID, ok := h.requireAdmin(w, r)
+	admin, ok := h.requireAdmin(w, r)
 	if !ok {
 		return
 	}
+	adminID := admin.UserID
 
 	r.Body = http.MaxBytesReader(w, r.Body, maxAdminBodySize)
 	var req adminDto.CreateCategoryRequest
@@ -46,20 +46,20 @@ func (h *adminHandler) CreateCategory(w http.ResponseWriter, r *http.Request) {
 
 	res, err := h.service.CreateCategory(ctx, adminID, req, sessionMetaFromRequest(r))
 	if err != nil {
-		h.handleError(w, ctx, "create category", err)
+		writeError(w, err)
 		return
 	}
 
-	h.logger.Info(ctx, "category created", zap.String("admin_id", adminID), zap.String("category_id", res.ID))
 	response.SendSuccessResponse(w, r, http.StatusCreated, "category created successfully", res, nil)
 }
 
 func (h *adminHandler) UpdateCategory(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	adminID, ok := h.requireAdmin(w, r)
+	admin, ok := h.requireAdmin(w, r)
 	if !ok {
 		return
 	}
+	adminID := admin.UserID
 
 	r.Body = http.MaxBytesReader(w, r.Body, maxAdminBodySize)
 	var req adminDto.UpdateCategoryRequest
@@ -75,7 +75,7 @@ func (h *adminHandler) UpdateCategory(w http.ResponseWriter, r *http.Request) {
 	categoryID := chi.URLParam(r, "category_id")
 	res, err := h.service.UpdateCategory(ctx, adminID, categoryID, req, sessionMetaFromRequest(r))
 	if err != nil {
-		h.handleError(w, ctx, "update category", err)
+		writeError(w, err)
 		return
 	}
 
@@ -84,15 +84,16 @@ func (h *adminHandler) UpdateCategory(w http.ResponseWriter, r *http.Request) {
 
 func (h *adminHandler) DisableCategory(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	adminID, ok := h.requireAdmin(w, r)
+	admin, ok := h.requireAdmin(w, r)
 	if !ok {
 		return
 	}
+	adminID := admin.UserID
 
 	categoryID := chi.URLParam(r, "category_id")
 	res, err := h.service.DisableCategory(ctx, adminID, categoryID, sessionMetaFromRequest(r))
 	if err != nil {
-		h.handleError(w, ctx, "disable category", err)
+		writeError(w, err)
 		return
 	}
 
@@ -101,15 +102,16 @@ func (h *adminHandler) DisableCategory(w http.ResponseWriter, r *http.Request) {
 
 func (h *adminHandler) EnableCategory(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	adminID, ok := h.requireAdmin(w, r)
+	admin, ok := h.requireAdmin(w, r)
 	if !ok {
 		return
 	}
+	adminID := admin.UserID
 
 	categoryID := chi.URLParam(r, "category_id")
 	res, err := h.service.EnableCategory(ctx, adminID, categoryID, sessionMetaFromRequest(r))
 	if err != nil {
-		h.handleError(w, ctx, "enable category", err)
+		writeError(w, err)
 		return
 	}
 

@@ -16,10 +16,11 @@ func (h *businessHandler) CreateCampaign(w http.ResponseWriter, r *http.Request)
 	ctx := r.Context()
 	r.Body = http.MaxBytesReader(w, r.Body, maxCampaignBodySize)
 
-	userID, ok := h.requireBusiness(w, r)
+	user, ok := h.requireBusiness(w, r)
 	if !ok {
 		return
 	}
+	userID := user.UserID
 
 	var req businessDto.CreateCampaignRequest
 	if decodeJSON(w, r, &req) {
@@ -28,7 +29,7 @@ func (h *businessHandler) CreateCampaign(w http.ResponseWriter, r *http.Request)
 
 	res, err := h.service.CreateCampaign(ctx, userID, req, sessionMetaFromRequest(r))
 	if err != nil {
-		h.handleError(w, ctx, "create campaign", userID, err)
+		writeError(w, err)
 		return
 	}
 
@@ -37,10 +38,11 @@ func (h *businessHandler) CreateCampaign(w http.ResponseWriter, r *http.Request)
 
 func (h *businessHandler) ListCampaigns(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	userID, ok := h.requireBusiness(w, r)
+	user, ok := h.requireBusiness(w, r)
 	if !ok {
 		return
 	}
+	userID := user.UserID
 
 	query := businessDto.ListCampaignsQuery{
 		Status: r.URL.Query().Get("status"),
@@ -50,7 +52,7 @@ func (h *businessHandler) ListCampaigns(w http.ResponseWriter, r *http.Request) 
 
 	res, err := h.service.ListCampaigns(ctx, userID, query)
 	if err != nil {
-		h.handleError(w, ctx, "list campaigns", userID, err)
+		writeError(w, err)
 		return
 	}
 
@@ -59,15 +61,16 @@ func (h *businessHandler) ListCampaigns(w http.ResponseWriter, r *http.Request) 
 
 func (h *businessHandler) GetCampaign(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	userID, ok := h.requireBusiness(w, r)
+	user, ok := h.requireBusiness(w, r)
 	if !ok {
 		return
 	}
+	userID := user.UserID
 
 	campaignID := chi.URLParam(r, "campaign_id")
 	res, err := h.service.GetCampaign(ctx, userID, campaignID)
 	if err != nil {
-		h.handleError(w, ctx, "get campaign", userID, err)
+		writeError(w, err)
 		return
 	}
 
@@ -78,10 +81,11 @@ func (h *businessHandler) UpdateCampaign(w http.ResponseWriter, r *http.Request)
 	ctx := r.Context()
 	r.Body = http.MaxBytesReader(w, r.Body, maxCampaignBodySize)
 
-	userID, ok := h.requireBusiness(w, r)
+	user, ok := h.requireBusiness(w, r)
 	if !ok {
 		return
 	}
+	userID := user.UserID
 
 	campaignID := chi.URLParam(r, "campaign_id")
 
@@ -92,7 +96,7 @@ func (h *businessHandler) UpdateCampaign(w http.ResponseWriter, r *http.Request)
 
 	res, err := h.service.UpdateCampaign(ctx, userID, campaignID, req, sessionMetaFromRequest(r))
 	if err != nil {
-		h.handleError(w, ctx, "update campaign", userID, err)
+		writeError(w, err)
 		return
 	}
 
@@ -101,15 +105,16 @@ func (h *businessHandler) UpdateCampaign(w http.ResponseWriter, r *http.Request)
 
 func (h *businessHandler) PublishCampaign(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	userID, ok := h.requireBusiness(w, r)
+	user, ok := h.requireBusiness(w, r)
 	if !ok {
 		return
 	}
+	userID := user.UserID
 
 	campaignID := chi.URLParam(r, "campaign_id")
 	res, err := h.service.PublishCampaign(ctx, userID, campaignID, sessionMetaFromRequest(r))
 	if err != nil {
-		h.handleError(w, ctx, "publish campaign", userID, err)
+		writeError(w, err)
 		return
 	}
 
@@ -118,15 +123,16 @@ func (h *businessHandler) PublishCampaign(w http.ResponseWriter, r *http.Request
 
 func (h *businessHandler) CancelCampaign(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	userID, ok := h.requireBusiness(w, r)
+	user, ok := h.requireBusiness(w, r)
 	if !ok {
 		return
 	}
+	userID := user.UserID
 
 	campaignID := chi.URLParam(r, "campaign_id")
 	res, err := h.service.CancelCampaign(ctx, userID, campaignID, sessionMetaFromRequest(r))
 	if err != nil {
-		h.handleError(w, ctx, "cancel campaign", userID, err)
+		writeError(w, err)
 		return
 	}
 
