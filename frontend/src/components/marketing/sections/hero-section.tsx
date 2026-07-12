@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 
 import { GradientButton } from "@/components/common/gradient-button";
 import { Button } from "@/components/ui/button";
+import { buildMarketingAuthHref } from "@/lib/marketing-auth-url";
 import { cn } from "@/lib/utils";
 
 function FloatingStat({
@@ -38,7 +39,7 @@ function FloatingStat({
 
 export function HeroSection() {
   return (
-    <section className="relative overflow-hidden bg-[color:var(--adfluence-navy)] text-white">
+    <section className="relative overflow-hidden bg-[color:var(--adfluence-bg)] text-white">
       <div className="absolute inset-y-0 right-0 hidden w-full md:block lg:w-[62%]">
         <Image
           src="/images/adfluence-hero.jpg"
@@ -60,9 +61,7 @@ export function HeroSection() {
             <br />
             Grow Your Brand.
             <br />
-            <span className="bg-gradient-to-r from-[#FF7A00] to-[#7C3AED] bg-clip-text text-transparent">
-              Anywhere.
-            </span>
+            <span className="text-[color:var(--adfluence-orange)]">Anywhere.</span>
           </h1>
           <p className="mt-6 text-lg leading-8 text-[#CBD5E1] lg:text-xl lg:leading-9">
             Adfluence helps businesses of all sizes discover the right creators,
@@ -73,7 +72,7 @@ export function HeroSection() {
               asChild
               className="h-12 justify-center rounded-xl px-6 text-base font-medium sm:text-lg"
             >
-              <Link href="/auth/signup?role=business">
+              <Link href={buildMarketingAuthHref("/", "signup", "business")}>
                 Start a Campaign <ArrowRight className="size-5" />
               </Link>
             </GradientButton>
@@ -82,7 +81,7 @@ export function HeroSection() {
               variant="outline"
               className="h-12 justify-center rounded-xl border-white/15 bg-transparent px-6 text-base font-medium text-white hover:bg-white/10 sm:text-lg"
             >
-              <Link href="/auth/signup?role=influencer">
+              <Link href={buildMarketingAuthHref("/", "signup", "influencer")}>
                 <Play className="size-5" />
                 Join as Influencer
               </Link>

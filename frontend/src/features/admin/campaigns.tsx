@@ -68,7 +68,7 @@ export function AdminCampaigns() {
   };
 
   return (
-    <div className="space-y-6 rounded-2xl bg-[#0B1A2B] p-4 text-white md:p-6">
+    <div className="space-y-6 text-white">
       <div>
         <h1 className="text-2xl font-semibold text-white">Campaigns</h1>
         <p className="mt-1 max-w-2xl text-sm text-[#CBD5E1]">
@@ -87,7 +87,7 @@ export function AdminCampaigns() {
             className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-4"
           >
             <p className="text-xs text-[#CBD5E1]">{s.label}</p>
-            <p className="mt-2 text-2xl font-bold text-white">{s.value}</p>
+            <p className="mt-2 text-2xl font-bold text-[color:var(--adfluence-orange)]">{s.value}</p>
           </article>
         ))}
       </section>
@@ -99,7 +99,7 @@ export function AdminCampaigns() {
           className={cn(
             "rounded-full border px-3 py-1.5 text-xs",
             status === "all"
-              ? "border-transparent bg-gradient-to-r from-[#FF7A00] to-[#7C3AED] text-white"
+              ? "border-transparent bg-[color:var(--adfluence-orange)] text-white"
               : "border-white/10 text-[#CBD5E1]",
           )}
         >
@@ -113,7 +113,7 @@ export function AdminCampaigns() {
             className={cn(
               "rounded-full border px-3 py-1.5 text-xs capitalize",
               status === s
-                ? "border-transparent bg-gradient-to-r from-[#FF7A00] to-[#7C3AED] text-white"
+                ? "border-transparent bg-[color:var(--adfluence-orange)] text-white"
                 : "border-white/10 text-[#CBD5E1]",
             )}
           >
@@ -127,13 +127,13 @@ export function AdminCampaigns() {
           value={niche}
           onChange={(e) => setNiche(e.target.value)}
           placeholder="Filter niche"
-          className="h-10 max-w-xs rounded-xl border-white/10 bg-[#06111F] text-white"
+          className="h-10 max-w-xs rounded-xl border-white/10 bg-[color:var(--adfluence-surface)] text-white"
         />
         <Input
           value={business}
           onChange={(e) => setBusiness(e.target.value)}
           placeholder="Filter business"
-          className="h-10 max-w-xs rounded-xl border-white/10 bg-[#06111F] text-white"
+          className="h-10 max-w-xs rounded-xl border-white/10 bg-[color:var(--adfluence-surface)] text-white"
         />
       </div>
 

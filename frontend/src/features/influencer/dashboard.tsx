@@ -17,7 +17,7 @@ function KpiCard({ label, value, hint }: { label: string; value: string; hint?: 
   return (
     <article className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-5">
       <p className="text-xs font-medium uppercase tracking-wide text-[#94A3B8]">{label}</p>
-      <p className="mt-2 text-2xl font-bold bg-gradient-to-r from-[#FF7A00] to-[#7C3AED] bg-clip-text text-transparent">
+      <p className="mt-2 text-2xl font-bold text-[color:var(--adfluence-orange)]">
         {value}
       </p>
       {hint ? <p className="mt-1 text-xs text-[#CBD5E1]">{hint}</p> : null}
@@ -46,10 +46,8 @@ export function InfluencerDashboard() {
     });
   };
 
-  const earningsBars = [42, 58, 48, 72, 65];
-
   return (
-    <div className="space-y-6 rounded-2xl bg-[#0B1A2B] p-4 text-white md:p-6">
+    <div className="space-y-6 text-white">
       <section className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-white">Welcome back, Biruk</h1>
@@ -59,7 +57,7 @@ export function InfluencerDashboard() {
         </div>
         <Button
           asChild
-          className="h-11 rounded-xl bg-gradient-to-r from-[#FF7A00] to-[#7C3AED] px-5 text-white hover:opacity-95"
+          className="h-11 rounded-xl bg-[color:var(--adfluence-orange)] px-5 text-white hover:bg-[color:var(--adfluence-orange-hover)]"
         >
           <Link href="/influencer/profile">Edit Profile</Link>
         </Button>
@@ -83,17 +81,17 @@ export function InfluencerDashboard() {
           </span>
         </div>
         <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/10">
-          <div className="h-full w-[86%] rounded-full bg-gradient-to-r from-[#FF7A00] to-[#7C3AED]" />
+          <div className="h-full w-[86%] rounded-full bg-[color:var(--adfluence-orange)]" />
         </div>
         <ul className="mt-4 space-y-2 text-sm text-[#CBD5E1]">
           <li className="flex items-center gap-2">
-            <span className="text-[#FF7A00]">○</span> Add more content samples
+            <span className="text-[color:var(--adfluence-orange)]">○</span> Add more content samples
           </li>
           <li className="flex items-center gap-2">
-            <span className="text-[#FF7A00]">○</span> Update pricing packages
+            <span className="text-[color:var(--adfluence-orange)]">○</span> Update pricing packages
           </li>
           <li className="flex items-center gap-2">
-            <span className="text-[#FF7A00]">○</span> Connect TikTok profile
+            <span className="text-[color:var(--adfluence-orange)]">○</span> Connect TikTok profile
           </li>
         </ul>
         <Button
@@ -109,7 +107,7 @@ export function InfluencerDashboard() {
           <h2 className="text-lg font-semibold text-white">Campaign invites</h2>
           <Link
             href="/influencer/invites"
-            className="text-sm text-[#FF7A00] hover:text-orange-300"
+            className="text-sm text-[color:var(--adfluence-orange)] hover:text-[color:var(--adfluence-orange-hover)]"
           >
             View all
           </Link>
@@ -135,7 +133,7 @@ export function InfluencerDashboard() {
                   <Button
                     type="button"
                     size="sm"
-                    className="h-9 flex-1 rounded-xl bg-gradient-to-r from-[#FF7A00] to-[#7C3AED] text-white hover:opacity-95"
+                    className="h-9 flex-1 rounded-xl bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)]"
                     onClick={() => setInviteStatus(inv.id, "accepted")}
                   >
                     Accept
@@ -165,15 +163,6 @@ export function InfluencerDashboard() {
 
       <section className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-5 md:p-6">
         <h2 className="text-lg font-semibold text-white">Earnings overview</h2>
-        <div className="mt-4 flex h-40 items-end gap-2 rounded-xl bg-white/5 p-4">
-          {earningsBars.map((h, i) => (
-            <div
-              key={i}
-              className="flex-1 rounded-t bg-gradient-to-t from-[#FF7A00] to-[#7C3AED]"
-              style={{ height: `${h}%` }}
-            />
-          ))}
-        </div>
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
           <div className="rounded-xl border border-white/10 bg-[#06111F] p-3">
             <p className="text-xs text-[#CBD5E1]">Pending payout</p>
@@ -194,7 +183,7 @@ export function InfluencerDashboard() {
         <div className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-5">
           <div className="flex items-center justify-between gap-2">
             <h2 className="text-lg font-semibold text-white">Recent messages</h2>
-            <Button asChild variant="ghost" size="sm" className="text-[#FF7A00] hover:text-white">
+            <Button asChild variant="ghost" size="sm" className="text-[color:var(--adfluence-orange)] hover:text-white">
               <Link href="/influencer/messages" className="gap-1">
                 Open Messages <ArrowRight className="size-4" />
               </Link>
@@ -206,7 +195,7 @@ export function InfluencerDashboard() {
                 key={c.id}
                 className="flex items-start gap-3 rounded-xl border border-white/10 bg-[#06111F] p-3"
               >
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#FF7A00] to-[#7C3AED] text-sm font-bold text-white">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[color:var(--adfluence-purple)] text-sm font-bold text-white">
                   {c.brandInitial}
                 </div>
                 <div className="min-w-0 flex-1">
@@ -214,7 +203,7 @@ export function InfluencerDashboard() {
                   <p className="truncate text-xs text-[#CBD5E1]">{c.lastMessage}</p>
                 </div>
                 {c.unreadCount > 0 ? (
-                  <span className="shrink-0 rounded-full bg-gradient-to-r from-[#FF7A00] to-[#7C3AED] px-2 py-0.5 text-[10px] font-semibold">
+                  <span className="shrink-0 rounded-full bg-[color:var(--adfluence-orange)] px-2 py-0.5 text-[10px] font-semibold">
                     {c.unreadCount}
                   </span>
                 ) : null}
@@ -226,7 +215,7 @@ export function InfluencerDashboard() {
         <div className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-5">
           <div className="flex items-center justify-between gap-2">
             <h2 className="text-lg font-semibold text-white">Active contracts</h2>
-            <MessageSquare className="size-4 text-[#7C3AED]" aria-hidden />
+            <MessageSquare className="size-4 text-[color:var(--adfluence-purple-accent)]" aria-hidden />
           </div>
           <ul className="mt-3 space-y-2">
             {initialInfluencerContracts

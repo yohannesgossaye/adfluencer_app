@@ -67,7 +67,7 @@ export function FeatureHighlightsSection() {
               key={item.title}
               className="adfluence-glass rounded-2xl p-8 border border-white/20"
             >
-              <span className="w-14 h-14 rounded-xl bg-gradient-to-br from-[#FF7A00] to-[#7C3AED] flex items-center justify-center mb-6">
+              <span className="mb-6 flex h-14 w-14 items-center justify-center rounded-xl bg-[color:var(--adfluence-purple)] text-white">
                 <item.icon className="size-5" />
               </span>
               <h3 className="text-xl font-bold mb-3">{item.title}</h3>

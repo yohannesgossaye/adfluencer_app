@@ -8,6 +8,13 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Adfluence",
   description: "Adfluence influencer marketing marketplace frontend",
+  icons: {
+    icon: [
+      { url: "/brand/adfluence_favicon.ico" },
+      { url: "/brand/adfluence_favicon.svg", type: "image/svg+xml" },
+    ],
+    apple: "/brand/adfluence_icon_128.png",
+  },
 };
 
 export default async function RootLayout({

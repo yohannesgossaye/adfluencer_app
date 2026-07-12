@@ -20,29 +20,29 @@ func (m *influencerModule) GetDashboardSummary(ctx context.Context, userID strin
 		contracts []influencerDto.DashboardContractRow
 	)
 
-	g, ctx := errgroup.WithContext(ctx)
+	g, ct := errgroup.WithContext(ctx)
 
 	g.Go(func() error {
 		var err error
-		rec, err = m.influencer.GetProfileByUserID(ctx, userID)
+		rec, err = m.influencer.GetProfileByUserID(ct, userID)
 		return err
 	})
 
 	g.Go(func() error {
 		var err error
-		kpis, err = m.influencer.GetDashboardKPIs(ctx, userID)
+		kpis, err = m.influencer.GetDashboardKPIs(ct, userID)
 		return err
 	})
 
 	g.Go(func() error {
 		var err error
-		invites, err = m.influencer.ListDashboardPendingInvites(ctx, userID)
+		invites, err = m.influencer.ListDashboardPendingInvites(ct, userID)
 		return err
 	})
 
 	g.Go(func() error {
 		var err error
-		contracts, err = m.influencer.ListDashboardActiveContracts(ctx, userID)
+		contracts, err = m.influencer.ListDashboardActiveContracts(ct, userID)
 		return err
 	})
 

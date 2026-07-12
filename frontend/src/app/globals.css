@@ -86,13 +86,23 @@
   --sidebar-accent-foreground: oklch(0.216 0.006 56.043);
   --sidebar-border: oklch(0.923 0.003 48.717);
   --sidebar-ring: oklch(0.709 0.01 56.259);
-  --adfluence-navy: #0b1a2b;
-  --adfluence-navy-dark: #06111f;
-  --adfluence-orange: #ff7a00;
-  --adfluence-purple: #7c3aed;
+
+  /* Adfluence brand — dark blue base + soft orange accents */
+  --adfluence-bg: #0b1a2b;
+  --adfluence-surface: #06111f;
+  --adfluence-card: #0f2236;
+  --adfluence-purple: #3b0764;
+  --adfluence-purple-mid: #4c1d95;
+  --adfluence-orange: #d97706;
+  --adfluence-orange-hover: #b45309;
+  --adfluence-purple-accent: #a78bfa;
   --adfluence-light: #f8fafc;
   --adfluence-text-dark: #0f172a;
   --adfluence-text-muted: #cbd5e1;
+
+  /* Legacy aliases */
+  --adfluence-navy: var(--adfluence-bg);
+  --adfluence-navy-dark: var(--adfluence-surface);
 }
 
 .dark {
@@ -140,13 +150,18 @@
 }
 
 @layer utilities {
-  .adfluence-gradient {
-    background: linear-gradient(135deg, #ff7a00 0%, #7c3aed 100%);
+  .adfluence-primary {
+    background-color: var(--adfluence-orange);
+    color: white;
+  }
+
+  .adfluence-primary:hover {
+    background-color: var(--adfluence-orange-hover);
   }
 
   .adfluence-glass {
-    background: rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.06);
     backdrop-filter: blur(16px);
-    border: 1px solid rgba(255, 255, 255, 0.18);
+    border: 1px solid rgba(255, 255, 255, 0.1);
   }
 }

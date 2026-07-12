@@ -39,7 +39,7 @@ export function CampaignWorkflowSection() {
             <div key={s.title} className="relative">
               <div className="adfluence-glass rounded-2xl border border-white/15 p-6 h-full">
                 <div className="flex items-center gap-3">
-                  <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-sm font-semibold text-white">
+                  <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[color:var(--adfluence-orange)]/20 text-sm font-semibold text-[color:var(--adfluence-orange)]">
                     {i + 1}
                   </span>
                   <h3 className="text-base font-semibold text-white">{s.title}</h3>

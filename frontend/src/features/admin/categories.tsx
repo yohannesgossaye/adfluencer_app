@@ -49,7 +49,7 @@ export function AdminCategories() {
   };
 
   return (
-    <div className="space-y-6 rounded-2xl bg-[#0B1A2B] p-4 text-white md:p-6">
+    <div className="space-y-6 text-white">
       <div>
         <h1 className="text-2xl font-semibold text-white">Categories & niches</h1>
         <p className="mt-1 max-w-2xl text-sm text-[#CBD5E1]">
@@ -62,11 +62,11 @@ export function AdminCategories() {
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
           placeholder="New category name"
-          className="h-10 max-w-xs flex-1 rounded-xl border-white/10 bg-[#06111F] text-white"
+          className="h-10 max-w-xs flex-1 rounded-xl border-white/10 bg-[color:var(--adfluence-surface)] text-white"
         />
         <Button
           type="button"
-          className="h-10 rounded-xl bg-gradient-to-r from-[#FF7A00] to-[#7C3AED] text-white"
+          className="h-10 rounded-xl bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)]"
           onClick={add}
         >
           Add category
@@ -84,7 +84,7 @@ export function AdminCategories() {
                 key={`${c.id}-${c.name}`}
                 defaultValue={c.name}
                 onBlur={(e) => rename(c.id, e.target.value.trim() || c.name)}
-                className="h-10 max-w-[200px] rounded-xl border-white/10 bg-[#06111F] text-white"
+                className="h-10 max-w-[200px] rounded-xl border-white/10 bg-[color:var(--adfluence-surface)] text-white"
               />
               <p className="text-xs text-[#CBD5E1]">
                 Influencers: {c.influencerCount} · Campaigns: {c.campaignCount}

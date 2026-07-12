@@ -35,7 +35,7 @@ export function TrustResultsSection() {
         <div className="mt-10 grid gap-6 md:grid-cols-2">
           <div className="adfluence-glass rounded-2xl border border-white/15 p-8">
             <div className="flex items-center gap-3">
-              <span className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-[#FF7A00] to-[#7C3AED] text-white">
+              <span className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-[color:var(--adfluence-purple)] text-white">
                 <Quote className="size-5" />
               </span>
               <p className="text-sm text-[#CBD5E1]">Testimonial</p>
@@ -55,7 +55,7 @@ export function TrustResultsSection() {
                 key={s.label}
                 className="adfluence-glass rounded-2xl border border-white/15 p-6 text-center"
               >
-                <p className="text-4xl font-bold bg-gradient-to-r from-[#FF7A00] to-[#7C3AED] bg-clip-text text-transparent">
+                <p className="text-4xl font-bold text-[color:var(--adfluence-orange)]">
                   {s.value}
                 </p>
                 <p className="mt-2 text-sm text-[#CBD5E1]">{s.label}</p>

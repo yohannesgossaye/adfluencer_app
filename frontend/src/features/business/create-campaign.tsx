@@ -129,7 +129,7 @@ export function CreateCampaign() {
   };
 
   return (
-    <div className="space-y-6 rounded-2xl bg-[#0B1A2B] p-4 text-white md:p-6">
+    <div className="space-y-6 text-white">
       <section className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-white">Create Campaign</h1>
@@ -152,7 +152,7 @@ export function CreateCampaign() {
               key={step}
               className={`h-2 rounded-full ${
                 step === 1
-                  ? "bg-gradient-to-r from-[#FF7A00] to-[#7C3AED]"
+                  ? "bg-[color:var(--adfluence-orange)]"
                   : "bg-white/10"
               }`}
             />
@@ -171,7 +171,7 @@ export function CreateCampaign() {
                   value={form.title}
                   onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))}
                   placeholder="e.g. Summer Product Launch"
-                  className="h-11 rounded-xl border-white/10 bg-[#06111F] text-white placeholder:text-[#94A3B8] focus-visible:border-[#FF7A00] focus-visible:ring-[#7C3AED]/30"
+                  className="h-11 rounded-xl border-white/10 bg-[color:var(--adfluence-surface)] text-white placeholder:text-[#94A3B8] focus-visible:border-[color:var(--adfluence-orange)] focus-visible:ring-[color:var(--adfluence-orange)]/25"
                 />
               </label>
               <label className="space-y-2">
@@ -182,7 +182,7 @@ export function CreateCampaign() {
                     setForm((prev) => ({ ...prev, businessName: e.target.value }))
                   }
                   placeholder="e.g. Betu Cosmetics"
-                  className="h-11 rounded-xl border-white/10 bg-[#06111F] text-white placeholder:text-[#94A3B8] focus-visible:border-[#FF7A00] focus-visible:ring-[#7C3AED]/30"
+                  className="h-11 rounded-xl border-white/10 bg-[color:var(--adfluence-surface)] text-white placeholder:text-[#94A3B8] focus-visible:border-[color:var(--adfluence-orange)] focus-visible:ring-[color:var(--adfluence-orange)]/25"
                 />
               </label>
               <label className="space-y-2">
@@ -190,13 +190,13 @@ export function CreateCampaign() {
                 <select
                   value={form.goal}
                   onChange={(e) => setForm((prev) => ({ ...prev, goal: e.target.value }))}
-                  className="h-11 w-full rounded-xl border border-white/10 bg-[#06111F] px-3 text-sm text-white outline-none focus:border-[#FF7A00] focus:ring-2 focus:ring-[#7C3AED]/30"
+                  className="h-11 w-full rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)] px-3 text-sm text-white outline-none focus:border-[color:var(--adfluence-orange)] focus:ring-2 focus:ring-[color:var(--adfluence-orange)]/25"
                 >
                   <option value="" disabled>
                     Select campaign goal
                   </option>
                   {goals.map((goal) => (
-                    <option key={goal} value={goal} className="bg-[#06111F]">
+                    <option key={goal} value={goal} className="bg-[color:var(--adfluence-surface)]">
                       {goal}
                     </option>
                   ))}
@@ -211,7 +211,7 @@ export function CreateCampaign() {
                   }
                   rows={4}
                   placeholder="Describe your campaign, key message, product details, and outcomes you want."
-                  className="w-full rounded-xl border border-white/10 bg-[#06111F] px-3 py-2 text-sm text-white outline-none placeholder:text-[#94A3B8] focus:border-[#FF7A00] focus:ring-2 focus:ring-[#7C3AED]/30"
+                  className="w-full rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)] px-3 py-2 text-sm text-white outline-none placeholder:text-[#94A3B8] focus:border-[color:var(--adfluence-orange)] focus:ring-2 focus:ring-[color:var(--adfluence-orange)]/25"
                 />
               </label>
             </div>
@@ -225,13 +225,13 @@ export function CreateCampaign() {
                 <select
                   value={form.niche}
                   onChange={(e) => setForm((prev) => ({ ...prev, niche: e.target.value }))}
-                  className="h-11 w-full rounded-xl border border-white/10 bg-[#06111F] px-3 text-sm text-white outline-none focus:border-[#FF7A00] focus:ring-2 focus:ring-[#7C3AED]/30"
+                  className="h-11 w-full rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)] px-3 text-sm text-white outline-none focus:border-[color:var(--adfluence-orange)] focus:ring-2 focus:ring-[color:var(--adfluence-orange)]/25"
                 >
                   <option value="" disabled>
                     Select industry
                   </option>
                   {niches.map((niche) => (
-                    <option key={niche} value={niche} className="bg-[#06111F]">
+                    <option key={niche} value={niche} className="bg-[color:var(--adfluence-surface)]">
                       {niche}
                     </option>
                   ))}
@@ -245,7 +245,7 @@ export function CreateCampaign() {
                     setForm((prev) => ({ ...prev, targetAudience: e.target.value }))
                   }
                   placeholder="e.g. Women 18-30 in urban areas"
-                  className="h-11 rounded-xl border-white/10 bg-[#06111F] text-white placeholder:text-[#94A3B8] focus-visible:border-[#FF7A00] focus-visible:ring-[#7C3AED]/30"
+                  className="h-11 rounded-xl border-white/10 bg-[color:var(--adfluence-surface)] text-white placeholder:text-[#94A3B8] focus-visible:border-[color:var(--adfluence-orange)] focus-visible:ring-[color:var(--adfluence-orange)]/25"
                 />
               </label>
               <label className="space-y-2">
@@ -253,13 +253,13 @@ export function CreateCampaign() {
                 <select
                   value={form.location}
                   onChange={(e) => setForm((prev) => ({ ...prev, location: e.target.value }))}
-                  className="h-11 w-full rounded-xl border border-white/10 bg-[#06111F] px-3 text-sm text-white outline-none focus:border-[#FF7A00] focus:ring-2 focus:ring-[#7C3AED]/30"
+                  className="h-11 w-full rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)] px-3 text-sm text-white outline-none focus:border-[color:var(--adfluence-orange)] focus:ring-2 focus:ring-[color:var(--adfluence-orange)]/25"
                 >
                   <option value="" disabled>
                     Select location
                   </option>
                   {locations.map((location) => (
-                    <option key={location} value={location} className="bg-[#06111F]">
+                    <option key={location} value={location} className="bg-[color:var(--adfluence-surface)]">
                       {location}
                     </option>
                   ))}
@@ -271,7 +271,7 @@ export function CreateCampaign() {
                   {platforms.map((platform) => (
                     <label
                       key={platform}
-                      className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-[#06111F] px-3 py-2 text-sm text-[#E2E8F0]"
+                      className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)] px-3 py-2 text-sm text-[#E2E8F0]"
                     >
                       <input
                         type="checkbox"
@@ -282,7 +282,7 @@ export function CreateCampaign() {
                             platforms: toggleArrayValue(prev.platforms, platform),
                           }))
                         }
-                        className="h-4 w-4 rounded border-white/20 bg-[#06111F] accent-[#FF7A00]"
+                        className="h-4 w-4 rounded border-white/20 bg-[color:var(--adfluence-surface)] accent-[color:var(--adfluence-orange)]"
                       />
                       {platform}
                     </label>
@@ -302,13 +302,13 @@ export function CreateCampaign() {
                   onChange={(e) =>
                     setForm((prev) => ({ ...prev, budgetRange: e.target.value }))
                   }
-                  className="h-11 w-full rounded-xl border border-white/10 bg-[#06111F] px-3 text-sm text-white outline-none focus:border-[#FF7A00] focus:ring-2 focus:ring-[#7C3AED]/30"
+                  className="h-11 w-full rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)] px-3 text-sm text-white outline-none focus:border-[color:var(--adfluence-orange)] focus:ring-2 focus:ring-[color:var(--adfluence-orange)]/25"
                 >
                   <option value="" disabled>
                     Select budget
                   </option>
                   {budgetRanges.map((range) => (
-                    <option key={range} value={range} className="bg-[#06111F]">
+                    <option key={range} value={range} className="bg-[color:var(--adfluence-surface)]">
                       {range}
                     </option>
                   ))}
@@ -321,13 +321,13 @@ export function CreateCampaign() {
                   onChange={(e) =>
                     setForm((prev) => ({ ...prev, creatorSize: e.target.value }))
                   }
-                  className="h-11 w-full rounded-xl border border-white/10 bg-[#06111F] px-3 text-sm text-white outline-none focus:border-[#FF7A00] focus:ring-2 focus:ring-[#7C3AED]/30"
+                  className="h-11 w-full rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)] px-3 text-sm text-white outline-none focus:border-[color:var(--adfluence-orange)] focus:ring-2 focus:ring-[color:var(--adfluence-orange)]/25"
                 >
                   <option value="" disabled>
                     Select creator tier
                   </option>
                   {creatorSizes.map((size) => (
-                    <option key={size} value={size} className="bg-[#06111F]">
+                    <option key={size} value={size} className="bg-[color:var(--adfluence-surface)]">
                       {size}
                     </option>
                   ))}
@@ -343,7 +343,7 @@ export function CreateCampaign() {
                     setForm((prev) => ({ ...prev, creatorsNeeded: e.target.value }))
                   }
                   placeholder="e.g. 5"
-                  className="h-11 rounded-xl border-white/10 bg-[#06111F] text-white placeholder:text-[#94A3B8] focus-visible:border-[#FF7A00] focus-visible:ring-[#7C3AED]/30"
+                  className="h-11 rounded-xl border-white/10 bg-[color:var(--adfluence-surface)] text-white placeholder:text-[#94A3B8] focus-visible:border-[color:var(--adfluence-orange)] focus-visible:ring-[color:var(--adfluence-orange)]/25"
                 />
               </label>
             </div>
@@ -358,7 +358,7 @@ export function CreateCampaign() {
                   {deliverables.map((deliverable) => (
                     <label
                       key={deliverable}
-                      className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-[#06111F] px-3 py-2 text-sm text-[#E2E8F0]"
+                      className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)] px-3 py-2 text-sm text-[#E2E8F0]"
                     >
                       <input
                         type="checkbox"
@@ -369,7 +369,7 @@ export function CreateCampaign() {
                             deliverables: toggleArrayValue(prev.deliverables, deliverable),
                           }))
                         }
-                        className="h-4 w-4 rounded border-white/20 bg-[#06111F] accent-[#FF7A00]"
+                        className="h-4 w-4 rounded border-white/20 bg-[color:var(--adfluence-surface)] accent-[color:var(--adfluence-orange)]"
                       />
                       {deliverable}
                     </label>
@@ -382,7 +382,7 @@ export function CreateCampaign() {
                   type="date"
                   value={form.startDate}
                   onChange={(e) => setForm((prev) => ({ ...prev, startDate: e.target.value }))}
-                  className="h-11 rounded-xl border-white/10 bg-[#06111F] text-white focus-visible:border-[#FF7A00] focus-visible:ring-[#7C3AED]/30"
+                  className="h-11 rounded-xl border-white/10 bg-[color:var(--adfluence-surface)] text-white focus-visible:border-[color:var(--adfluence-orange)] focus-visible:ring-[color:var(--adfluence-orange)]/25"
                 />
               </label>
               <label className="space-y-2">
@@ -391,7 +391,7 @@ export function CreateCampaign() {
                   type="date"
                   value={form.endDate}
                   onChange={(e) => setForm((prev) => ({ ...prev, endDate: e.target.value }))}
-                  className="h-11 rounded-xl border-white/10 bg-[#06111F] text-white focus-visible:border-[#FF7A00] focus-visible:ring-[#7C3AED]/30"
+                  className="h-11 rounded-xl border-white/10 bg-[color:var(--adfluence-surface)] text-white focus-visible:border-[color:var(--adfluence-orange)] focus-visible:ring-[color:var(--adfluence-orange)]/25"
                 />
               </label>
               <label className="space-y-2 md:col-span-2">
@@ -403,7 +403,7 @@ export function CreateCampaign() {
                   }
                   rows={4}
                   placeholder="Anything else our team should know before recommending creators?"
-                  className="w-full rounded-xl border border-white/10 bg-[#06111F] px-3 py-2 text-sm text-white outline-none placeholder:text-[#94A3B8] focus:border-[#FF7A00] focus:ring-2 focus:ring-[#7C3AED]/30"
+                  className="w-full rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)] px-3 py-2 text-sm text-white outline-none placeholder:text-[#94A3B8] focus:border-[color:var(--adfluence-orange)] focus:ring-2 focus:ring-[color:var(--adfluence-orange)]/25"
                 />
               </label>
             </div>
@@ -449,7 +449,7 @@ export function CreateCampaign() {
             </p>
             <Button
               onClick={onSubmit}
-              className="h-11 w-full rounded-xl bg-gradient-to-r from-[#FF7A00] to-[#7C3AED] text-white hover:opacity-95"
+              className="h-11 w-full rounded-xl bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)]"
             >
               Find Influencers
             </Button>

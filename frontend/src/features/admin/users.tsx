@@ -79,7 +79,7 @@ export function AdminUsers() {
   }, [users]);
 
   return (
-    <div className="space-y-6 rounded-2xl bg-[#0B1A2B] p-4 text-white md:p-6">
+    <div className="space-y-6 text-white">
       <div>
         <h1 className="text-2xl font-semibold text-white">Users</h1>
         <p className="mt-1 max-w-2xl text-sm text-[#CBD5E1]">
@@ -99,7 +99,7 @@ export function AdminUsers() {
             className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-4"
           >
             <p className="text-xs text-[#CBD5E1]">{s.label}</p>
-            <p className="mt-2 text-xl font-bold bg-gradient-to-r from-[#FF7A00] to-[#7C3AED] bg-clip-text text-transparent">
+            <p className="mt-2 text-xl font-bold text-[color:var(--adfluence-orange)]">
               {s.value}
             </p>
           </article>
@@ -115,7 +115,7 @@ export function AdminUsers() {
             className={cn(
               "rounded-full border px-3 py-1.5 text-xs font-medium capitalize",
               roleFilter === r
-                ? "border-transparent bg-gradient-to-r from-[#FF7A00] to-[#7C3AED] text-white"
+                ? "border-transparent bg-[color:var(--adfluence-orange)] text-white"
                 : "border-white/10 bg-white/5 text-[#CBD5E1] hover:text-white",
             )}
           >
@@ -143,7 +143,7 @@ export function AdminUsers() {
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         placeholder="Search name or email"
-        className="h-11 max-w-md rounded-xl border-white/10 bg-[#06111F] text-white"
+        className="h-11 max-w-md rounded-xl border-white/10 bg-[color:var(--adfluence-surface)] text-white"
       />
 
       <div className="space-y-3 overflow-x-auto">

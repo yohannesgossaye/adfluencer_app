@@ -11,7 +11,7 @@ const features = [
 
 export function WhyChooseSection() {
   return (
-    <section className="bg-[color:var(--adfluence-navy-dark)]/50 py-20">
+    <section className="bg-[color:var(--adfluence-surface)]/50 py-20">
       <Container>
         <div className="grid md:grid-cols-2 gap-12 items-center">
         <div>
@@ -26,8 +26,10 @@ export function WhyChooseSection() {
             {features.map((feature, idx) => (
               <div key={feature} className="flex gap-4">
                 <CheckCircle
-                  className={`w-6 h-6 flex-shrink-0 ${
-                    idx % 2 === 0 ? "text-[#FF7A00]" : "text-[#7C3AED]"
+                  className={`h-6 w-6 flex-shrink-0 ${
+                    idx % 2 === 0
+                      ? "text-[color:var(--adfluence-orange)]"
+                      : "text-[color:var(--adfluence-purple-accent)]"
                   }`}
                 />
                 <div>
@@ -56,11 +58,11 @@ export function WhyChooseSection() {
           </div>
           <div className="grid grid-cols-2 gap-4 mt-4">
             <div className="bg-white/5 rounded-xl p-4">
-              <div className="text-2xl font-bold text-[#FF7A00] mb-1">2.4M</div>
+              <div className="mb-1 text-2xl font-bold text-[color:var(--adfluence-orange)]">2.4M</div>
               <div className="text-xs text-[#CBD5E1]">Total Impressions</div>
             </div>
             <div className="bg-white/5 rounded-xl p-4">
-              <div className="text-2xl font-bold text-[#7C3AED] mb-1">8.2%</div>
+              <div className="mb-1 text-2xl font-bold text-[color:var(--adfluence-purple-accent)]">8.2%</div>
               <div className="text-xs text-[#CBD5E1]">Engagement Rate</div>
             </div>
             <div className="bg-white/5 rounded-xl p-4">
@@ -76,7 +78,7 @@ export function WhyChooseSection() {
             {[40, 65, 45, 80, 60, 90, 75].map((h, i) => (
               <div
                 key={i}
-                className="flex-1 bg-gradient-to-t from-[#FF7A00] to-[#7C3AED] rounded-t"
+                className="flex-1 rounded-t bg-[color:var(--adfluence-orange)]"
                 style={{ height: `${h}%` }}
               />
             ))}

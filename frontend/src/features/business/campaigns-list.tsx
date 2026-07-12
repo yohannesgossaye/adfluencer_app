@@ -43,7 +43,7 @@ const businessCampaigns = [
 
 export function CampaignsList() {
   return (
-    <div className="space-y-6 rounded-2xl bg-[#0B1A2B] p-4 text-white md:p-6">
+    <div className="space-y-6 text-white">
       <section className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-white">Campaigns</h1>
@@ -53,7 +53,7 @@ export function CampaignsList() {
         </div>
         <Button
           asChild
-          className="h-11 rounded-xl bg-gradient-to-r from-[#FF7A00] to-[#7C3AED] px-5 text-white hover:opacity-95"
+          className="h-11 rounded-xl bg-[color:var(--adfluence-orange)] px-5 text-white hover:bg-[color:var(--adfluence-orange-hover)]"
         >
           <Link href="/business/campaigns/create">Create Campaign</Link>
         </Button>
@@ -92,7 +92,7 @@ export function CampaignsList() {
               <p className="mb-2 text-xs text-[#CBD5E1]">Progress</p>
               <div className="h-2 rounded-full bg-white/10">
                 <div
-                  className="h-2 rounded-full bg-gradient-to-r from-[#FF7A00] to-[#7C3AED]"
+                  className="h-2 rounded-full bg-[color:var(--adfluence-orange)]"
                   style={{ width: `${campaign.progress}%` }}
                 />
               </div>

@@ -24,7 +24,7 @@ export function RecommendedInfluencerCard({
       <div className="space-y-3 p-4 text-white">
         <div className="flex items-center justify-between gap-2">
           <h3 className="text-base font-semibold">{influencer.name}</h3>
-          <span className="rounded-full bg-gradient-to-r from-[#FF7A00] to-[#7C3AED] px-3 py-1 text-xs font-medium text-white">
+          <span className="rounded-full bg-[color:var(--adfluence-orange)] px-3 py-1 text-xs font-medium text-white">
             {influencer.matchScore ?? 90}% Match
           </span>
         </div>

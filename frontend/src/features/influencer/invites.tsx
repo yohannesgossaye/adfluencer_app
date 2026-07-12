@@ -54,7 +54,7 @@ export function InfluencerInvites() {
   };
 
   return (
-    <div className="space-y-6 rounded-2xl bg-[#0B1A2B] p-4 text-white md:p-6">
+    <div className="space-y-6 text-white">
       <div>
         <h1 className="text-2xl font-semibold text-white">Campaign invites</h1>
         <p className="mt-1 text-sm text-[#CBD5E1]">
@@ -71,7 +71,7 @@ export function InfluencerInvites() {
             className={cn(
               "rounded-full border px-4 py-2 text-sm font-medium transition-colors",
               tab === t.id
-                ? "border-transparent bg-gradient-to-r from-[#FF7A00] to-[#7C3AED] text-white"
+                ? "border-transparent bg-[color:var(--adfluence-orange)] text-white"
                 : "border-white/10 bg-[rgba(255,255,255,0.06)] text-[#CBD5E1] hover:border-white/20 hover:text-white",
             )}
           >
@@ -122,7 +122,7 @@ export function InfluencerInvites() {
               <div className="mt-4 flex flex-col gap-2 sm:flex-row">
                 <Button
                   type="button"
-                  className="h-10 flex-1 rounded-xl bg-gradient-to-r from-[#FF7A00] to-[#7C3AED] text-white hover:opacity-95"
+                  className="h-10 flex-1 rounded-xl bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)]"
                   onClick={() => updateStatus(inv.id, "accepted")}
                 >
                   Accept

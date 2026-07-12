@@ -14,7 +14,7 @@ export function InfluencerTrustStatsSection() {
         <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
           {stats.map((item) => (
             <div key={item.label} className="text-center">
-              <div className="mb-2 bg-gradient-to-r from-[#FF7A00] to-[#7C3AED] bg-clip-text text-4xl font-bold text-transparent sm:text-5xl">
+              <div className="mb-2 text-4xl font-bold text-[color:var(--adfluence-orange)] sm:text-5xl">
                 {item.value}
               </div>
               <div className="text-[#CBD5E1]">{item.label}</div>

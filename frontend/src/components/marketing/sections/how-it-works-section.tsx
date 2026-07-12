@@ -28,15 +28,15 @@ export function HowItWorksSection() {
 
         <div className="grid md:grid-cols-2 gap-8">
           <div className="adfluence-glass rounded-2xl p-8 border border-white/20">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#FF7A00] to-[#7C3AED] flex items-center justify-center mb-6">
-              <Target className="w-8 h-8 text-white" />
+            <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-[color:var(--adfluence-orange)]">
+              <Target className="h-8 w-8 text-white" />
             </div>
             <h3 className="text-2xl font-bold mb-6">For Businesses</h3>
             <div className="space-y-6">
               {["Create Campaign", "We Match You", "Get Results"].map((step, i) => (
                 <div key={step} className="flex gap-4">
-                  <div className="w-8 h-8 rounded-full bg-[#FF7A00]/20 flex items-center justify-center flex-shrink-0">
-                    <span className="text-[#FF7A00] font-bold">{i + 1}</span>
+                  <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[color:var(--adfluence-orange)]/20">
+                    <span className="font-bold text-[color:var(--adfluence-orange)]">{i + 1}</span>
                   </div>
                   <div>
                     <h4 className="font-semibold mb-1">{step}</h4>
@@ -54,15 +54,15 @@ export function HowItWorksSection() {
           </div>
 
           <div className="adfluence-glass rounded-2xl p-8 border border-white/20">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#7C3AED] to-[#FF7A00] flex items-center justify-center mb-6">
-              <Sparkles className="w-8 h-8 text-white" />
+            <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-[color:var(--adfluence-purple-mid)]">
+              <Sparkles className="h-8 w-8 text-white" />
             </div>
             <h3 className="text-2xl font-bold mb-6">For Influencers</h3>
             <div className="space-y-6">
               {["Create Your Profile", "Get Matched", "Earn & Grow"].map((step, i) => (
                 <div key={step} className="flex gap-4">
-                  <div className="w-8 h-8 rounded-full bg-[#7C3AED]/20 flex items-center justify-center flex-shrink-0">
-                    <span className="text-[#7C3AED] font-bold">{i + 1}</span>
+                  <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[color:var(--adfluence-purple-mid)]/20">
+                    <span className="font-bold text-[color:var(--adfluence-purple-accent)]">{i + 1}</span>
                   </div>
                   <div>
                     <h4 className="font-semibold mb-1">{step}</h4>

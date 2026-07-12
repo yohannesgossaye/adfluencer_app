@@ -59,9 +59,9 @@ export function InfluencerProfile() {
   };
 
   return (
-    <div className="space-y-6 rounded-2xl bg-[#0B1A2B] p-4 text-white md:p-6">
+    <div className="space-y-6 text-white">
       <section className="flex flex-col gap-4 rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-5 md:flex-row md:items-center">
-        <div className="relative mx-auto h-24 w-24 shrink-0 overflow-hidden rounded-full border-2 border-[#FF7A00]/40 md:mx-0">
+        <div className="relative mx-auto h-24 w-24 shrink-0 overflow-hidden rounded-full border-2 border-[color:var(--adfluence-orange)]/40 md:mx-0">
           <Image src={CREATOR_IMAGE} alt="Biruk Alemu" fill className="object-cover" sizes="96px" />
         </div>
         <div className="flex-1 text-center md:text-left">
@@ -114,7 +114,7 @@ export function InfluencerProfile() {
                   onClick={() => toggleMulti("niches", n)}
                   className={`rounded-xl border px-3 py-2 text-sm transition-colors ${
                     form.niches.includes(n)
-                      ? "border-[#FF7A00]/50 bg-gradient-to-r from-[#FF7A00]/20 to-[#7C3AED]/20 text-white"
+                      ? "border-[color:var(--adfluence-orange)]/50 bg-[color:var(--adfluence-orange)]/15 text-white"
                       : "border-white/10 bg-[#06111F] text-[#CBD5E1] hover:border-white/20"
                   }`}
                 >
@@ -133,7 +133,7 @@ export function InfluencerProfile() {
                   onClick={() => toggleMulti("platforms", p)}
                   className={`rounded-xl border px-3 py-2 text-sm transition-colors ${
                     form.platforms.includes(p)
-                      ? "border-[#FF7A00]/50 bg-gradient-to-r from-[#FF7A00]/20 to-[#7C3AED]/20 text-white"
+                      ? "border-[color:var(--adfluence-orange)]/50 bg-[color:var(--adfluence-orange)]/15 text-white"
                       : "border-white/10 bg-[#06111F] text-[#CBD5E1] hover:border-white/20"
                   }`}
                 >
@@ -254,7 +254,7 @@ export function InfluencerProfile() {
               key={pkg.title}
               className={
                 index === 1
-                  ? "rounded-2xl border border-[#FF7A00]/40 bg-[linear-gradient(135deg,rgba(255,122,0,0.12),rgba(124,58,237,0.12))] p-4"
+                  ? "rounded-2xl border border-[color:var(--adfluence-orange)]/40 bg-[color:var(--adfluence-orange)]/10 p-4"
                   : "rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-4"
               }
             >
@@ -277,7 +277,7 @@ export function InfluencerProfile() {
       <Button
         type="button"
         onClick={onSave}
-        className="h-12 w-full rounded-xl bg-gradient-to-r from-[#FF7A00] to-[#7C3AED] text-white hover:opacity-95 md:w-auto md:px-10"
+        className="h-12 w-full rounded-xl bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)] md:w-auto md:px-10"
       >
         Save Profile
       </Button>

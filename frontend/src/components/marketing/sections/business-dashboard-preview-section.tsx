@@ -13,16 +13,16 @@ function MetricCard({
 }) {
   const valueClass =
     accent === "orange"
-      ? "text-[#FF7A00]"
+      ? "text-[color:var(--adfluence-orange)]"
       : accent === "purple"
-        ? "text-[#7C3AED]"
+        ? "text-[color:var(--adfluence-purple-accent)]"
         : accent === "green"
           ? "text-emerald-300"
           : "text-amber-200";
 
   return (
     <div className="rounded-xl bg-white/5 p-4">
-      <div className={`text-2xl font-bold ${valueClass} mb-1`}>{value}</div>
+      <div className={`mb-1 text-2xl font-bold ${valueClass}`}>{value}</div>
       <div className="text-xs text-[#CBD5E1]">{label}</div>
     </div>
   );
@@ -57,25 +57,25 @@ export function BusinessDashboardPreviewSection() {
           </div>
 
           <div className="adfluence-glass rounded-2xl border border-white/20 p-6">
-            <div className="flex items-center justify-between pb-4 border-b border-white/10">
+            <div className="flex items-center justify-between border-b border-white/10 pb-4">
               <h4 className="font-semibold text-white">Campaign Dashboard</h4>
-              <span className="inline-flex items-center rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-medium text-emerald-300 border border-emerald-500/30">
+              <span className="inline-flex items-center rounded-full border border-emerald-500/30 bg-emerald-500/15 px-3 py-1 text-xs font-medium text-emerald-300">
                 Live
               </span>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 mt-4">
+            <div className="mt-4 grid grid-cols-2 gap-4">
               <MetricCard label="Total Impressions" value="2.4M" accent="orange" />
               <MetricCard label="Engagement Rate" value="8.2%" accent="purple" />
               <MetricCard label="Conversions" value="12K" accent="green" />
               <MetricCard label="ROI" value="3.8x" accent="amber" />
             </div>
 
-            <div className="mt-4 h-32 bg-white/5 rounded-xl flex items-end p-4 gap-2">
+            <div className="mt-4 flex h-32 items-end gap-2 rounded-xl bg-white/5 p-4">
               {[40, 65, 45, 80, 60, 90, 75].map((h, i) => (
                 <div
                   key={i}
-                  className="flex-1 bg-gradient-to-t from-[#FF7A00] to-[#7C3AED] rounded-t"
+                  className="flex-1 rounded-t bg-[color:var(--adfluence-orange)]"
                   style={{ height: `${h}%` }}
                 />
               ))}
@@ -132,4 +132,3 @@ export function BusinessDashboardPreviewSection() {
     </section>
   );
 }
-

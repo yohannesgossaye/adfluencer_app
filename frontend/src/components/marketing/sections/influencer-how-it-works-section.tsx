@@ -40,10 +40,10 @@ export function InfluencerHowItWorksSection() {
               className="adfluence-glass rounded-2xl border border-white/15 p-6"
             >
               <div className="mb-4 flex items-center gap-3">
-                <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[#FF7A00] to-[#7C3AED] text-white">
+                <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[color:var(--adfluence-purple)] text-white">
                   <Sparkles className="size-5" />
                 </span>
-                <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/10 text-sm font-semibold text-white">
+                <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-[color:var(--adfluence-orange)]/20 text-sm font-semibold text-[color:var(--adfluence-orange)]">
                   {index + 1}
                 </span>
               </div>

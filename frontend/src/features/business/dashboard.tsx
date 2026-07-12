@@ -18,8 +18,6 @@ import { contracts } from "@/data/contracts";
 import { influencers } from "@/data/influencers";
 import { messages } from "@/data/messages";
 
-const performanceBars = [35, 54, 41, 70, 58, 79, 67, 84, 72, 91];
-
 const activeCampaignRows = [
   {
     name: "Betu Cosmetics Launch",
@@ -46,7 +44,7 @@ const activeCampaignRows = [
 
 export function BusinessDashboard() {
   return (
-    <div className="space-y-6 rounded-2xl bg-[#0B1A2B] p-4 text-white md:p-6">
+    <div className="space-y-6 text-white">
       <section className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold">Welcome back, Yohannes</h1>
@@ -98,23 +96,14 @@ export function BusinessDashboard() {
             Last 30 days
           </Button>
         </div>
-        <div className="mt-5 flex h-44 items-end gap-2 rounded-xl bg-white/5 p-4">
-          {performanceBars.map((bar, i) => (
-            <div
-              key={i}
-              className="flex-1 rounded-t bg-gradient-to-t from-[#FF7A00] to-[#7C3AED]"
-              style={{ height: `${bar}%` }}
-            />
-          ))}
-        </div>
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
           <div className="rounded-xl bg-white/5 p-4">
             <p className="text-xs text-[#CBD5E1]">Reach</p>
-            <p className="text-2xl font-semibold text-[#FF7A00]">245K</p>
+            <p className="text-2xl font-semibold text-[color:var(--adfluence-orange)]">245K</p>
           </div>
           <div className="rounded-xl bg-white/5 p-4">
             <p className="text-xs text-[#CBD5E1]">Engagement</p>
-            <p className="text-2xl font-semibold text-[#7C3AED]">38.4K</p>
+            <p className="text-2xl font-semibold text-[color:var(--adfluence-purple-accent)]">38.4K</p>
           </div>
           <div className="rounded-xl bg-white/5 p-4">
             <p className="text-xs text-[#CBD5E1]">Conversion Lift</p>
@@ -159,7 +148,7 @@ export function BusinessDashboard() {
                   <td className="py-3">
                     <div className="w-32 rounded-full bg-white/10">
                       <div
-                        className="h-2 rounded-full bg-gradient-to-r from-[#FF7A00] to-[#7C3AED]"
+                        className="h-2 rounded-full bg-[color:var(--adfluence-orange)]"
                         style={{ width: `${row.progress}%` }}
                       />
                     </div>
@@ -214,7 +203,7 @@ export function BusinessDashboard() {
                     {new Date(message.timestamp).toLocaleDateString()}
                   </p>
                   {message.unread ? (
-                    <span className="mt-1 inline-block h-2 w-2 rounded-full bg-[#FF7A00]" />
+                    <span className="mt-1 inline-block h-2 w-2 rounded-full bg-[color:var(--adfluence-orange)]" />
                   ) : null}
                 </div>
               </div>

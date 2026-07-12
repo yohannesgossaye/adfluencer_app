@@ -52,7 +52,7 @@ export function AdminDisputes() {
   }, [rows, tab]);
 
   return (
-    <div className="space-y-6 rounded-2xl bg-[#0B1A2B] p-4 text-white md:p-6">
+    <div className="space-y-6 text-white">
       <div>
         <h1 className="text-2xl font-semibold text-white">Disputes & reports</h1>
         <p className="mt-1 max-w-2xl text-sm text-[#CBD5E1]">
@@ -70,7 +70,7 @@ export function AdminDisputes() {
             className={cn(
               "rounded-full border px-4 py-2 text-sm capitalize",
               tab === t
-                ? "border-transparent bg-gradient-to-r from-[#FF7A00] to-[#7C3AED] text-white"
+                ? "border-transparent bg-[color:var(--adfluence-orange)] text-white"
                 : "border-white/10 bg-white/5 text-[#CBD5E1]",
             )}
           >
@@ -89,7 +89,7 @@ export function AdminDisputes() {
               className={cn(
                 "w-full rounded-2xl border p-4 text-left transition-colors",
                 selectedId === d.id
-                  ? "border-[#FF7A00]/40 bg-gradient-to-r from-[#FF7A00]/10 to-[#7C3AED]/10"
+                  ? "border-[color:var(--adfluence-orange)]/35 bg-[color:var(--adfluence-orange)]/10"
                   : "border-white/10 bg-[rgba(255,255,255,0.08)] hover:border-white/20",
               )}
             >
@@ -110,7 +110,7 @@ export function AdminDisputes() {
             <p className="text-xs text-[#CBD5E1]">
               Status: <span className="capitalize text-white">{selected.status.replace("_", " ")}</span>
             </p>
-            <div className="rounded-xl border border-white/10 bg-[#06111F] p-3">
+            <div className="rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)] p-3">
               <p className="text-xs font-medium uppercase text-[#94A3B8]">Conversation preview</p>
               <ul className="mt-2 space-y-2 text-sm text-[#CBD5E1]">
                 {selected.messages.map((m) => (
@@ -126,7 +126,7 @@ export function AdminDisputes() {
                 value={selected.adminNote}
                 onChange={(e) => patchRow(selected.id, { adminNote: e.target.value })}
                 rows={2}
-                className="mt-1 w-full rounded-xl border border-white/10 bg-[#06111F] px-2 py-1 text-sm text-white"
+                className="mt-1 w-full rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)] px-2 py-1 text-sm text-white"
               />
             </label>
             <label className="block text-xs">
@@ -135,7 +135,7 @@ export function AdminDisputes() {
                 value={selected.resolutionNote}
                 onChange={(e) => patchRow(selected.id, { resolutionNote: e.target.value })}
                 rows={2}
-                className="mt-1 w-full rounded-xl border border-white/10 bg-[#06111F] px-2 py-1 text-sm text-white"
+                className="mt-1 w-full rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)] px-2 py-1 text-sm text-white"
               />
             </label>
             <div className="flex flex-col gap-2">
@@ -158,7 +158,7 @@ export function AdminDisputes() {
               <Button
                 type="button"
                 size="sm"
-                className="h-9 bg-gradient-to-r from-[#FF7A00] to-[#7C3AED] text-white"
+                className="h-9 bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)]"
                 onClick={() => setStatus(selected.id, "resolved")}
               >
                 Resolve

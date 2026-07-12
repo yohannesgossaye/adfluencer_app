@@ -1,5 +1,5 @@
-import { PricingPage } from "@/features/marketing/pricing-page";
+import { HowFeesWorkPage } from "@/features/marketing/how-fees-work-page";
 
 export default function PricingRoutePage() {
-  return <PricingPage />;
+  return <HowFeesWorkPage />;
 }

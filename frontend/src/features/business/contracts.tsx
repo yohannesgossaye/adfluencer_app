@@ -22,9 +22,9 @@ function statusBadgeClass(status: BusinessContractRecordStatus) {
     case "draft":
       return "bg-white/10 text-[#CBD5E1] border-white/15";
     case "pending":
-      return "bg-[#FF7A00]/15 text-amber-200 border-[#FF7A00]/30";
+      return "bg-[color:var(--adfluence-orange)]/15 text-amber-200 border-[color:var(--adfluence-orange)]/30";
     case "accepted":
-      return "bg-[#7C3AED]/15 text-violet-200 border-[#7C3AED]/35";
+      return "bg-[color:var(--adfluence-purple-mid)]/15 text-violet-200 border-[color:var(--adfluence-purple-accent)]/35";
     case "active":
       return "bg-emerald-500/15 text-emerald-200 border-emerald-400/30";
     case "completed":
@@ -117,7 +117,7 @@ export function BusinessContracts() {
   };
 
   return (
-    <div className="space-y-6 rounded-2xl bg-[#0B1A2B] p-4 text-white md:p-6">
+    <div className="space-y-6 text-white">
       <section className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-white">Contracts</h1>
@@ -127,14 +127,14 @@ export function BusinessContracts() {
         </div>
         <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
           <SheetTrigger asChild>
-            <Button className="h-11 rounded-xl bg-gradient-to-r from-[#FF7A00] to-[#7C3AED] px-5 text-white hover:opacity-95">
+            <Button className="h-11 rounded-xl bg-[color:var(--adfluence-orange)] px-5 text-white hover:bg-[color:var(--adfluence-orange-hover)]">
               <Plus className="mr-2 size-4" />
               New Contract
             </Button>
           </SheetTrigger>
           <SheetContent
             side="right"
-            className="flex w-full max-w-md flex-col border-white/10 bg-[#06111F] text-white"
+            className="flex w-full max-w-md flex-col border-white/10 bg-[color:var(--adfluence-surface)] text-white"
           >
             <SheetHeader>
               <SheetTitle className="text-white">New contract</SheetTitle>
@@ -145,10 +145,10 @@ export function BusinessContracts() {
                 <select
                   value={form.influencerId}
                   onChange={(e) => setForm((f) => ({ ...f, influencerId: e.target.value }))}
-                  className="h-11 w-full rounded-xl border border-white/10 bg-[#0B1A2B] px-3 text-white outline-none focus:border-[#FF7A00]"
+                  className="h-11 w-full rounded-xl border border-white/10 bg-[color:var(--adfluence-bg)] px-3 text-white outline-none focus:border-[color:var(--adfluence-orange)]"
                 >
                   {influencers.map((i) => (
-                    <option key={i.id} value={i.id} className="bg-[#0B1A2B]">
+                    <option key={i.id} value={i.id} className="bg-[color:var(--adfluence-bg)]">
                       {i.name}
                     </option>
                   ))}
@@ -160,7 +160,7 @@ export function BusinessContracts() {
                   value={form.campaign}
                   onChange={(e) => setForm((f) => ({ ...f, campaign: e.target.value }))}
                   placeholder="Campaign name"
-                  className="h-11 rounded-xl border-white/10 bg-[#0B1A2B] text-white placeholder:text-[#94A3B8]"
+                  className="h-11 rounded-xl border-white/10 bg-[color:var(--adfluence-bg)] text-white placeholder:text-[#94A3B8]"
                 />
               </label>
               <label className="space-y-2 text-sm">
@@ -169,7 +169,7 @@ export function BusinessContracts() {
                   value={form.deliverables}
                   onChange={(e) => setForm((f) => ({ ...f, deliverables: e.target.value }))}
                   placeholder="e.g. 2 Reels, 4 stories"
-                  className="h-11 rounded-xl border-white/10 bg-[#0B1A2B] text-white placeholder:text-[#94A3B8]"
+                  className="h-11 rounded-xl border-white/10 bg-[color:var(--adfluence-bg)] text-white placeholder:text-[#94A3B8]"
                 />
               </label>
               <label className="space-y-2 text-sm">
@@ -178,7 +178,7 @@ export function BusinessContracts() {
                   value={form.timeline}
                   onChange={(e) => setForm((f) => ({ ...f, timeline: e.target.value }))}
                   placeholder="e.g. Jun 1 – Jun 20, 2026"
-                  className="h-11 rounded-xl border-white/10 bg-[#0B1A2B] text-white placeholder:text-[#94A3B8]"
+                  className="h-11 rounded-xl border-white/10 bg-[color:var(--adfluence-bg)] text-white placeholder:text-[#94A3B8]"
                 />
               </label>
               <label className="space-y-2 text-sm">
@@ -187,7 +187,7 @@ export function BusinessContracts() {
                   value={form.amount}
                   onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
                   placeholder="e.g. 150000"
-                  className="h-11 rounded-xl border-white/10 bg-[#0B1A2B] text-white placeholder:text-[#94A3B8]"
+                  className="h-11 rounded-xl border-white/10 bg-[color:var(--adfluence-bg)] text-white placeholder:text-[#94A3B8]"
                 />
               </label>
               <label className="space-y-2 text-sm">
@@ -196,14 +196,14 @@ export function BusinessContracts() {
                   value={form.notes}
                   onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
                   rows={3}
-                  className="w-full rounded-xl border border-white/10 bg-[#0B1A2B] px-3 py-2 text-white placeholder:text-[#94A3B8]"
+                  className="w-full rounded-xl border border-white/10 bg-[color:var(--adfluence-bg)] px-3 py-2 text-white placeholder:text-[#94A3B8]"
                   placeholder="Internal notes"
                 />
               </label>
             </div>
             <Button
               type="button"
-              className="mt-4 h-11 w-full rounded-xl bg-gradient-to-r from-[#FF7A00] to-[#7C3AED] text-white hover:opacity-95"
+              className="mt-4 h-11 w-full rounded-xl bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)]"
               onClick={addContract}
             >
               Save draft contract
@@ -224,7 +224,7 @@ export function BusinessContracts() {
             className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-4"
           >
             <p className="text-xs text-[#CBD5E1]">{card.label}</p>
-            <p className="mt-2 text-2xl font-bold bg-gradient-to-r from-[#FF7A00] to-[#7C3AED] bg-clip-text text-transparent">
+            <p className="mt-2 text-2xl font-bold text-[color:var(--adfluence-orange)]">
               {card.value}
             </p>
           </article>
@@ -247,7 +247,7 @@ export function BusinessContracts() {
                   className={cn(
                     "flex w-full min-w-0 flex-col gap-3 rounded-2xl border p-4 text-left transition-colors sm:flex-row sm:items-center",
                     rowActive
-                      ? "border-[#FF7A00]/35 bg-gradient-to-r from-[#FF7A00]/10 to-[#7C3AED]/10"
+                      ? "border-[color:var(--adfluence-orange)]/35 bg-[color:var(--adfluence-orange)]/10"
                       : "border-white/10 bg-[rgba(255,255,255,0.08)] hover:border-white/20",
                   )}
                 >
@@ -342,7 +342,7 @@ export function BusinessContracts() {
                         type="checkbox"
                         checked={item.done}
                         onChange={() => toggleChecklist(selected.id, item.id)}
-                        className="h-4 w-4 rounded border-white/20 bg-[#06111F] accent-[#FF7A00]"
+                        className="h-4 w-4 rounded border-white/20 bg-[color:var(--adfluence-surface)] accent-[color:var(--adfluence-orange)]"
                       />
                       {item.label}
                     </li>
@@ -361,7 +361,7 @@ export function BusinessContracts() {
                 </Button>
                 <Button
                   type="button"
-                  className="h-10 w-full rounded-xl bg-gradient-to-r from-[#FF7A00] to-[#7C3AED] text-white hover:opacity-95 disabled:opacity-40"
+                  className="h-10 w-full rounded-xl bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)] disabled:opacity-40"
                   onClick={() => updateStatus(selected.id, "active")}
                   disabled={
                     selected.status === "active" ||

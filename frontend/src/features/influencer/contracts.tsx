@@ -96,7 +96,7 @@ export function InfluencerContracts() {
   };
 
   return (
-    <div className="space-y-6 rounded-2xl bg-[#0B1A2B] p-4 text-white md:p-6">
+    <div className="space-y-6 text-white">
       <div>
         <h1 className="text-2xl font-semibold text-white">Contracts</h1>
         <p className="mt-1 max-w-xl text-sm text-[#CBD5E1]">
@@ -116,7 +116,7 @@ export function InfluencerContracts() {
             className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-4"
           >
             <p className="text-xs text-[#CBD5E1]">{c.label}</p>
-            <p className="mt-2 text-2xl font-bold bg-gradient-to-r from-[#FF7A00] to-[#7C3AED] bg-clip-text text-transparent">
+            <p className="mt-2 text-2xl font-bold text-[color:var(--adfluence-orange)]">
               {c.value}
             </p>
           </article>
@@ -137,7 +137,7 @@ export function InfluencerContracts() {
                   className={cn(
                     "w-full rounded-2xl border p-4 text-left transition-colors",
                     rowOn
-                      ? "border-[#FF7A00]/35 bg-gradient-to-r from-[#FF7A00]/10 to-[#7C3AED]/10"
+                      ? "border-[color:var(--adfluence-orange)]/35 bg-[color:var(--adfluence-orange)]/10"
                       : "border-white/10 bg-[rgba(255,255,255,0.08)] hover:border-white/20",
                   )}
                 >
@@ -177,7 +177,7 @@ export function InfluencerContracts() {
                     <Button
                       type="button"
                       size="sm"
-                      className="h-8 rounded-lg bg-gradient-to-r from-[#FF7A00] to-[#7C3AED] text-xs text-white hover:opacity-95 disabled:opacity-40"
+                      className="h-8 rounded-lg bg-[color:var(--adfluence-orange)] text-xs text-white hover:bg-[color:var(--adfluence-orange-hover)] disabled:opacity-40"
                       disabled={r.status === "active" || r.status === "completed" || r.status === "rejected"}
                       onClick={(e) => {
                         e.stopPropagation();
@@ -262,7 +262,7 @@ export function InfluencerContracts() {
                         type="checkbox"
                         checked={item.done}
                         onChange={() => toggleCheck(selected.id, item.id)}
-                        className="h-4 w-4 rounded border-white/20 bg-[#06111F] accent-[#FF7A00]"
+                        className="h-4 w-4 rounded border-white/20 bg-[color:var(--adfluence-surface)] accent-[color:var(--adfluence-orange)]"
                       />
                       {item.label}
                     </li>

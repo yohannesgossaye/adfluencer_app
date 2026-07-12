@@ -18,8 +18,10 @@ import {
   IconUsers,
 } from "@tabler/icons-react";
 
+import { BrandLogo } from "@/components/common/brand-logo";
+import { useAuth } from "@/components/providers/auth-provider";
 import type { NavItem } from "@/lib/navigation";
-import { clearMockUser } from "@/lib/mock-auth";
+import { signOut } from "@/lib/sign-out";
 import { cn } from "@/lib/utils";
 
 const iconMap = {
@@ -49,30 +51,25 @@ export function DashboardSidebar({
   const pathname = usePathname();
   const router = useRouter();
 
+  const { setAccessToken } = useAuth();
+
+  const homeHref =
+    items.find((item) => item.icon === "dashboard")?.href ?? items[0]?.href ?? "/";
+
   const onLogout = () => {
-    clearMockUser();
-    router.push("/auth/login");
+    signOut();
+    setAccessToken(null);
+    router.push("/");
   };
 
   return (
     <aside
       className={cn(
-        "flex h-full min-h-0 w-full flex-col border-r border-white/10 bg-[#06111F] px-3 py-5 text-white",
+        "flex h-full min-h-0 w-full flex-col border-r border-white/10 bg-[color:var(--adfluence-surface)] px-3 py-5 text-white",
         variant === "drawer" && "min-h-[100dvh]",
       )}
     >
-      <Link
-        href="/"
-        className="mb-6 flex shrink-0 items-center gap-3 rounded-xl px-1 transition-opacity hover:opacity-90"
-      >
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#FF7A00] to-[#7C3AED]">
-          <span className="text-xl font-bold text-white">A</span>
-        </div>
-        <div className="min-w-0 leading-tight">
-          <p className="truncate text-lg font-bold text-white">Adfluence</p>
-          <p className="truncate text-xs text-[#CBD5E1]">{title}</p>
-        </div>
-      </Link>
+      <BrandLogo href={homeHref} tagline={title} className="mb-6 px-1" />
 
       <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto pr-0.5">
         {items.map((item) => {
@@ -94,8 +91,8 @@ export function DashboardSidebar({
                 className={cn(
                   "absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full opacity-0 transition-opacity",
                   active
-                    ? "bg-gradient-to-b from-[#FF7A00] to-[#7C3AED] opacity-100"
-                    : "group-hover:opacity-60",
+                    ? "bg-[color:var(--adfluence-orange)] opacity-100"
+                    : "group-hover:bg-[color:var(--adfluence-orange)]/50 group-hover:opacity-60",
                 )}
               />
               <ItemIcon className="size-4 shrink-0" />
@@ -111,7 +108,10 @@ export function DashboardSidebar({
           onClick={onLogout}
           className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm text-[#CBD5E1] transition-colors hover:bg-white/10 hover:text-white"
         >
-          <IconLogout className="size-4 shrink-0 text-[#FF7A00]/90" aria-hidden />
+          <IconLogout
+            className="size-4 shrink-0 text-[color:var(--adfluence-orange)]/90"
+            aria-hidden
+          />
           <span className="truncate">Logout</span>
         </button>
       </div>

@@ -12,7 +12,7 @@ const benefits = [
 
 export function InfluencerWhyLoveSection() {
   return (
-    <section className="bg-[color:var(--adfluence-navy-dark)]/50 py-20">
+    <section className="bg-[color:var(--adfluence-surface)]/50 py-20">
       <Container>
         <div className="grid items-center gap-12 lg:grid-cols-2">
           <div>
@@ -20,9 +20,15 @@ export function InfluencerWhyLoveSection() {
               Why creators love Adfluence
             </h2>
             <div className="mt-6 space-y-4">
-              {benefits.map((benefit) => (
+              {benefits.map((benefit, idx) => (
                 <div key={benefit} className="flex items-center gap-3">
-                  <CheckCircle2 className="size-5 text-[#7C3AED]" />
+                  <CheckCircle2
+                    className={`size-5 ${
+                      idx % 2 === 0
+                        ? "text-[color:var(--adfluence-orange)]"
+                        : "text-[color:var(--adfluence-purple-accent)]"
+                    }`}
+                  />
                   <p className="text-[#CBD5E1]">{benefit}</p>
                 </div>
               ))}
@@ -40,11 +46,15 @@ export function InfluencerWhyLoveSection() {
             <div className="mt-4 grid grid-cols-2 gap-4">
               <div className="rounded-xl bg-white/5 p-4">
                 <p className="text-xs text-[#CBD5E1]">Profile strength</p>
-                <p className="mt-1 text-2xl font-semibold text-[#FF7A00]">89%</p>
+                <p className="mt-1 text-2xl font-semibold text-[color:var(--adfluence-orange)]">
+                  89%
+                </p>
               </div>
               <div className="rounded-xl bg-white/5 p-4">
                 <p className="text-xs text-[#CBD5E1]">Invite acceptance</p>
-                <p className="mt-1 text-2xl font-semibold text-[#7C3AED]">72%</p>
+                <p className="mt-1 text-2xl font-semibold text-[color:var(--adfluence-purple-accent)]">
+                  72%
+                </p>
               </div>
             </div>
 
@@ -57,7 +67,7 @@ export function InfluencerWhyLoveSection() {
                 {[25, 38, 47, 58, 70, 85, 92].map((h, i) => (
                   <div
                     key={i}
-                    className="flex-1 rounded-t bg-gradient-to-t from-[#FF7A00] to-[#7C3AED]"
+                    className="flex-1 rounded-t bg-[color:var(--adfluence-orange)]"
                     style={{ height: `${h}%` }}
                   />
                 ))}
@@ -84,4 +94,3 @@ export function InfluencerWhyLoveSection() {
     </section>
   );
 }
-

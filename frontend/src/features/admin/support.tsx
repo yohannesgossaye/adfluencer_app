@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 type FilterKey = "all" | "business" | "influencer" | "open" | "in_review" | "resolved" | "high";
 
 const fieldShell =
-  "w-full min-w-0 rounded-xl border border-white/10 bg-[#06111F]/60 px-3 py-2 text-sm text-white outline-none placeholder:text-[#94A3B8] focus:border-[#FF7A00]/40 focus:ring-2 focus:ring-[#7C3AED]/25";
+  "w-full min-w-0 rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)]/60 px-3 py-2 text-sm text-white outline-none placeholder:text-[#94A3B8] focus:border-[color:var(--adfluence-orange)]/40 focus:ring-2 focus:ring-[color:var(--adfluence-orange)]/25";
 
 function priorityClass(p: SupportTicket["priority"]) {
   if (p === "high") return "text-rose-200";
@@ -148,7 +148,7 @@ export function AdminSupport() {
             className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.06)] p-4 shadow-[0_12px_40px_rgba(0,0,0,0.28)] backdrop-blur-md"
           >
             <p className="text-[11px] font-medium uppercase tracking-wide text-[#94A3B8]">{s.label}</p>
-            <p className="mt-2 text-xl font-bold bg-gradient-to-r from-[#FF7A00] to-[#7C3AED] bg-clip-text text-transparent md:text-2xl">
+            <p className="mt-2 text-xl font-bold text-[color:var(--adfluence-orange)] md:text-2xl">
               {s.value}
             </p>
           </article>
@@ -164,7 +164,7 @@ export function AdminSupport() {
             className={cn(
               "shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors md:text-sm",
               filter === b.key
-                ? "border-transparent bg-gradient-to-r from-[#FF7A00] to-[#7C3AED] text-white"
+                ? "border-transparent bg-[color:var(--adfluence-orange)] text-white"
                 : "border-white/15 bg-white/5 text-[#CBD5E1] hover:bg-white/10",
             )}
           >
@@ -193,8 +193,8 @@ export function AdminSupport() {
                       className={cn(
                         "rounded-xl border p-3 transition-colors md:p-4",
                         active
-                          ? "border-[#FF7A00]/40 bg-gradient-to-br from-[#FF7A00]/10 to-[#7C3AED]/10"
-                          : "border-white/10 bg-[#06111F]/40",
+                          ? "border-[color:var(--adfluence-orange)]/35 bg-[color:var(--adfluence-orange)]/10"
+                          : "border-white/10 bg-[color:var(--adfluence-surface)]/40",
                       )}
                     >
                       <div className="flex flex-wrap items-start justify-between gap-2">
@@ -289,7 +289,7 @@ export function AdminSupport() {
               </div>
               <div>
                 <p className="text-xs font-medium uppercase tracking-wide text-[#94A3B8]">Message</p>
-                <p className="mt-2 rounded-xl border border-white/10 bg-[#06111F]/60 p-3 text-sm leading-relaxed text-[#CBD5E1]">
+                <p className="mt-2 rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)]/60 p-3 text-sm leading-relaxed text-[#CBD5E1]">
                   {selected.message}
                 </p>
               </div>
@@ -318,12 +318,12 @@ export function AdminSupport() {
                   value={replyDraft}
                   onChange={(e) => setReplyDraft(e.target.value)}
                   placeholder="e.g. We’re looking into this and will update within 24h."
-                  className={cn(fieldShell, "h-10 border-white/10 bg-[#06111F]/60")}
+                  className={cn(fieldShell, "h-10 border-white/10 bg-[color:var(--adfluence-surface)]/60")}
                 />
               </div>
               <Button
                 type="button"
-                className="h-11 w-full rounded-xl bg-gradient-to-r from-[#FF7A00] to-[#7C3AED] text-white hover:opacity-95 lg:h-10 lg:w-auto"
+                className="h-11 w-full rounded-xl bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)] lg:h-10 lg:w-auto"
                 onClick={saveNotesForSelected}
               >
                 Save note & reply

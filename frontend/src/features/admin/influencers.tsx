@@ -81,7 +81,7 @@ export function AdminInfluencers() {
   };
 
   return (
-    <div className="space-y-6 rounded-2xl bg-[#0B1A2B] p-4 text-white md:p-6">
+    <div className="space-y-6 text-white">
       <div>
         <h1 className="text-2xl font-semibold text-white">Influencer approvals</h1>
         <p className="mt-1 max-w-2xl text-sm text-[#CBD5E1]">
@@ -98,7 +98,7 @@ export function AdminInfluencers() {
             className={cn(
               "rounded-full border px-4 py-2 text-sm font-medium transition-colors",
               tab === t.id
-                ? "border-transparent bg-gradient-to-r from-[#FF7A00] to-[#7C3AED] text-white"
+                ? "border-transparent bg-[color:var(--adfluence-orange)] text-white"
                 : "border-white/10 bg-[rgba(255,255,255,0.06)] text-[#CBD5E1] hover:text-white",
             )}
           >
@@ -111,7 +111,7 @@ export function AdminInfluencers() {
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         placeholder="Search by name, niche, or platform"
-        className="h-11 max-w-md rounded-xl border-white/10 bg-[#06111F] text-white placeholder:text-[#94A3B8]"
+        className="h-11 max-w-md rounded-xl border-white/10 bg-[color:var(--adfluence-surface)] text-white placeholder:text-[#94A3B8]"
       />
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
@@ -124,7 +124,7 @@ export function AdminInfluencers() {
               className={cn(
                 "flex w-full min-w-[280px] gap-4 rounded-2xl border p-4 text-left transition-colors",
                 selectedId === r.id
-                  ? "border-[#FF7A00]/40 bg-gradient-to-r from-[#FF7A00]/10 to-[#7C3AED]/10"
+                  ? "border-[color:var(--adfluence-orange)]/35 bg-[color:var(--adfluence-orange)]/10"
                   : "border-white/10 bg-[rgba(255,255,255,0.08)] hover:border-white/20",
               )}
             >
@@ -153,7 +153,7 @@ export function AdminInfluencers() {
                   <Button
                     type="button"
                     size="sm"
-                    className="h-8 bg-gradient-to-r from-[#FF7A00] to-[#7C3AED] text-white"
+                    className="h-8 bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)]"
                     disabled={r.status !== "pending"}
                     onClick={(e) => {
                       e.stopPropagation();
@@ -206,7 +206,7 @@ export function AdminInfluencers() {
                 value={noteDraft}
                 onChange={(e) => setNoteDraft(e.target.value)}
                 rows={3}
-                className="mt-1 w-full rounded-xl border border-white/10 bg-[#06111F] px-3 py-2 text-sm text-white"
+                className="mt-1 w-full rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)] px-3 py-2 text-sm text-white"
               />
             </label>
             <Button

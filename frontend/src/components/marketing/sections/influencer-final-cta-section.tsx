@@ -4,11 +4,12 @@ import { ArrowRight } from "lucide-react";
 import { Container } from "@/components/common/container";
 import { GradientButton } from "@/components/common/gradient-button";
 import { Button } from "@/components/ui/button";
+import { buildMarketingAuthHref } from "@/lib/marketing-auth-url";
 
 export function InfluencerFinalCtaSection() {
   return (
-    <section className="relative overflow-hidden bg-gradient-to-r from-[#FF7A00] via-[#7C3AED] to-[#FF7A00] py-24">
-      <div className="absolute inset-0 bg-[#0B1A2B]/45" />
+    <section className="relative overflow-hidden bg-[color:var(--adfluence-surface)] py-24">
+      <div className="absolute top-1/2 left-1/2 h-96 w-96 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[color:var(--adfluence-orange)]/8 blur-[120px]" />
       <Container className="relative text-center text-white">
         <div className="mx-auto max-w-3xl">
           <h2 className="text-4xl font-bold leading-tight sm:text-5xl">
@@ -20,7 +21,7 @@ export function InfluencerFinalCtaSection() {
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-4">
             <GradientButton asChild className="h-12 rounded-xl px-6">
-              <Link href="/auth/signup?role=influencer">
+              <Link href={buildMarketingAuthHref("/for-influencers", "signup", "influencer")}>
                 Join as Influencer <ArrowRight className="size-5" />
               </Link>
             </GradientButton>
@@ -37,4 +38,3 @@ export function InfluencerFinalCtaSection() {
     </section>
   );
 }
-

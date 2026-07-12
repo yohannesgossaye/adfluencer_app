@@ -68,7 +68,7 @@ export function ProblemsWeSolveSection() {
               className="adfluence-glass rounded-2xl border border-white/15 p-6 transition-transform hover:-translate-y-0.5"
             >
               <div className="flex items-center gap-3">
-                <span className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-[#FF7A00] to-[#7C3AED] text-white">
+                <span className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-[color:var(--adfluence-purple)] text-white">
                   <p.icon className="size-5" />
                 </span>
                 <h3 className="text-base font-semibold text-white">{p.title}</h3>

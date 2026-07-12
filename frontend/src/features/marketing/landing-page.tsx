@@ -10,7 +10,7 @@ import { WhyChooseSection } from "@/components/marketing/sections/why-choose-sec
 
 export function LandingPage() {
   return (
-    <div className="min-h-screen bg-[color:var(--adfluence-navy)] text-white">
+    <div className="min-h-screen bg-[color:var(--adfluence-bg)] text-white">
       <HeroSection />
       <TrustedLogosSection />
       <StatsSection />

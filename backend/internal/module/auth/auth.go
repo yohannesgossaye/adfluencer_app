@@ -4,6 +4,7 @@ import (
 	customErr "adinfluence_service_app/internal/constant/errors"
 	"adinfluence_service_app/internal/constant/model"
 	authDto "adinfluence_service_app/internal/constant/model/dto/auth"
+	module "adinfluence_service_app/internal/module"
 	"adinfluence_service_app/internal/module/auth/helper"
 	"adinfluence_service_app/internal/storage"
 	"adinfluence_service_app/platform/jwt"
@@ -30,7 +31,7 @@ type userAuthModule struct {
 	logger      utils.Logger
 }
 
-func InitAuthModule(p storage.AuthPersisitence, tokens *jwt.TokenManager, email *mail.Client, smsClient *sms.Client, frontendURL string, log utils.Logger) *userAuthModule {
+func InitAuthModule(p storage.AuthPersisitence, tokens *jwt.TokenManager, email *mail.Client, smsClient *sms.Client, frontendURL string, log utils.Logger) module.AuthService {
 	return &userAuthModule{
 		persistence: p,
 		tokens:      tokens,

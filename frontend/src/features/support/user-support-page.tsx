@@ -16,7 +16,7 @@ import { getMockUser } from "@/lib/mock-auth";
 import { cn } from "@/lib/utils";
 
 const fieldShell =
-  "w-full min-w-0 rounded-xl border border-white/10 bg-[#06111F]/60 px-3 py-2 text-sm text-white outline-none transition-[border,box-shadow] placeholder:text-[#94A3B8] focus:border-[#FF7A00]/40 focus:ring-2 focus:ring-[#7C3AED]/25";
+  "w-full min-w-0 rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)]/60 px-3 py-2 text-sm text-white outline-none transition-[border,box-shadow] placeholder:text-[#94A3B8] focus:border-[color:var(--adfluence-orange)]/40 focus:ring-2 focus:ring-[color:var(--adfluence-orange)]/25";
 
 function priorityBadgeClass(p: SupportPriority) {
   if (p === "high") return "border-rose-400/35 bg-rose-500/15 text-rose-100";
@@ -168,7 +168,7 @@ export function UserSupportPage({
                     className={cn(
                       "rounded-full border px-3 py-1.5 text-xs font-medium capitalize transition-colors",
                       priority === p
-                        ? "border-transparent bg-gradient-to-r from-[#FF7A00] to-[#7C3AED] text-white"
+                        ? "border-transparent bg-[color:var(--adfluence-orange)] text-white"
                         : "border-white/15 bg-white/5 text-[#CBD5E1] hover:bg-white/10",
                     )}
                   >
@@ -200,7 +200,7 @@ export function UserSupportPage({
             ) : null}
             <Button
               type="button"
-              className="h-11 w-full rounded-xl bg-gradient-to-r from-[#FF7A00] to-[#7C3AED] text-white hover:opacity-95 md:h-10"
+              className="h-11 w-full rounded-xl bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)] md:h-10"
               onClick={submit}
             >
               Submit Support Request

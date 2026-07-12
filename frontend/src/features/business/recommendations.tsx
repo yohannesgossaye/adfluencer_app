@@ -232,7 +232,7 @@ export function Recommendations() {
   };
 
   return (
-    <div className="space-y-6 rounded-2xl bg-[#0B1A2B] p-4 text-white md:p-6">
+    <div className="space-y-6 text-white">
       <section className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-white">Recommended Influencers</h1>
@@ -242,7 +242,7 @@ export function Recommendations() {
         </div>
         <Button
           asChild
-          className="h-11 rounded-xl bg-gradient-to-r from-[#FF7A00] to-[#7C3AED] px-5 text-white hover:opacity-95"
+          className="h-11 rounded-xl bg-[color:var(--adfluence-orange)] px-5 text-white hover:bg-[color:var(--adfluence-orange-hover)]"
         >
           <Link href="/business/campaigns/create">Create New Campaign</Link>
         </Button>
@@ -288,16 +288,16 @@ export function Recommendations() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search influencer"
-            className="h-11 rounded-xl border-white/10 bg-[#06111F] text-white placeholder:text-[#94A3B8] focus-visible:border-[#FF7A00] focus-visible:ring-[#7C3AED]/30"
+            className="h-11 rounded-xl border-white/10 bg-[color:var(--adfluence-surface)] text-white placeholder:text-[#94A3B8] focus-visible:border-[color:var(--adfluence-orange)] focus-visible:ring-[color:var(--adfluence-orange)]/25"
           />
 
           <select
             value={nicheFilter}
             onChange={(e) => setNicheFilter(e.target.value)}
-            className="h-11 w-full rounded-xl border border-white/10 bg-[#06111F] px-3 text-sm text-white outline-none focus:border-[#FF7A00] focus:ring-2 focus:ring-[#7C3AED]/30"
+            className="h-11 w-full rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)] px-3 text-sm text-white outline-none focus:border-[color:var(--adfluence-orange)] focus:ring-2 focus:ring-[color:var(--adfluence-orange)]/25"
           >
             {nicheOptions.map((option) => (
-              <option key={option} value={option} className="bg-[#06111F]">
+              <option key={option} value={option} className="bg-[color:var(--adfluence-surface)]">
                 {option}
               </option>
             ))}
@@ -306,10 +306,10 @@ export function Recommendations() {
           <select
             value={platformFilter}
             onChange={(e) => setPlatformFilter(e.target.value)}
-            className="h-11 w-full rounded-xl border border-white/10 bg-[#06111F] px-3 text-sm text-white outline-none focus:border-[#FF7A00] focus:ring-2 focus:ring-[#7C3AED]/30"
+            className="h-11 w-full rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)] px-3 text-sm text-white outline-none focus:border-[color:var(--adfluence-orange)] focus:ring-2 focus:ring-[color:var(--adfluence-orange)]/25"
           >
             {platformOptions.map((option) => (
-              <option key={option} value={option} className="bg-[#06111F]">
+              <option key={option} value={option} className="bg-[color:var(--adfluence-surface)]">
                 {option}
               </option>
             ))}
@@ -318,10 +318,10 @@ export function Recommendations() {
           <select
             value={scoreFilter}
             onChange={(e) => setScoreFilter(e.target.value)}
-            className="h-11 w-full rounded-xl border border-white/10 bg-[#06111F] px-3 text-sm text-white outline-none focus:border-[#FF7A00] focus:ring-2 focus:ring-[#7C3AED]/30"
+            className="h-11 w-full rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)] px-3 text-sm text-white outline-none focus:border-[color:var(--adfluence-orange)] focus:ring-2 focus:ring-[color:var(--adfluence-orange)]/25"
           >
             {scoreOptions.map((option) => (
-              <option key={option} value={option} className="bg-[#06111F]">
+              <option key={option} value={option} className="bg-[color:var(--adfluence-surface)]">
                 {option}
               </option>
             ))}
@@ -330,10 +330,10 @@ export function Recommendations() {
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
-            className="h-11 w-full rounded-xl border border-white/10 bg-[#06111F] px-3 text-sm text-white outline-none focus:border-[#FF7A00] focus:ring-2 focus:ring-[#7C3AED]/30"
+            className="h-11 w-full rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)] px-3 text-sm text-white outline-none focus:border-[color:var(--adfluence-orange)] focus:ring-2 focus:ring-[color:var(--adfluence-orange)]/25"
           >
             {sortOptions.map((option) => (
-              <option key={option} value={option} className="bg-[#06111F]">
+              <option key={option} value={option} className="bg-[color:var(--adfluence-surface)]">
                 {option}
               </option>
             ))}
@@ -389,7 +389,7 @@ export function Recommendations() {
                 </div>
                 <div className="h-2 rounded-full bg-white/10">
                   <div
-                    className="h-2 rounded-full bg-gradient-to-r from-[#FF7A00] to-[#7C3AED]"
+                    className="h-2 rounded-full bg-[color:var(--adfluence-orange)]"
                     style={{ width: `${influencer.calculatedScore}%` }}
                   />
                 </div>
@@ -405,7 +405,7 @@ export function Recommendations() {
                 <Button
                   onClick={() => onInvite(influencer.id, influencer.name)}
                   disabled={invitedIds.includes(influencer.id)}
-                  className="h-10 rounded-xl bg-gradient-to-r from-[#FF7A00] to-[#7C3AED] text-white hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="h-10 rounded-xl bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)] disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {invitedIds.includes(influencer.id) ? "Invited" : "Invite"}
                 </Button>
@@ -435,7 +435,7 @@ export function Recommendations() {
                 invitedCreators.map((creator) => (
                   <div
                     key={creator.id}
-                    className="rounded-xl border border-white/10 bg-[#06111F] p-3"
+                    className="rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)] p-3"
                   >
                     <p className="text-sm font-medium text-white">{creator.name}</p>
                     <p className="mt-1 text-xs text-emerald-300">Status: Invited</p>

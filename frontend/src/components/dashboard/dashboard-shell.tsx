@@ -21,7 +21,7 @@ export function DashboardShell({
   children: ReactNode;
 }) {
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[#0B1A2B] text-white">
+    <div className="min-h-screen overflow-x-hidden bg-[color:var(--adfluence-bg)] text-white">
       {/* Desktop: fixed sidebar — does not scroll with page */}
       <div className="fixed inset-y-0 left-0 z-40 hidden h-[100dvh] w-[260px] md:block">
         <DashboardSidebar title={sidebarTitle} items={navItems} variant="desktop" />
@@ -47,14 +47,14 @@ export function DashboardShell({
               </SheetTrigger>
               <SheetContent
                 side="left"
-                className="flex h-full w-[min(100%,260px)] max-w-[260px] flex-col border-white/10 bg-[#06111F] p-0 sm:max-w-[260px]"
+                className="flex h-full w-[min(100%,260px)] max-w-[260px] flex-col border-white/10 bg-[color:var(--adfluence-surface)] p-0 sm:max-w-[260px]"
               >
                 <DashboardSidebar title={sidebarTitle} items={navItems} variant="drawer" />
               </SheetContent>
             </Sheet>
           }
         />
-        <main className="min-w-0 flex-1 overflow-y-auto bg-[#0B1A2B] p-4 md:p-6">
+        <main className="min-w-0 flex-1 overflow-y-auto bg-[color:var(--adfluence-bg)] p-4 md:p-6">
           {children}
         </main>
       </div>

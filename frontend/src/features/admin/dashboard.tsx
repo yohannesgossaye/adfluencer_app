@@ -27,7 +27,7 @@ function Kpi({ label, value }: { label: string; value: string }) {
       <p className="text-[11px] font-medium uppercase leading-tight tracking-wide text-[#94A3B8]">
         {label}
       </p>
-      <p className="mt-2 text-xl font-bold bg-gradient-to-r from-[#FF7A00] to-[#7C3AED] bg-clip-text text-transparent md:text-2xl">
+      <p className="mt-2 text-xl font-bold text-[color:var(--adfluence-orange)] md:text-2xl">
         {value}
       </p>
     </article>
@@ -81,8 +81,6 @@ export function AdminDashboard() {
     });
   };
 
-  const revenueBars = [38, 52, 45, 68, 55, 72, 61];
-
   const kpis = useMemo(
     () => [
       { label: "Total Influencers", value: String(adminPlatformKpis.totalInfluencers) },
@@ -102,7 +100,7 @@ export function AdminDashboard() {
   );
 
   return (
-    <div className="space-y-6 rounded-2xl bg-[#0B1A2B] p-4 text-white md:p-6">
+    <div className="space-y-6 text-white">
       <div>
         <h1 className="text-2xl font-semibold text-white">Admin Dashboard</h1>
         <p className="mt-1 max-w-2xl text-sm text-[#CBD5E1]">
@@ -124,7 +122,7 @@ export function AdminDashboard() {
             {previewPending.map((a) => (
               <li
                 key={a.id}
-                className="flex flex-col gap-2 rounded-xl border border-white/10 bg-[#06111F] p-3 sm:flex-row sm:items-center sm:justify-between"
+                className="flex flex-col gap-2 rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)] p-3 sm:flex-row sm:items-center sm:justify-between"
               >
                 <div>
                   <p className="font-medium text-white">{a.name}</p>
@@ -136,7 +134,7 @@ export function AdminDashboard() {
                   <Button
                     type="button"
                     size="sm"
-                    className="h-8 rounded-lg bg-gradient-to-r from-[#FF7A00] to-[#7C3AED] text-white"
+                    className="h-8 rounded-lg bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)]"
                     onClick={() => setAppStatus(a.id, "approved")}
                   >
                     Approve
@@ -177,23 +175,14 @@ export function AdminDashboard() {
 
       <section className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-5 md:p-6">
         <h2 className="text-lg font-semibold text-white">Revenue / campaign performance</h2>
-        <div className="mt-4 flex h-36 items-end gap-2 rounded-xl bg-white/5 p-4">
-          {revenueBars.map((h, i) => (
-            <div
-              key={i}
-              className="flex-1 rounded-t bg-gradient-to-t from-[#FF7A00] to-[#7C3AED]"
-              style={{ height: `${h}%` }}
-            />
-          ))}
-        </div>
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <div className="rounded-xl border border-white/10 bg-[#06111F] p-3">
+          <div className="rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)] p-3">
             <p className="text-xs text-[#CBD5E1]">Total campaign value (mock)</p>
             <p className="text-lg font-semibold text-white">ETB 4.2M</p>
           </div>
-          <div className="rounded-xl border border-white/10 bg-[#06111F] p-3">
+          <div className="rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)] p-3">
             <p className="text-xs text-[#CBD5E1]">Platform commission (placeholder)</p>
-            <p className="text-lg font-semibold text-[#FF7A00]">12.5%</p>
+            <p className="text-lg font-semibold text-[color:var(--adfluence-orange)]">12.5%</p>
           </div>
         </div>
       </section>
@@ -210,7 +199,7 @@ export function AdminDashboard() {
                   ? "border-rose-400/30 bg-rose-500/10 text-rose-100"
                   : al.severity === "medium"
                     ? "border-amber-400/25 bg-amber-500/10 text-amber-100"
-                    : "border-white/10 bg-[#06111F] text-[#CBD5E1]",
+                    : "border-white/10 bg-[color:var(--adfluence-surface)] text-[#CBD5E1]",
               )}
             >
               <span className="font-medium text-white">{al.title}</span> — {al.detail}

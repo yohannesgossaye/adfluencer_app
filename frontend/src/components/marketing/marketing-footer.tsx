@@ -1,21 +1,28 @@
+import Link from "next/link";
+
+import { BrandLogo } from "@/components/common/brand-logo";
 import { Container } from "@/components/common/container";
 
 export function MarketingFooter() {
   return (
-    <footer className="bg-[color:var(--adfluence-navy-dark)] border-t border-white/10 py-16">
+    <footer className="border-t border-white/10 bg-[color:var(--adfluence-surface)] py-16 text-white">
       <Container>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12 text-white">
+        <div className="mb-12 grid grid-cols-2 gap-8 text-white md:grid-cols-4">
           <div>
-            <h4 className="font-semibold mb-4">Platform</h4>
+            <h4 className="mb-4 font-semibold">Platform</h4>
             <ul className="space-y-2 text-sm text-[#CBD5E1]">
               <li>For Businesses</li>
               <li>For Influencers</li>
               <li>How It Works</li>
-              <li>Pricing</li>
+              <li>
+                <Link href="/pricing" className="hover:text-white transition-colors">
+                  How Fees Work
+                </Link>
+              </li>
             </ul>
           </div>
           <div>
-            <h4 className="font-semibold mb-4">Company</h4>
+            <h4 className="mb-4 font-semibold">Company</h4>
             <ul className="space-y-2 text-sm text-[#CBD5E1]">
               <li>About Us</li>
               <li>Careers</li>
@@ -24,7 +31,7 @@ export function MarketingFooter() {
             </ul>
           </div>
           <div>
-            <h4 className="font-semibold mb-4">Resources</h4>
+            <h4 className="mb-4 font-semibold">Resources</h4>
             <ul className="space-y-2 text-sm text-[#CBD5E1]">
               <li>Help Center</li>
               <li>Community</li>
@@ -33,7 +40,7 @@ export function MarketingFooter() {
             </ul>
           </div>
           <div>
-            <h4 className="font-semibold mb-4">Contact</h4>
+            <h4 className="mb-4 font-semibold">Contact</h4>
             <ul className="space-y-2 text-sm text-[#CBD5E1]">
               <li>hello@adfluence.et</li>
               <li>Addis Ababa, Ethiopia</li>
@@ -42,13 +49,8 @@ export function MarketingFooter() {
           </div>
         </div>
 
-        <div className="pt-8 border-t border-white/10 flex flex-col md:flex-row justify-between items-center gap-4 text-[#CBD5E1]">
-          <div className="flex items-center gap-3 text-white">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#FF7A00] to-[#7C3AED] flex items-center justify-center">
-              <span className="text-white font-bold text-xl">A</span>
-            </div>
-            <span className="font-bold text-xl">Adfluence</span>
-          </div>
+        <div className="flex flex-col items-center justify-between gap-4 border-t border-white/10 pt-8 text-[#CBD5E1] md:flex-row">
+          <BrandLogo href="/" showName />
           <div className="text-sm text-[#CBD5E1]">
             © 2026 Adfluence. All rights reserved.
           </div>

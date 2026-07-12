@@ -91,7 +91,7 @@ export function InfluencerProfile({ influencerId }: InfluencerProfileProps) {
 
   if (!influencer) {
     return (
-      <div className="space-y-6 rounded-2xl bg-[#0B1A2B] p-4 text-white md:p-6">
+      <div className="space-y-6 text-white">
         <section className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-8 text-center">
           <h1 className="text-2xl font-semibold text-white">Influencer not found</h1>
           <p className="mt-2 text-sm text-[#CBD5E1]">
@@ -99,7 +99,7 @@ export function InfluencerProfile({ influencerId }: InfluencerProfileProps) {
           </p>
           <Button
             asChild
-            className="mt-5 h-11 rounded-xl bg-gradient-to-r from-[#FF7A00] to-[#7C3AED] px-6 text-white hover:opacity-95"
+            className="mt-5 h-11 rounded-xl bg-[color:var(--adfluence-orange)] px-6 text-white hover:bg-[color:var(--adfluence-orange-hover)]"
           >
             <Link href="/business/recommendations">Back to Recommendations</Link>
           </Button>
@@ -191,7 +191,7 @@ export function InfluencerProfile({ influencerId }: InfluencerProfileProps) {
   );
 
   return (
-    <div className="space-y-6 rounded-2xl bg-[#0B1A2B] p-4 text-white md:p-6">
+    <div className="space-y-6 text-white">
       <section className="grid gap-5 rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-5 lg:grid-cols-[320px_minmax(0,1fr)]">
         <div className="relative h-72 overflow-hidden rounded-2xl border border-white/10 md:h-80">
           <Image
@@ -216,27 +216,27 @@ export function InfluencerProfile({ influencerId }: InfluencerProfileProps) {
                 Platforms: {influencer.platforms.join(", ")}
               </p>
             </div>
-            <span className="rounded-full bg-gradient-to-r from-[#FF7A00]/20 to-[#7C3AED]/20 px-3 py-1 text-xs font-semibold text-orange-200">
+            <span className="rounded-full bg-[color:var(--adfluence-orange)]/15 px-3 py-1 text-xs font-semibold text-orange-200">
               Match score {score}%
             </span>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
-            <div className="rounded-xl border border-white/10 bg-[#06111F] p-3">
+            <div className="rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)] p-3">
               <p className="text-xs text-[#CBD5E1]">Followers</p>
               <p className="mt-1 text-lg font-semibold text-white">
                 {influencer.followers.toLocaleString()}
               </p>
             </div>
-            <div className="rounded-xl border border-white/10 bg-[#06111F] p-3">
+            <div className="rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)] p-3">
               <p className="text-xs text-[#CBD5E1]">Engagement rate</p>
               <p className="mt-1 text-lg font-semibold text-white">{influencer.engagementRate}%</p>
             </div>
-            <div className="rounded-xl border border-white/10 bg-[#06111F] p-3">
+            <div className="rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)] p-3">
               <p className="text-xs text-[#CBD5E1]">Price range</p>
               <p className="mt-1 text-lg font-semibold text-white">{price.text}</p>
             </div>
-            <div className="rounded-xl border border-white/10 bg-[#06111F] p-3">
+            <div className="rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)] p-3">
               <p className="text-xs text-[#CBD5E1]">Response time</p>
               <p className="mt-1 text-lg font-semibold text-white">{responseTime}</p>
             </div>
@@ -245,7 +245,7 @@ export function InfluencerProfile({ influencerId }: InfluencerProfileProps) {
           <div className="grid gap-2 sm:grid-cols-3">
             <Button
               onClick={onInvite}
-              className="h-11 rounded-xl bg-gradient-to-r from-[#FF7A00] to-[#7C3AED] text-white hover:opacity-95"
+              className="h-11 rounded-xl bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)]"
             >
               {inviteSent ? "Invite Sent" : "Invite to Campaign"}
             </Button>
@@ -295,7 +295,7 @@ export function InfluencerProfile({ influencerId }: InfluencerProfileProps) {
               className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-4"
             >
               <p className="text-xs text-[#CBD5E1]">{item.label}</p>
-              <p className="mt-2 text-2xl font-bold bg-gradient-to-r from-[#FF7A00] to-[#7C3AED] bg-clip-text text-transparent">
+              <p className="mt-2 text-2xl font-bold text-[color:var(--adfluence-orange)]">
                 {item.value}
               </p>
             </article>
@@ -318,7 +318,7 @@ export function InfluencerProfile({ influencerId }: InfluencerProfileProps) {
                   fill
                   className="object-cover"
                 />
-                <span className="absolute left-2 top-2 rounded-full bg-[#06111F]/90 px-2 py-0.5 text-xs text-[#CBD5E1]">
+                <span className="absolute left-2 top-2 rounded-full bg-[color:var(--adfluence-surface)]/90 px-2 py-0.5 text-xs text-[#CBD5E1]">
                   {sample.platform}
                 </span>
               </div>
@@ -338,7 +338,7 @@ export function InfluencerProfile({ influencerId }: InfluencerProfileProps) {
               key={pkg.title}
               className={`rounded-2xl border p-5 ${
                 pkg.recommended
-                  ? "border-[#FF7A00]/40 bg-[linear-gradient(135deg,rgba(255,122,0,0.14),rgba(124,58,237,0.14))]"
+                  ? "border-[color:var(--adfluence-orange)]/40 bg-[color:var(--adfluence-orange)]/10"
                   : "border-white/10 bg-[rgba(255,255,255,0.08)]"
               }`}
             >
@@ -373,7 +373,7 @@ export function InfluencerProfile({ influencerId }: InfluencerProfileProps) {
                 </div>
                 <div className="h-2 rounded-full bg-white/10">
                   <div
-                    className="h-2 rounded-full bg-gradient-to-r from-[#FF7A00] to-[#7C3AED]"
+                    className="h-2 rounded-full bg-[color:var(--adfluence-orange)]"
                     style={{ width: `${row.value}%` }}
                   />
                 </div>
@@ -385,15 +385,15 @@ export function InfluencerProfile({ influencerId }: InfluencerProfileProps) {
         <div className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-5">
           <h2 className="text-lg font-semibold text-white">Reviews / Past Collaborations</h2>
           <div className="mt-4 space-y-3 text-sm">
-            <article className="rounded-xl border border-white/10 bg-[#06111F] p-3">
+            <article className="rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)] p-3">
               <p className="font-medium text-white">Betu Cosmetics</p>
               <p className="mt-1 text-[#CBD5E1]">Rating: 4.9/5 • Campaign delivered on time.</p>
             </article>
-            <article className="rounded-xl border border-white/10 bg-[#06111F] p-3">
+            <article className="rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)] p-3">
               <p className="font-medium text-white">Habesha Coffee Roasters</p>
               <p className="mt-1 text-[#CBD5E1]">Rating: 4.8/5 • Strong engagement and reach uplift.</p>
             </article>
-            <article className="rounded-xl border border-white/10 bg-[#06111F] p-3">
+            <article className="rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)] p-3">
               <p className="font-medium text-white">Ride Ethiopia</p>
               <p className="mt-1 text-[#CBD5E1]">Rating: 4.7/5 • High CTR on creator-led campaign assets.</p>
             </article>

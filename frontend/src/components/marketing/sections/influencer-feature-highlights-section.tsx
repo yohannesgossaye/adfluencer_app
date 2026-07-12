@@ -37,7 +37,7 @@ export function InfluencerFeatureHighlightsSection() {
               key={feature.title}
               className="adfluence-glass rounded-2xl border border-white/15 p-6"
             >
-              <span className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-[#FF7A00] to-[#7C3AED] text-white">
+              <span className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-[color:var(--adfluence-purple)] text-white">
                 <feature.icon className="size-5" />
               </span>
               <h3 className="mt-4 text-lg font-semibold text-white">
