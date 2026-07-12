@@ -42,6 +42,12 @@ const activeCampaignRows = [
   },
 ];
 
+function campaignStatusClass(status: string) {
+  if (status === "Active") return "bg-emerald-500/15 text-emerald-300";
+  if (status === "Pending") return "bg-amber-500/15 text-amber-200";
+  return "bg-blue-500/15 text-blue-300";
+}
+
 export function BusinessDashboard() {
   return (
     <div className="space-y-6 text-white">
@@ -114,7 +120,7 @@ export function BusinessDashboard() {
 
       <section className="adfluence-glass rounded-2xl border border-white/10 p-5 md:p-6">
         <h2 className="text-lg font-semibold">Active Campaigns</h2>
-        <div className="mt-4 overflow-x-auto">
+        <div className="mt-4 hidden overflow-x-auto md:block">
           <table className="w-full min-w-[680px] text-sm">
             <thead className="text-left text-[#CBD5E1]">
               <tr>
@@ -134,13 +140,7 @@ export function BusinessDashboard() {
                   <td className="py-3">{row.budget}</td>
                   <td className="py-3">
                     <span
-                      className={`rounded-full px-3 py-1 text-xs ${
-                        row.status === "Active"
-                          ? "bg-emerald-500/15 text-emerald-300"
-                          : row.status === "Pending"
-                            ? "bg-amber-500/15 text-amber-200"
-                            : "bg-blue-500/15 text-blue-300"
-                      }`}
+                      className={`rounded-full px-3 py-1 text-xs ${campaignStatusClass(row.status)}`}
                     >
                       {row.status}
                     </span>
@@ -162,6 +162,43 @@ export function BusinessDashboard() {
               ))}
             </tbody>
           </table>
+        </div>
+        <div className="mt-4 space-y-3 md:hidden">
+          {activeCampaignRows.map((row) => (
+            <article
+              key={row.name}
+              className="rounded-xl border border-white/10 bg-white/5 p-4"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="font-medium text-white">{row.name}</p>
+                  <p className="mt-1 text-xs text-[#CBD5E1]">
+                    {row.niche} · {row.budget}
+                  </p>
+                </div>
+                <span
+                  className={`shrink-0 rounded-full px-3 py-1 text-xs ${campaignStatusClass(row.status)}`}
+                >
+                  {row.status}
+                </span>
+              </div>
+              <div className="mt-3">
+                <div className="mb-1 flex items-center justify-between text-xs text-[#CBD5E1]">
+                  <span>Progress</span>
+                  <span>{row.progress}%</span>
+                </div>
+                <div className="rounded-full bg-white/10">
+                  <div
+                    className="h-2 rounded-full bg-[color:var(--adfluence-orange)]"
+                    style={{ width: `${row.progress}%` }}
+                  />
+                </div>
+              </div>
+              <Button className="mt-3 h-11 w-full rounded-xl bg-white/10 text-white hover:bg-white/15 md:h-9">
+                View
+              </Button>
+            </article>
+          ))}
         </div>
       </section>
 

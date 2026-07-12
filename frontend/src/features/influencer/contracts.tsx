@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { ArrowLeft } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -49,11 +50,19 @@ export function InfluencerContracts() {
     structuredClone(initialInfluencerContracts),
   );
   const [selectedId, setSelectedId] = useState(initialInfluencerContracts[0]?.id ?? "");
+  const [mobileShowDetail, setMobileShowDetail] = useState(false);
 
   const selected = useMemo(
     () => rows.find((r) => r.id === selectedId) ?? rows[0],
     [rows, selectedId],
   );
+
+  const selectContract = useCallback((id: string) => {
+    setSelectedId(id);
+    if (typeof window !== "undefined" && window.matchMedia("(max-width: 1279px)").matches) {
+      setMobileShowDetail(true);
+    }
+  }, []);
 
   const acceptContract = (id: string) => {
     setRows((prev) =>
@@ -124,7 +133,7 @@ export function InfluencerContracts() {
       </section>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_400px]">
-        <section className="space-y-3">
+        <section className={cn("space-y-3", mobileShowDetail && "hidden xl:block")}>
           <h2 className="text-sm font-medium uppercase tracking-wide text-[#94A3B8]">Your contracts</h2>
           <div className="space-y-3">
             {rows.map((r) => {
@@ -133,7 +142,7 @@ export function InfluencerContracts() {
                 <button
                   key={r.id}
                   type="button"
-                  onClick={() => setSelectedId(r.id)}
+                  onClick={() => selectContract(r.id)}
                   className={cn(
                     "w-full rounded-2xl border p-4 text-left transition-colors",
                     rowOn
@@ -166,10 +175,10 @@ export function InfluencerContracts() {
                       type="button"
                       size="sm"
                       variant="outline"
-                      className="h-8 rounded-lg border-white/15 bg-transparent text-xs text-white hover:bg-white/10"
+                      className="h-11 rounded-lg border-white/15 bg-transparent text-xs text-white hover:bg-white/10 sm:h-8"
                       onClick={(e) => {
                         e.stopPropagation();
-                        setSelectedId(r.id);
+                        selectContract(r.id);
                       }}
                     >
                       Review
@@ -177,7 +186,7 @@ export function InfluencerContracts() {
                     <Button
                       type="button"
                       size="sm"
-                      className="h-8 rounded-lg bg-[color:var(--adfluence-orange)] text-xs text-white hover:bg-[color:var(--adfluence-orange-hover)] disabled:opacity-40"
+                      className="h-11 rounded-lg bg-[color:var(--adfluence-orange)] text-xs text-white hover:bg-[color:var(--adfluence-orange-hover)] disabled:opacity-40 sm:h-8"
                       disabled={r.status === "active" || r.status === "completed" || r.status === "rejected"}
                       onClick={(e) => {
                         e.stopPropagation();
@@ -190,7 +199,7 @@ export function InfluencerContracts() {
                       type="button"
                       size="sm"
                       variant="outline"
-                      className="h-8 rounded-lg border-white/15 text-xs text-rose-200 hover:bg-rose-500/10"
+                      className="h-11 rounded-lg border-white/15 text-xs text-rose-200 hover:bg-rose-500/10 sm:h-8"
                       disabled={r.status === "completed" || r.status === "rejected"}
                       onClick={(e) => {
                         e.stopPropagation();
@@ -202,7 +211,7 @@ export function InfluencerContracts() {
                     <Button
                       type="button"
                       size="sm"
-                      className="h-8 rounded-lg bg-white/10 text-xs text-white hover:bg-white/15 disabled:opacity-40"
+                      className="h-11 rounded-lg bg-white/10 text-xs text-white hover:bg-white/15 disabled:opacity-40 sm:h-8"
                       disabled={r.status !== "active"}
                       onClick={(e) => {
                         e.stopPropagation();
@@ -219,8 +228,25 @@ export function InfluencerContracts() {
         </section>
 
         {selected ? (
-          <aside className="xl:sticky xl:top-4 xl:self-start">
+          <aside
+            className={cn(
+              "xl:sticky xl:top-4 xl:self-start",
+              !mobileShowDetail && "hidden xl:block",
+            )}
+          >
             <div className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-5">
+              <div className="mb-3 xl:hidden">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="shrink-0 text-white hover:bg-white/10"
+                  aria-label="Back to contracts"
+                  onClick={() => setMobileShowDetail(false)}
+                >
+                  <ArrowLeft className="size-5" />
+                </Button>
+              </div>
               <h3 className="text-lg font-semibold text-white">Contract detail</h3>
               <p className="mt-1 text-sm text-[#CBD5E1]">{selected.brand}</p>
               <span

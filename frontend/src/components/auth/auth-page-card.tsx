@@ -29,12 +29,12 @@ export function AuthPageCard({
       <Link
         href={closeHref}
         aria-label="Close and return home"
-        className="absolute top-4 right-4 z-10 rounded-lg border border-white/10 bg-white/5 p-1.5 text-white/80 transition-colors hover:bg-white/10 hover:text-white"
+        className="absolute top-4 right-4 z-10 inline-flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white/80 transition-colors hover:bg-white/10 hover:text-white sm:h-auto sm:w-auto sm:rounded-lg sm:p-1.5"
       >
-        <X className="size-4" />
+        <X className="size-5 sm:size-4" />
         <span className="sr-only">Close</span>
       </Link>
-      <div className="space-y-6 p-6 pr-14">{children}</div>
+      <div className="space-y-6 p-6 pr-16 sm:pr-14">{children}</div>
     </div>
   );
 }

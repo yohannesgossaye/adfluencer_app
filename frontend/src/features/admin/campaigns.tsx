@@ -97,7 +97,7 @@ export function AdminCampaigns() {
           type="button"
           onClick={() => setStatus("all")}
           className={cn(
-            "rounded-full border px-3 py-1.5 text-xs",
+            "inline-flex min-h-11 items-center rounded-full border px-4 py-2 text-sm transition-colors sm:min-h-0 sm:px-3 sm:py-1.5 sm:text-xs",
             status === "all"
               ? "border-transparent bg-[color:var(--adfluence-orange)] text-white"
               : "border-white/10 text-[#CBD5E1]",
@@ -111,7 +111,7 @@ export function AdminCampaigns() {
             type="button"
             onClick={() => setStatus(s)}
             className={cn(
-              "rounded-full border px-3 py-1.5 text-xs capitalize",
+              "inline-flex min-h-11 items-center rounded-full border px-4 py-2 text-sm capitalize transition-colors sm:min-h-0 sm:px-3 sm:py-1.5 sm:text-xs",
               status === s
                 ? "border-transparent bg-[color:var(--adfluence-orange)] text-white"
                 : "border-white/10 text-[#CBD5E1]",
@@ -127,21 +127,21 @@ export function AdminCampaigns() {
           value={niche}
           onChange={(e) => setNiche(e.target.value)}
           placeholder="Filter niche"
-          className="h-10 max-w-xs rounded-xl border-white/10 bg-[color:var(--adfluence-surface)] text-white"
+          className="h-11 max-w-xs rounded-xl border-white/10 bg-[color:var(--adfluence-surface)] text-white sm:h-10"
         />
         <Input
           value={business}
           onChange={(e) => setBusiness(e.target.value)}
           placeholder="Filter business"
-          className="h-10 max-w-xs rounded-xl border-white/10 bg-[color:var(--adfluence-surface)] text-white"
+          className="h-11 max-w-xs rounded-xl border-white/10 bg-[color:var(--adfluence-surface)] text-white sm:h-10"
         />
       </div>
 
-      <div className="space-y-3 overflow-x-auto">
+      <div className="space-y-3 min-w-0">
         {filtered.map((r) => (
           <article
             key={r.id}
-            className="min-w-[300px] rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-4"
+            className="w-full min-w-0 rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-4"
           >
             <div className="flex flex-wrap items-start justify-between gap-2">
               <div>
@@ -159,13 +159,13 @@ export function AdminCampaigns() {
               Contracts: {r.contractStatus} · Payment: {r.paymentStatus}
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
-              <Button size="sm" className="h-8 bg-white/10 text-white">
+              <Button size="sm" className="h-11 sm:h-8 bg-white/10 text-white">
                 View
               </Button>
               <Button
                 size="sm"
                 variant="outline"
-                className="h-8 border-white/15 text-white"
+                className="h-11 sm:h-8 border-white/15 text-white"
                 disabled={r.status === "completed"}
                 onClick={() => setRowStatus(r.id, "pending")}
               >
@@ -173,7 +173,7 @@ export function AdminCampaigns() {
               </Button>
               <Button
                 size="sm"
-                className="h-8 bg-emerald-500/20 text-emerald-100"
+                className="h-11 sm:h-8 bg-emerald-500/20 text-emerald-100"
                 disabled={r.status === "completed"}
                 onClick={() => setRowStatus(r.id, "completed")}
               >
@@ -181,7 +181,7 @@ export function AdminCampaigns() {
               </Button>
               <Button
                 size="sm"
-                className="h-8 bg-rose-500/20 text-rose-100"
+                className="h-11 sm:h-8 bg-rose-500/20 text-rose-100"
                 disabled={r.status === "flagged"}
                 onClick={() => setRowStatus(r.id, "flagged")}
               >

@@ -39,7 +39,7 @@ export function DashboardShell({
                 <Button
                   variant="outline"
                   size="icon"
-                  className="h-9 w-9 border-white/15 bg-white/5 text-white hover:bg-white/10"
+                  className="size-11 border-white/15 bg-white/5 text-white hover:bg-white/10 md:size-9"
                   aria-label="Open sidebar"
                 >
                   <Menu className="size-4" />

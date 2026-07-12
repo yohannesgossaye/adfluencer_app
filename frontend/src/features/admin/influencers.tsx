@@ -1,7 +1,8 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { ArrowLeft } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,6 +32,7 @@ export function AdminInfluencers() {
   const [tab, setTab] = useState<(typeof tabs)[number]["id"]>("all");
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [mobileShowDetail, setMobileShowDetail] = useState(false);
   const [noteDraft, setNoteDraft] = useState("");
 
   useEffect(() => {
@@ -80,6 +82,13 @@ export function AdminInfluencers() {
     );
   };
 
+  const selectApplication = useCallback((id: string) => {
+    setSelectedId(id);
+    if (typeof window !== "undefined" && window.matchMedia("(max-width: 1279px)").matches) {
+      setMobileShowDetail(true);
+    }
+  }, []);
+
   return (
     <div className="space-y-6 text-white">
       <div>
@@ -96,7 +105,7 @@ export function AdminInfluencers() {
             type="button"
             onClick={() => setTab(t.id)}
             className={cn(
-              "rounded-full border px-4 py-2 text-sm font-medium transition-colors",
+              "inline-flex min-h-11 items-center rounded-full border px-4 py-2 text-sm font-medium transition-colors sm:min-h-0",
               tab === t.id
                 ? "border-transparent bg-[color:var(--adfluence-orange)] text-white"
                 : "border-white/10 bg-[rgba(255,255,255,0.06)] text-[#CBD5E1] hover:text-white",
@@ -115,14 +124,21 @@ export function AdminInfluencers() {
       />
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
-        <div className="space-y-3 overflow-x-auto">
+        <div className={cn("min-w-0 space-y-3", mobileShowDetail && "hidden xl:block")}>
           {filtered.map((r) => (
-            <button
+            <div
               key={r.id}
-              type="button"
-              onClick={() => setSelectedId(r.id)}
+              role="button"
+              tabIndex={0}
+              onClick={() => selectApplication(r.id)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  selectApplication(r.id);
+                }
+              }}
               className={cn(
-                "flex w-full min-w-[280px] gap-4 rounded-2xl border p-4 text-left transition-colors",
+                "flex w-full min-w-0 cursor-pointer gap-4 rounded-2xl border p-4 text-left transition-colors",
                 selectedId === r.id
                   ? "border-[color:var(--adfluence-orange)]/35 bg-[color:var(--adfluence-orange)]/10"
                   : "border-white/10 bg-[rgba(255,255,255,0.08)] hover:border-white/20",
@@ -153,7 +169,7 @@ export function AdminInfluencers() {
                   <Button
                     type="button"
                     size="sm"
-                    className="h-8 bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)]"
+                    className="h-11 bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)] sm:h-8"
                     disabled={r.status !== "pending"}
                     onClick={(e) => {
                       e.stopPropagation();
@@ -166,7 +182,7 @@ export function AdminInfluencers() {
                     type="button"
                     size="sm"
                     variant="outline"
-                    className="h-8 border-white/15 text-white hover:bg-white/10"
+                    className="h-11 border-white/15 text-white hover:bg-white/10 sm:h-8"
                     disabled={r.status !== "pending"}
                     onClick={(e) => {
                       e.stopPropagation();
@@ -177,12 +193,29 @@ export function AdminInfluencers() {
                   </Button>
                 </div>
               </div>
-            </button>
+            </div>
           ))}
         </div>
 
         {selected ? (
-          <aside className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-5 xl:sticky xl:top-4 xl:self-start">
+          <aside
+            className={cn(
+              "rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-5 xl:sticky xl:top-4 xl:self-start",
+              !mobileShowDetail && "hidden xl:block",
+            )}
+          >
+            <div className="mb-3 xl:hidden">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="shrink-0 text-white hover:bg-white/10"
+                aria-label="Back to applications"
+                onClick={() => setMobileShowDetail(false)}
+              >
+                <ArrowLeft className="size-5" />
+              </Button>
+            </div>
             <h2 className="text-lg font-semibold text-white">Details — {selected.name}</h2>
             <p className="mt-2 text-sm text-[#CBD5E1]">{selected.bio}</p>
             <div className="mt-3 space-y-1 text-xs text-[#94A3B8]">
@@ -212,7 +245,7 @@ export function AdminInfluencers() {
             <Button
               type="button"
               variant="outline"
-              className="mt-2 h-9 w-full border-white/15 text-white hover:bg-white/10"
+              className="mt-2 h-11 w-full border-white/15 text-white hover:bg-white/10 sm:h-9"
               onClick={saveNotes}
             >
               Save notes

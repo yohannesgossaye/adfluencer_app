@@ -1,4 +1,3 @@
-import { MarketingFooter } from "@/components/marketing/marketing-footer";
 import { FeatureHighlightsSection } from "@/components/marketing/sections/feature-highlights-section";
 import { FinalCtaSection } from "@/components/marketing/sections/final-cta-section";
 import { HeroSection } from "@/components/marketing/sections/hero-section";
@@ -19,7 +18,6 @@ export function LandingPage() {
       <FeatureHighlightsSection />
       <UserTypeCtaSection />
       <FinalCtaSection />
-      <MarketingFooter />
     </div>
   );
 }

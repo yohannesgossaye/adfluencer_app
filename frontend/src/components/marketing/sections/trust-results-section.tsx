@@ -55,10 +55,10 @@ export function TrustResultsSection() {
                 key={s.label}
                 className="adfluence-glass rounded-2xl border border-white/15 p-6 text-center"
               >
-                <p className="text-4xl font-bold text-[color:var(--adfluence-orange)]">
+                <p className="text-3xl font-bold text-[color:var(--adfluence-orange)] sm:text-4xl">
                   {s.value}
                 </p>
-                <p className="mt-2 text-sm text-[#CBD5E1]">{s.label}</p>
+                <p className="mt-1 text-xs text-[#CBD5E1] sm:mt-2 sm:text-sm">{s.label}</p>
               </div>
             ))}
           </div>

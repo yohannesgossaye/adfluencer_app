@@ -2,8 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useMemo, useState } from "react";
-import { FileDown, Plus } from "lucide-react";
+import { useCallback, useMemo, useState } from "react";
+import { ArrowLeft, FileDown, Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,6 +44,7 @@ export function BusinessContracts() {
     structuredClone(initialBusinessContracts),
   );
   const [selectedId, setSelectedId] = useState<string>(initialBusinessContracts[0]?.id ?? "");
+  const [mobileShowDetail, setMobileShowDetail] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [form, setForm] = useState({
     influencerId: influencers[0]?.id ?? "",
@@ -58,6 +59,13 @@ export function BusinessContracts() {
     () => contracts.find((c) => c.id === selectedId) ?? contracts[0],
     [contracts, selectedId],
   );
+
+  const selectContract = useCallback((id: string) => {
+    setSelectedId(id);
+    if (typeof window !== "undefined" && window.matchMedia("(max-width: 1279px)").matches) {
+      setMobileShowDetail(true);
+    }
+  }, []);
 
   const addContract = () => {
     const inf = influencers.find((i) => i.id === form.influencerId) ?? influencers[0];
@@ -83,6 +91,9 @@ export function BusinessContracts() {
     };
     setContracts((prev) => [newRow, ...prev]);
     setSelectedId(newRow.id);
+    if (typeof window !== "undefined" && window.matchMedia("(max-width: 1279px)").matches) {
+      setMobileShowDetail(true);
+    }
     setSheetOpen(false);
     setForm({
       influencerId: influencers[0]?.id ?? "",
@@ -232,18 +243,18 @@ export function BusinessContracts() {
       </section>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
-        <section className="space-y-3">
+        <section className={cn("space-y-3", mobileShowDetail && "hidden xl:block")}>
           <h2 className="text-sm font-medium uppercase tracking-wide text-[#CBD5E1]">
             All contracts
           </h2>
-          <div className="space-y-3 overflow-x-auto">
+          <div className="space-y-3">
             {contracts.map((c) => {
               const rowActive = c.id === selectedId;
               return (
                 <button
                   key={c.id}
                   type="button"
-                  onClick={() => setSelectedId(c.id)}
+                  onClick={() => selectContract(c.id)}
                   className={cn(
                     "flex w-full min-w-0 flex-col gap-3 rounded-2xl border p-4 text-left transition-colors sm:flex-row sm:items-center",
                     rowActive
@@ -283,14 +294,14 @@ export function BusinessContracts() {
                       <Button
                         asChild
                         size="sm"
-                        className="h-8 rounded-lg bg-white/10 px-3 text-xs text-white hover:bg-white/15"
+                        className="h-11 rounded-lg bg-white/10 px-3 text-xs text-white hover:bg-white/15 sm:h-8"
                       >
                         <Link href={`/business/influencers/${c.influencerId}`}>Profile</Link>
                       </Button>
                       <Button
                         asChild
                         size="sm"
-                        className="h-8 rounded-lg bg-white/10 px-3 text-xs text-white hover:bg-white/15"
+                        className="h-11 rounded-lg bg-white/10 px-3 text-xs text-white hover:bg-white/15 sm:h-8"
                       >
                         <Link href="/business/messages">Message</Link>
                       </Button>
@@ -303,8 +314,25 @@ export function BusinessContracts() {
         </section>
 
         {selected ? (
-          <aside className="xl:sticky xl:top-4 xl:self-start">
+          <aside
+            className={cn(
+              "xl:sticky xl:top-4 xl:self-start",
+              !mobileShowDetail && "hidden xl:block",
+            )}
+          >
             <div className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-5">
+              <div className="mb-3 xl:hidden">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="shrink-0 text-white hover:bg-white/10"
+                  aria-label="Back to contracts"
+                  onClick={() => setMobileShowDetail(false)}
+                >
+                  <ArrowLeft className="size-5" />
+                </Button>
+              </div>
               <h3 className="text-lg font-semibold text-white">Contract detail</h3>
               <p className="mt-1 text-sm text-[#CBD5E1]">{selected.title}</p>
               <span

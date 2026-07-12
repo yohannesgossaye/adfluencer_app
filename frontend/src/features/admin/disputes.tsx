@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { ArrowLeft } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -22,6 +23,7 @@ export function AdminDisputes() {
   const [rows, setRows] = useState<AdminDispute[]>([]);
   const [tab, setTab] = useState<"open" | "resolved">("open");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [mobileShowDetail, setMobileShowDetail] = useState(false);
 
   useEffect(() => {
     const list = loadDisputes();
@@ -51,6 +53,13 @@ export function AdminDisputes() {
     return rows.filter((r) => r.status === "open" || r.status === "under_review");
   }, [rows, tab]);
 
+  const selectDispute = useCallback((id: string) => {
+    setSelectedId(id);
+    if (typeof window !== "undefined" && window.matchMedia("(max-width: 1279px)").matches) {
+      setMobileShowDetail(true);
+    }
+  }, []);
+
   return (
     <div className="space-y-6 text-white">
       <div>
@@ -68,7 +77,7 @@ export function AdminDisputes() {
             type="button"
             onClick={() => setTab(t)}
             className={cn(
-              "rounded-full border px-4 py-2 text-sm capitalize",
+              "inline-flex min-h-11 items-center rounded-full border px-4 py-2 text-sm capitalize transition-colors sm:min-h-0",
               tab === t
                 ? "border-transparent bg-[color:var(--adfluence-orange)] text-white"
                 : "border-white/10 bg-white/5 text-[#CBD5E1]",
@@ -80,12 +89,12 @@ export function AdminDisputes() {
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_400px]">
-        <div className="space-y-3">
+        <div className={cn("space-y-3", mobileShowDetail && "hidden xl:block")}>
           {list.map((d) => (
             <button
               key={d.id}
               type="button"
-              onClick={() => setSelectedId(d.id)}
+              onClick={() => selectDispute(d.id)}
               className={cn(
                 "w-full rounded-2xl border p-4 text-left transition-colors",
                 selectedId === d.id
@@ -105,7 +114,24 @@ export function AdminDisputes() {
         </div>
 
         {selected ? (
-          <aside className="space-y-4 rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-5 xl:sticky xl:top-4">
+          <aside
+            className={cn(
+              "space-y-4 rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-5 xl:sticky xl:top-4",
+              !mobileShowDetail && "hidden xl:block",
+            )}
+          >
+            <div className="xl:hidden">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="shrink-0 text-white hover:bg-white/10"
+                aria-label="Back to disputes"
+                onClick={() => setMobileShowDetail(false)}
+              >
+                <ArrowLeft className="size-5" />
+              </Button>
+            </div>
             <h2 className="text-lg font-semibold text-white">{selected.title}</h2>
             <p className="text-xs text-[#CBD5E1]">
               Status: <span className="capitalize text-white">{selected.status.replace("_", " ")}</span>
@@ -142,7 +168,7 @@ export function AdminDisputes() {
               <Button
                 type="button"
                 size="sm"
-                className="h-9 bg-white/10 text-white"
+                className="h-11 bg-white/10 text-white sm:h-9"
                 onClick={() => window.alert("Conversation viewer (demo)")}
               >
                 View conversation
@@ -150,7 +176,7 @@ export function AdminDisputes() {
               <Button
                 type="button"
                 size="sm"
-                className="h-9 bg-white/10 text-white"
+                className="h-11 bg-white/10 text-white sm:h-9"
                 onClick={() => setStatus(selected.id, "under_review")}
               >
                 Mark under review
@@ -158,7 +184,7 @@ export function AdminDisputes() {
               <Button
                 type="button"
                 size="sm"
-                className="h-9 bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)]"
+                className="h-11 bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)] sm:h-9"
                 onClick={() => setStatus(selected.id, "resolved")}
               >
                 Resolve
@@ -167,7 +193,7 @@ export function AdminDisputes() {
                 type="button"
                 size="sm"
                 variant="outline"
-                className="h-9 border-rose-400/40 text-rose-200"
+                className="h-11 border-rose-400/40 text-rose-200 sm:h-9"
                 onClick={() => {
                   if (selected.influencerEmail) blockUserEmail(selected.influencerEmail);
                   window.alert(`Blocked ${selected.influencerEmail || "user"} (demo)`);

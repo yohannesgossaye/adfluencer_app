@@ -264,7 +264,7 @@ export function InfluencerMessages() {
                       key={q}
                       type="button"
                       onClick={() => sendMessage(q)}
-                      className="rounded-full border border-white/10 bg-[color:var(--adfluence-surface)] px-3 py-1 text-xs text-[#CBD5E1] transition-colors hover:border-[color:var(--adfluence-orange)]/40 hover:text-white"
+                      className="inline-flex min-h-11 items-center rounded-full border border-white/10 bg-[color:var(--adfluence-surface)] px-4 py-2.5 text-sm text-[#CBD5E1] transition-colors hover:border-[color:var(--adfluence-orange)]/40 hover:text-white md:min-h-0 md:px-3 md:py-1 md:text-xs"
                     >
                       {q}
                     </button>

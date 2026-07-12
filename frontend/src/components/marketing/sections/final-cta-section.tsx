@@ -11,7 +11,7 @@ export function FinalCtaSection() {
       <div className="absolute top-1/2 left-1/2 h-96 w-96 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[color:var(--adfluence-orange)]/8 blur-[120px]" />
       <Container className="relative z-10 text-center text-white">
         <div className="mx-auto max-w-4xl">
-          <h2 className="mb-6 text-5xl font-bold md:text-6xl">
+          <h2 className="mb-6 text-4xl font-bold sm:text-5xl md:text-6xl">
             Ready to take your brand to the next level?
           </h2>
           <p className="mb-10 text-xl opacity-90">

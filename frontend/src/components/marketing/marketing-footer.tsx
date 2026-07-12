@@ -11,9 +11,21 @@ export function MarketingFooter() {
           <div>
             <h4 className="mb-4 font-semibold">Platform</h4>
             <ul className="space-y-2 text-sm text-[#CBD5E1]">
-              <li>For Businesses</li>
-              <li>For Influencers</li>
-              <li>How It Works</li>
+              <li>
+                <Link href="/for-businesses" className="hover:text-white transition-colors">
+                  For Businesses
+                </Link>
+              </li>
+              <li>
+                <Link href="/for-influencers" className="hover:text-white transition-colors">
+                  For Influencers
+                </Link>
+              </li>
+              <li>
+                <Link href="/#how-it-works" className="hover:text-white transition-colors">
+                  How It Works
+                </Link>
+              </li>
               <li>
                 <Link href="/pricing" className="hover:text-white transition-colors">
                   How Fees Work

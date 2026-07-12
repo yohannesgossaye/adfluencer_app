@@ -9,6 +9,8 @@ type BrandLogoProps = {
   className?: string;
   iconClassName?: string;
   showName?: boolean;
+  /** Hide wordmark below `sm` (640px) — icon only on small phones */
+  showNameFrom?: "always" | "sm";
   tagline?: string;
   iconSize?: "sm" | "md";
 };
@@ -19,6 +21,7 @@ export function BrandLogo({
   className,
   iconClassName,
   showName = true,
+  showNameFrom = "always",
   tagline = "Connect. Collaborate. Grow.",
   iconSize = "md",
 }: BrandLogoProps) {
@@ -50,7 +53,12 @@ export function BrandLogo({
           aria-hidden
         />
         {showName ? (
-          <div className="leading-tight">
+          <div
+            className={cn(
+              "leading-tight",
+              showNameFrom === "sm" && "hidden sm:block",
+            )}
+          >
             <p className="text-xl font-bold text-white">Adfluence</p>
             <p className="text-xs text-slate-300">{tagline}</p>
           </div>

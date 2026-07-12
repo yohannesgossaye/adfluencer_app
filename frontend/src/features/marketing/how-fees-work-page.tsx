@@ -72,8 +72,8 @@ export function HowFeesWorkPage() {
             <p className="text-sm font-medium uppercase tracking-[0.2em] text-[color:var(--adfluence-orange)]">
               Transparent pricing
             </p>
-            <h1 className="mt-4 text-4xl font-bold sm:text-5xl">How Adfluence fees work</h1>
-            <p className="mt-4 text-lg text-[#CBD5E1]">
+            <h1 className="mt-4 text-3xl font-bold sm:text-4xl md:text-5xl">How Adfluence fees work</h1>
+            <p className="mt-4 text-base text-[#CBD5E1] sm:text-lg">
               No subscriptions. No surprise charges. Just a simple 5% platform fee when a
               collaboration contract is completed.
             </p>
@@ -90,7 +90,7 @@ export function HowFeesWorkPage() {
             <p className="text-sm font-medium uppercase tracking-wide text-[#CBD5E1]">
               Platform fee
             </p>
-            <p className="mt-2 text-5xl font-bold text-[color:var(--adfluence-orange)] sm:text-6xl">
+            <p className="mt-2 text-4xl font-bold text-[color:var(--adfluence-orange)] sm:text-5xl md:text-6xl">
               5%
             </p>
             <p className="mt-3 text-xl text-white">per completed contract</p>
@@ -200,8 +200,8 @@ export function HowFeesWorkPage() {
       <section className="relative overflow-hidden bg-[color:var(--adfluence-surface)] py-24">
         <div className="absolute top-1/2 left-1/2 h-96 w-96 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[color:var(--adfluence-orange)]/8 blur-[120px]" />
         <Container className="relative text-center text-white">
-          <h2 className="text-4xl font-bold sm:text-5xl">Ready to launch your first campaign?</h2>
-          <p className="mx-auto mt-4 max-w-2xl text-lg text-[#CBD5E1]">
+          <h2 className="text-3xl font-bold sm:text-4xl md:text-5xl">Ready to launch your first campaign?</h2>
+          <p className="mx-auto mt-4 max-w-2xl text-base text-[#CBD5E1] sm:text-lg">
             Join free, match with verified creators, and pay only when collaborations succeed.
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-4">

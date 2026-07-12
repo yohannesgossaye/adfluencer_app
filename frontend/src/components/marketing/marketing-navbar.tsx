@@ -25,9 +25,9 @@ export function MarketingNavbar() {
   ] as const;
 
   return (
-    <header className="sticky top-0 z-50 border-b border-white/10 bg-[color:var(--adfluence-bg)] text-white">
-      <div className="relative flex h-[72px] items-center px-4 sm:px-6 md:px-10 lg:px-16 xl:px-20">
-        <BrandLogo />
+    <header className="sticky top-0 z-50 overflow-x-hidden border-b border-white/10 bg-[color:var(--adfluence-bg)] text-white">
+      <div className="relative flex h-[72px] min-w-0 items-center gap-2 px-4 sm:gap-3 sm:px-6 md:px-10 lg:px-16 xl:px-20">
+        <BrandLogo showNameFrom="sm" className="min-w-0" />
         <nav className="hidden items-center gap-8 text-sm text-slate-300 lg:flex absolute left-1/2 -translate-x-1/2">
           <Link href="/" className="hover:text-white transition-colors">
             Home
@@ -45,13 +45,13 @@ export function MarketingNavbar() {
             How Fees Work
           </Link>
         </nav>
-        <div className="ml-auto flex shrink-0 items-center gap-3">
+        <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
           <Sheet>
             <SheetTrigger asChild>
               <Button
                 variant="outline"
                 size="icon"
-                className="h-10 w-10 rounded-xl border-white/20 bg-transparent text-white hover:bg-white/10 lg:hidden"
+                className="h-11 w-11 rounded-xl border-white/20 bg-transparent text-white hover:bg-white/10 lg:hidden"
                 aria-label="Open menu"
               >
                 <Menu className="size-5" />
@@ -69,7 +69,7 @@ export function MarketingNavbar() {
                     <Button
                       variant="outline"
                       size="icon"
-                      className="h-10 w-10 rounded-xl border-white/15 bg-transparent text-white hover:bg-white/10"
+                      className="h-11 w-11 rounded-xl border-white/15 bg-transparent text-white hover:bg-white/10"
                       aria-label="Close menu"
                     >
                       <X className="size-5" />
@@ -147,7 +147,7 @@ export function MarketingNavbar() {
           <GradientButton
             type="button"
             onClick={() => openSignup()}
-            className="h-10 rounded-xl px-5"
+            className="hidden h-10 rounded-xl px-5 sm:inline-flex"
           >
             Sign Up
           </GradientButton>

@@ -73,11 +73,11 @@ export function AdminCategories() {
         </Button>
       </div>
 
-      <div className="space-y-3 overflow-x-auto">
+      <div className="space-y-3 min-w-0">
         {rows.map((c) => (
           <article
             key={c.id}
-            className="flex min-w-[300px] flex-col gap-3 rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-4 md:flex-row md:items-center md:justify-between"
+            className="flex w-full min-w-0 flex-col gap-3 rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-4 md:flex-row md:items-center md:justify-between"
           >
             <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
               <Input
@@ -96,7 +96,7 @@ export function AdminCategories() {
                 type="button"
                 size="sm"
                 variant="outline"
-                className="h-8 border-white/15 text-white"
+                className="h-11 border-white/15 text-white sm:h-8"
                 onClick={() => toggle(c.id)}
               >
                 {c.enabled ? "Disable" : "Enable"}

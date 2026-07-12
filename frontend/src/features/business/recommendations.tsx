@@ -347,8 +347,8 @@ export function Recommendations() {
         </p>
       ) : null}
 
-      <section className="grid gap-6 2xl:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <section className="flex flex-col gap-6 2xl:grid 2xl:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="order-2 grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:order-1">
           {filteredInfluencers.map((influencer) => (
             <article
               key={influencer.id}
@@ -414,7 +414,7 @@ export function Recommendations() {
           ))}
         </div>
 
-        <aside className="space-y-4">
+        <aside className="order-1 space-y-4 2xl:order-2">
           <div className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-5">
             <h3 className="text-lg font-semibold text-white">How matching works</h3>
             <ul className="mt-3 space-y-2 text-sm text-[#CBD5E1]">

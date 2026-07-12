@@ -5,6 +5,7 @@ import { Suspense } from "react";
 
 import { MarketingAuthModal } from "@/components/marketing/marketing-auth-modal";
 import { MarketingAuthProvider } from "@/components/marketing/marketing-auth-provider";
+import { MarketingFooter } from "@/components/marketing/marketing-footer";
 import { MarketingNavbar } from "@/components/marketing/marketing-navbar";
 
 function MarketingShellContent({ children }: { children: ReactNode }) {
@@ -13,6 +14,7 @@ function MarketingShellContent({ children }: { children: ReactNode }) {
       <div className="min-h-screen bg-[color:var(--adfluence-bg)] text-white">
         <MarketingNavbar />
         <main>{children}</main>
+        <MarketingFooter />
         <MarketingAuthModal />
       </div>
     </MarketingAuthProvider>

@@ -134,7 +134,7 @@ export function AdminDashboard() {
                   <Button
                     type="button"
                     size="sm"
-                    className="h-8 rounded-lg bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)]"
+                    className="h-11 rounded-lg bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)] sm:h-8"
                     onClick={() => setAppStatus(a.id, "approved")}
                   >
                     Approve
@@ -143,7 +143,7 @@ export function AdminDashboard() {
                     type="button"
                     size="sm"
                     variant="outline"
-                    className="h-8 rounded-lg border-white/15 text-white hover:bg-white/10"
+                    className="h-11 rounded-lg border-white/15 text-white hover:bg-white/10 sm:h-8"
                     onClick={() => setAppStatus(a.id, "rejected")}
                   >
                     Reject

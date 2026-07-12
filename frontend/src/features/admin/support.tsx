@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { ArrowLeft } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,6 +57,7 @@ export function AdminSupport() {
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [filter, setFilter] = useState<FilterKey>("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [mobileShowDetail, setMobileShowDetail] = useState(false);
   const [notesDraft, setNotesDraft] = useState("");
   const [replyDraft, setReplyDraft] = useState("");
 
@@ -101,6 +103,13 @@ export function AdminSupport() {
       ),
     );
   };
+
+  const selectTicket = useCallback((id: string) => {
+    setSelectedId(id);
+    if (typeof window !== "undefined" && window.matchMedia("(max-width: 1023px)").matches) {
+      setMobileShowDetail(true);
+    }
+  }, []);
 
   const filtered = useMemo(() => {
     return tickets.filter((t) => {
@@ -162,7 +171,7 @@ export function AdminSupport() {
             type="button"
             onClick={() => setFilter(b.key)}
             className={cn(
-              "shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors md:text-sm",
+              "inline-flex min-h-11 shrink-0 items-center rounded-full border px-4 py-2 text-sm font-medium transition-colors sm:min-h-0 sm:px-3 sm:py-1.5 sm:text-xs",
               filter === b.key
                 ? "border-transparent bg-[color:var(--adfluence-orange)] text-white"
                 : "border-white/15 bg-white/5 text-[#CBD5E1] hover:bg-white/10",
@@ -177,6 +186,7 @@ export function AdminSupport() {
         <section
           className={cn(
             "min-h-0 min-w-0 flex-1 space-y-3 rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.06)] p-4 backdrop-blur-md md:p-5",
+            selected && mobileShowDetail && "hidden lg:block",
             selected && "lg:max-w-[min(100%,520px)] xl:max-w-[560px]",
           )}
         >
@@ -215,15 +225,15 @@ export function AdminSupport() {
                         <Button
                           type="button"
                           size="sm"
-                          className="h-8 flex-1 bg-white/10 text-white sm:flex-none"
-                          onClick={() => setSelectedId(t.id)}
+                          className="h-11 flex-1 bg-white/10 text-white sm:h-8 sm:flex-none"
+                          onClick={() => selectTicket(t.id)}
                         >
                           View details
                         </Button>
                         <Button
                           type="button"
                           size="sm"
-                          className="h-8 flex-1 border border-amber-400/30 bg-amber-500/15 text-amber-100 sm:flex-none"
+                          className="h-11 flex-1 border border-amber-400/30 bg-amber-500/15 text-amber-100 sm:h-8 sm:flex-none"
                           disabled={t.status === "in_review"}
                           onClick={() => setStatus(t.id, "in_review")}
                         >
@@ -232,7 +242,7 @@ export function AdminSupport() {
                         <Button
                           type="button"
                           size="sm"
-                          className="h-8 flex-1 bg-emerald-500/20 text-emerald-100 sm:flex-none"
+                          className="h-11 flex-1 bg-emerald-500/20 text-emerald-100 sm:h-8 sm:flex-none"
                           disabled={t.status === "resolved"}
                           onClick={() => setStatus(t.id, "resolved")}
                         >
@@ -241,7 +251,7 @@ export function AdminSupport() {
                         <Button
                           type="button"
                           size="sm"
-                          className="h-8 flex-1 bg-rose-500/20 text-rose-100 sm:flex-none"
+                          className="h-11 flex-1 bg-rose-500/20 text-rose-100 sm:h-8 sm:flex-none"
                           disabled={t.status === "escalated"}
                           onClick={() => setStatus(t.id, "escalated")}
                         >
@@ -259,6 +269,7 @@ export function AdminSupport() {
         <section
           className={cn(
             "min-w-0 flex-1 rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.06)] p-4 backdrop-blur-md md:p-5 lg:max-w-xl xl:max-w-none",
+            !selected ? "hidden lg:block" : !mobileShowDetail && "hidden lg:block",
           )}
         >
           {!selected ? (
@@ -267,6 +278,18 @@ export function AdminSupport() {
             </div>
           ) : (
             <div className="space-y-4">
+              <div className="lg:hidden">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="shrink-0 text-white hover:bg-white/10"
+                  aria-label="Back to tickets"
+                  onClick={() => setMobileShowDetail(false)}
+                >
+                  <ArrowLeft className="size-5" />
+                </Button>
+              </div>
               <div>
                 <h2 className="text-lg font-semibold text-white">{selected.subject}</h2>
                 <p className="mt-1 text-xs text-[#94A3B8]">

@@ -53,8 +53,8 @@ export function HeroSection() {
 
       <div className="relative z-20 flex min-h-[calc(100vh-72px)] items-center px-4 sm:px-6 md:px-10 lg:px-16 xl:px-20">
         <div className="max-w-[560px] text-left">
-          <p className="inline-flex rounded-full border border-white/14 bg-white/10 px-4 py-2 text-sm tracking-wide text-slate-200 backdrop-blur-sm">
-            ETHIOPIA'S CREATOR MARKETING PLATFORM
+          <p className="inline-block max-w-full rounded-full border border-white/14 bg-white/10 px-3 py-1.5 text-xs leading-snug tracking-wide text-slate-200 backdrop-blur-sm sm:px-4 sm:py-2 sm:text-sm">
+            ETHIOPIA&apos;S CREATOR MARKETING PLATFORM
           </p>
           <h1 className="mt-8 text-5xl font-bold leading-[1.03] sm:text-6xl lg:text-7xl">
             Connect with Influencers.

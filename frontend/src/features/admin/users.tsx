@@ -113,7 +113,7 @@ export function AdminUsers() {
             type="button"
             onClick={() => setRoleFilter(r)}
             className={cn(
-              "rounded-full border px-3 py-1.5 text-xs font-medium capitalize",
+              "inline-flex min-h-11 items-center rounded-full border px-4 py-2 text-sm font-medium capitalize transition-colors sm:min-h-0 sm:px-3 sm:py-1.5 sm:text-xs",
               roleFilter === r
                 ? "border-transparent bg-[color:var(--adfluence-orange)] text-white"
                 : "border-white/10 bg-white/5 text-[#CBD5E1] hover:text-white",
@@ -128,7 +128,7 @@ export function AdminUsers() {
             type="button"
             onClick={() => setStatusFilter(s)}
             className={cn(
-              "rounded-full border px-3 py-1.5 text-xs font-medium capitalize",
+              "inline-flex min-h-11 items-center rounded-full border px-4 py-2 text-sm font-medium capitalize transition-colors sm:min-h-0 sm:px-3 sm:py-1.5 sm:text-xs",
               statusFilter === s
                 ? "border-white/20 bg-white/15 text-white"
                 : "border-white/10 bg-white/5 text-[#CBD5E1] hover:text-white",
@@ -146,11 +146,11 @@ export function AdminUsers() {
         className="h-11 max-w-md rounded-xl border-white/10 bg-[color:var(--adfluence-surface)] text-white"
       />
 
-      <div className="space-y-3 overflow-x-auto">
+      <div className="space-y-3 min-w-0">
         {filtered.map((u) => (
           <article
             key={u.id}
-            className="min-w-[280px] rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-4"
+            className="w-full min-w-0 rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-4"
           >
             <div className="flex flex-wrap items-start justify-between gap-2">
               <div>
@@ -178,12 +178,12 @@ export function AdminUsers() {
               </p>
             ) : null}
             <div className="mt-3 flex flex-wrap gap-2">
-              <Button size="sm" className="h-8 bg-white/10 text-white hover:bg-white/15">
+              <Button size="sm" className="h-11 sm:h-8 bg-white/10 text-white hover:bg-white/15">
                 View
               </Button>
               <Button
                 size="sm"
-                className="h-8 bg-rose-500/20 text-rose-100 hover:bg-rose-500/30"
+                className="h-11 sm:h-8 bg-rose-500/20 text-rose-100 hover:bg-rose-500/30"
                 disabled={u.status === "blocked" || u.status === "removed"}
                 onClick={() => block(u)}
               >
@@ -192,7 +192,7 @@ export function AdminUsers() {
               <Button
                 size="sm"
                 variant="outline"
-                className="h-8 border-white/15 text-white hover:bg-white/10"
+                className="h-11 sm:h-8 border-white/15 text-white hover:bg-white/10"
                 disabled={u.status !== "blocked"}
                 onClick={() => unblock(u)}
               >
@@ -201,7 +201,7 @@ export function AdminUsers() {
               <Button
                 size="sm"
                 variant="outline"
-                className="h-8 border-white/15 text-white hover:bg-white/10"
+                className="h-11 sm:h-8 border-white/15 text-white hover:bg-white/10"
                 disabled={u.status === "removed"}
                 onClick={() => remove(u)}
               >
