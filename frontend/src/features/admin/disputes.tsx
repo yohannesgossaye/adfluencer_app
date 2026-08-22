@@ -1,57 +1,105 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ArrowLeft } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
-  loadDisputes,
-  saveDisputes,
-  type AdminDispute,
-  type DisputeStatus,
-} from "@/data/admin-disputes-mock";
-import { blockUserEmail } from "@/lib/blocked-users";
+  adminApi,
+  type AdminDisputeListItem,
+  type AdminDisputeDetail,
+} from "@/lib/api/admin";
 import { cn } from "@/lib/utils";
 
-function sev(s: AdminDispute["severity"]) {
-  if (s === "high") return "text-rose-300";
-  if (s === "medium") return "text-amber-200";
+function sev(s: string) {
+  const lower = s.toLowerCase();
+  if (lower === "high") return "text-rose-300";
+  if (lower === "medium") return "text-amber-200";
   return "text-[#CBD5E1]";
 }
 
 export function AdminDisputes() {
-  const [rows, setRows] = useState<AdminDispute[]>([]);
+  const [rows, setRows] = useState<AdminDisputeListItem[]>([]);
   const [tab, setTab] = useState<"open" | "resolved">("open");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedDetail, setSelectedDetail] = useState<AdminDisputeDetail | null>(null);
   const [mobileShowDetail, setMobileShowDetail] = useState(false);
+  const [adminNoteDraft, setAdminNoteDraft] = useState("");
+  const [resolutionNoteDraft, setResolutionNoteDraft] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+
+  const loadDisputes = async () => {
+    try {
+      const res = await adminApi.listDisputes({ tab });
+      if (res.data?.items) {
+        setRows(res.data.items);
+        if (!selectedId && res.data.items[0]) {
+          setSelectedId(res.data.items[0].id);
+        }
+      }
+    } catch {
+      // fallback
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const list = loadDisputes();
-    setRows(list);
-    if (list[0]) setSelectedId((p) => p ?? list[0].id);
-  }, []);
+    loadDisputes();
+  }, [tab]);
 
-  const selected = useMemo(() => rows.find((r) => r.id === selectedId) ?? null, [rows, selectedId]);
+  useEffect(() => {
+    if (!selectedId) return;
+    async function loadItem() {
+      try {
+        const res = await adminApi.getDispute(selectedId!);
+        if (res.data) {
+          setSelectedDetail(res.data);
+          setAdminNoteDraft(res.data.admin_note || "");
+          setResolutionNoteDraft(res.data.resolution_note || "");
+        }
+      } catch {
+        // fallback
+      }
+    }
+    loadItem();
+  }, [selectedId]);
 
-  const persist = (next: AdminDispute[]) => {
-    saveDisputes(next);
-    setRows(next);
+  const setStatus = async (id: string, status: string) => {
+    try {
+      await adminApi.updateDisputeStatus(id, { status });
+      await loadDisputes();
+      if (selectedId === id) {
+        const res = await adminApi.getDispute(id);
+        if (res.data) setSelectedDetail(res.data);
+      }
+    } catch {
+      // fallback
+    }
   };
 
-  const patchRow = (id: string, patch: Partial<AdminDispute>) => {
-    setRows((prev) => {
-      const next = prev.map((r) => (r.id === id ? { ...r, ...patch } : r));
-      saveDisputes(next);
-      return next;
-    });
+  const saveNotes = async () => {
+    if (!selectedId) return;
+    try {
+      await adminApi.updateDisputeNotes(selectedId, {
+        admin_note: adminNoteDraft,
+        resolution_note: resolutionNoteDraft,
+      });
+      await loadDisputes();
+    } catch {
+      // fallback
+    }
   };
 
-  const setStatus = (id: string, status: DisputeStatus) => patchRow(id, { status });
-
-  const list = useMemo(() => {
-    if (tab === "resolved") return rows.filter((r) => r.status === "resolved");
-    return rows.filter((r) => r.status === "open" || r.status === "under_review");
-  }, [rows, tab]);
+  const blockUser = async () => {
+    if (!selectedDetail?.influencer_user_id) return;
+    try {
+      await adminApi.blockUser(selectedDetail.influencer_user_id, { reason: "Blocked during dispute resolution" });
+      window.alert("User account has been suspended.");
+    } catch {
+      // fallback
+    }
+  };
 
   const selectDispute = useCallback((id: string) => {
     setSelectedId(id);
@@ -65,8 +113,7 @@ export function AdminDisputes() {
       <div>
         <h1 className="text-2xl font-semibold text-white">Disputes & reports</h1>
         <p className="mt-1 max-w-2xl text-sm text-[#CBD5E1]">
-          Review reported conversations and disputes. Admin does not monitor all chats — only
-          escalated items.
+          Review reported conversations and disputes. Admin supervises escalated escrow claims.
         </p>
       </div>
 
@@ -90,30 +137,36 @@ export function AdminDisputes() {
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_400px]">
         <div className={cn("space-y-3", mobileShowDetail && "hidden xl:block")}>
-          {list.map((d) => (
-            <button
-              key={d.id}
-              type="button"
-              onClick={() => selectDispute(d.id)}
-              className={cn(
-                "w-full rounded-2xl border p-4 text-left transition-colors",
-                selectedId === d.id
-                  ? "border-[color:var(--adfluence-orange)]/35 bg-[color:var(--adfluence-orange)]/10"
-                  : "border-white/10 bg-[rgba(255,255,255,0.08)] hover:border-white/20",
-              )}
-            >
-              <p className="font-semibold text-white">{d.title}</p>
-              <p className="text-xs text-[#CBD5E1]">
-                {d.business} ↔ {d.influencer} · {d.campaign}
-              </p>
-              <p className="mt-1 text-xs text-[#94A3B8]">{d.issueType}</p>
-              <p className={cn("text-xs font-medium", sev(d.severity))}>{d.severity} severity</p>
-              <p className="mt-2 line-clamp-2 text-xs text-[#CBD5E1]">{d.preview}</p>
-            </button>
-          ))}
+          {rows.length === 0 && !isLoading ? (
+            <div className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-8 text-center">
+              <p className="text-white">No disputes found.</p>
+            </div>
+          ) : (
+            rows.map((d) => (
+              <button
+                key={d.id}
+                type="button"
+                onClick={() => selectDispute(d.id)}
+                className={cn(
+                  "w-full rounded-2xl border p-4 text-left transition-colors",
+                  selectedId === d.id
+                    ? "border-[color:var(--adfluence-orange)]/35 bg-[color:var(--adfluence-orange)]/10"
+                    : "border-white/10 bg-[rgba(255,255,255,0.08)] hover:border-white/20",
+                )}
+              >
+                <p className="font-semibold text-white">{d.title}</p>
+                <p className="text-xs text-[#CBD5E1]">
+                  {d.business_name} ↔ {d.influencer_name} · {d.campaign_title}
+                </p>
+                <p className="mt-1 text-xs text-[#94A3B8]">{d.issue_type_label || d.issue_type}</p>
+                <p className={cn("text-xs font-medium", sev(d.severity))}>{d.severity} severity</p>
+                <p className="mt-2 line-clamp-2 text-xs text-[#CBD5E1]">{d.preview}</p>
+              </button>
+            ))
+          )}
         </div>
 
-        {selected ? (
+        {selectedDetail ? (
           <aside
             className={cn(
               "space-y-4 rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-5 xl:sticky xl:top-4",
@@ -132,25 +185,19 @@ export function AdminDisputes() {
                 <ArrowLeft className="size-5" />
               </Button>
             </div>
-            <h2 className="text-lg font-semibold text-white">{selected.title}</h2>
+            <h2 className="text-lg font-semibold text-white">{selectedDetail.title}</h2>
             <p className="text-xs text-[#CBD5E1]">
-              Status: <span className="capitalize text-white">{selected.status.replace("_", " ")}</span>
+              Status: <span className="capitalize text-white">{selectedDetail.status.replace("_", " ")}</span>
             </p>
             <div className="rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)] p-3">
-              <p className="text-xs font-medium uppercase text-[#94A3B8]">Conversation preview</p>
-              <ul className="mt-2 space-y-2 text-sm text-[#CBD5E1]">
-                {selected.messages.map((m) => (
-                  <li key={m.id}>
-                    <span className="text-white">{m.from}:</span> {m.body}
-                  </li>
-                ))}
-              </ul>
+              <p className="text-xs font-medium uppercase text-[#94A3B8]">Description & preview</p>
+              <p className="mt-2 text-sm text-[#CBD5E1]">{selectedDetail.description || selectedDetail.preview}</p>
             </div>
             <label className="block text-xs">
-              <span className="text-[#CBD5E1]">Admin note</span>
+              <span className="text-[#CBD5E1]">Admin internal note</span>
               <textarea
-                value={selected.adminNote}
-                onChange={(e) => patchRow(selected.id, { adminNote: e.target.value })}
+                value={adminNoteDraft}
+                onChange={(e) => setAdminNoteDraft(e.target.value)}
                 rows={2}
                 className="mt-1 w-full rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)] px-2 py-1 text-sm text-white"
               />
@@ -158,26 +205,27 @@ export function AdminDisputes() {
             <label className="block text-xs">
               <span className="text-[#CBD5E1]">Resolution note</span>
               <textarea
-                value={selected.resolutionNote}
-                onChange={(e) => patchRow(selected.id, { resolutionNote: e.target.value })}
+                value={resolutionNoteDraft}
+                onChange={(e) => setResolutionNoteDraft(e.target.value)}
                 rows={2}
                 className="mt-1 w-full rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)] px-2 py-1 text-sm text-white"
               />
             </label>
-            <div className="flex flex-col gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-10 w-full border-white/15 text-white"
+              onClick={saveNotes}
+            >
+              Save notes
+            </Button>
+            <div className="flex flex-col gap-2 pt-2">
               <Button
                 type="button"
                 size="sm"
                 className="h-11 bg-white/10 text-white sm:h-9"
-                onClick={() => window.alert("Conversation viewer (demo)")}
-              >
-                View conversation
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                className="h-11 bg-white/10 text-white sm:h-9"
-                onClick={() => setStatus(selected.id, "under_review")}
+                onClick={() => setStatus(selectedDetail.id, "under_review")}
               >
                 Mark under review
               </Button>
@@ -185,22 +233,21 @@ export function AdminDisputes() {
                 type="button"
                 size="sm"
                 className="h-11 bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)] sm:h-9"
-                onClick={() => setStatus(selected.id, "resolved")}
+                onClick={() => setStatus(selectedDetail.id, "resolved")}
               >
-                Resolve
+                Resolve dispute
               </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                className="h-11 border-rose-400/40 text-rose-200 sm:h-9"
-                onClick={() => {
-                  if (selected.influencerEmail) blockUserEmail(selected.influencerEmail);
-                  window.alert(`Blocked ${selected.influencerEmail || "user"} (demo)`);
-                }}
-              >
-                Block user
-              </Button>
+              {selectedDetail.influencer_user_id ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-11 border-rose-400/40 text-rose-200 sm:h-9"
+                  onClick={blockUser}
+                >
+                  Block user
+                </Button>
+              ) : null}
             </div>
           </aside>
         ) : null}

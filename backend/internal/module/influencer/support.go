@@ -13,15 +13,20 @@ import (
 	"context"
 	"errors"
 	"strings"
+
+	"go.uber.org/zap"
 )
 
 func (m *influencerModule) ListSupportInviteOptions(ctx context.Context, userID string) (*influencerDto.ListSupportInviteOptionsResponse, error) {
+	m.logger.Info(ctx, "listing influencer support invite options", zap.String("user_id", userID))
+
 	if err := m.requireActiveInfluencer(ctx, userID); err != nil {
 		return nil, err
 	}
 
 	rows, err := m.support.ListInfluencerInviteOptions(ctx, userID)
 	if err != nil {
+		m.logger.Error(ctx, "failed to query support invite options", zap.String("user_id", userID), zap.String("reason", err.Error()))
 		return nil, err
 	}
 
@@ -38,10 +43,13 @@ func (m *influencerModule) ListSupportInviteOptions(ctx context.Context, userID 
 }
 
 func (m *influencerModule) CreateSupportTicket(ctx context.Context, userID string, req influencerDto.CreateSupportTicketRequest, meta authDto.SessionMeta) (*commonDto.CreatedIDResponse, error) {
+	m.logger.Info(ctx, "creating influencer support ticket", zap.String("user_id", userID), zap.String("subject", req.Subject), zap.String("issue_type", req.IssueType))
+
 	if err := m.requireActiveInfluencer(ctx, userID); err != nil {
 		return nil, err
 	}
 	if err := req.Validate(); err != nil {
+		m.logger.Warn(ctx, "influencer support ticket validation failed", zap.String("reason", err.Error()))
 		return nil, supportDto.MapValidationError(err)
 	}
 
@@ -53,6 +61,7 @@ func (m *influencerModule) CreateSupportTicket(ctx context.Context, userID strin
 		inviteID := strings.TrimSpace(*req.RelatedInviteID)
 		campaignID, err := m.support.GetInviteCampaignID(ctx, userID, inviteID)
 		if err != nil {
+			m.logger.Warn(ctx, "failed to get invite campaign ID for support ticket", zap.String("invite_id", inviteID), zap.String("reason", err.Error()))
 			return nil, mapSupportError(err)
 		}
 		relatedCampaignID = &campaignID
@@ -68,6 +77,7 @@ func (m *influencerModule) CreateSupportTicket(ctx context.Context, userID strin
 		Priority:          priority,
 		RelatedCampaignID: relatedCampaignID,
 	}); err != nil {
+		m.logger.Error(ctx, "failed to persist influencer support ticket", zap.String("ticket_id", ticketID), zap.String("reason", err.Error()))
 		return nil, err
 	}
 
@@ -82,16 +92,21 @@ func (m *influencerModule) CreateSupportTicket(ctx context.Context, userID strin
 		UserAgent:    meta.UserAgent,
 	})
 
+	m.logger.Info(ctx, "influencer support ticket created successfully", zap.String("ticket_id", ticketID), zap.String("user_id", userID))
+
 	return &commonDto.CreatedIDResponse{ID: ticketID}, nil
 }
 
 func (m *influencerModule) ListSupportTickets(ctx context.Context, userID string) (*influencerDto.ListSupportTicketsResponse, error) {
+	m.logger.Info(ctx, "listing influencer support tickets", zap.String("user_id", userID))
+
 	if err := m.requireActiveInfluencer(ctx, userID); err != nil {
 		return nil, err
 	}
 
 	rows, err := m.support.ListTicketsByUser(ctx, userID)
 	if err != nil {
+		m.logger.Error(ctx, "failed to list influencer support tickets", zap.String("user_id", userID), zap.String("reason", err.Error()))
 		return nil, err
 	}
 
@@ -104,12 +119,15 @@ func (m *influencerModule) ListSupportTickets(ctx context.Context, userID string
 }
 
 func (m *influencerModule) GetSupportTicket(ctx context.Context, userID, ticketID string) (*influencerDto.SupportTicketDetailResponse, error) {
+	m.logger.Info(ctx, "fetching influencer support ticket details", zap.String("user_id", userID), zap.String("ticket_id", ticketID))
+
 	if err := m.requireActiveInfluencer(ctx, userID); err != nil {
 		return nil, err
 	}
 
 	row, err := m.support.GetTicketByUser(ctx, userID, ticketID)
 	if err != nil {
+		m.logger.Warn(ctx, "failed to get support ticket", zap.String("ticket_id", ticketID), zap.String("reason", err.Error()))
 		return nil, mapSupportError(err)
 	}
 

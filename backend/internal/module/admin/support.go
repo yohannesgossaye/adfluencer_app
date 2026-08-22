@@ -3,8 +3,8 @@ package admin
 import (
 	customErr "adinfluence_service_app/internal/constant/errors"
 	"adinfluence_service_app/internal/constant/model"
-	authDto "adinfluence_service_app/internal/constant/model/dto/auth"
 	adminDto "adinfluence_service_app/internal/constant/model/dto/admin"
+	authDto "adinfluence_service_app/internal/constant/model/dto/auth"
 	commonDto "adinfluence_service_app/internal/constant/model/dto/common"
 	supportDto "adinfluence_service_app/internal/constant/model/dto/support"
 	supportPersist "adinfluence_service_app/internal/storage/persist/support"
@@ -12,10 +12,13 @@ import (
 	"errors"
 	"strings"
 
+	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 )
 
 func (m *adminModule) ListSupportTickets(ctx context.Context, query adminDto.ListSupportTicketsQuery) (*adminDto.ListSupportTicketsResponse, error) {
+	m.logger.Info(ctx, "admin listing support tickets", zap.String("status", query.Status), zap.String("priority", query.Priority))
+
 	query = query.Normalize()
 
 	var (
@@ -39,6 +42,7 @@ func (m *adminModule) ListSupportTickets(ctx context.Context, query adminDto.Lis
 	})
 
 	if err := g.Wait(); err != nil {
+		m.logger.Error(ctx, "failed to query admin support tickets or stats", zap.String("reason", err.Error()))
 		return nil, err
 	}
 
@@ -48,27 +52,34 @@ func (m *adminModule) ListSupportTickets(ctx context.Context, query adminDto.Lis
 	}
 
 	return &adminDto.ListSupportTicketsResponse{
-		Items: items,
-		Stats: *stats,
+		Items:      items,
+		Stats:      *stats,
 		Pagination: commonDto.NewListMeta(query.Page, query.Limit, total),
 	}, nil
 }
 
 func (m *adminModule) GetSupportTicket(ctx context.Context, ticketID string) (*adminDto.SupportTicketDetailResponse, error) {
+	m.logger.Info(ctx, "admin fetching support ticket details", zap.String("ticket_id", ticketID))
+
 	row, err := m.support.GetAdminTicket(ctx, ticketID)
 	if err != nil {
+		m.logger.Warn(ctx, "failed to get support ticket", zap.String("ticket_id", ticketID), zap.String("reason", err.Error()))
 		return nil, mapSupportError(err)
 	}
 	return mapAdminSupportDetail(*row), nil
 }
 
 func (m *adminModule) UpdateSupportTicketStatus(ctx context.Context, adminUserID, ticketID string, req adminDto.UpdateSupportTicketStatusRequest, meta authDto.SessionMeta) (*adminDto.UpdateSupportTicketStatusResponse, error) {
+	m.logger.Info(ctx, "admin updating support ticket status", zap.String("admin_id", adminUserID), zap.String("ticket_id", ticketID), zap.String("status", req.Status))
+
 	if err := req.Validate(); err != nil {
+		m.logger.Warn(ctx, "update support ticket status validation failed", zap.String("reason", err.Error()))
 		return nil, supportDto.MapValidationError(err)
 	}
 	status, _ := supportDto.ValidateStatus(req.Status)
 
 	if err := m.support.UpdateTicketStatus(ctx, ticketID, status, adminUserID); err != nil {
+		m.logger.Error(ctx, "failed to update support ticket status", zap.String("ticket_id", ticketID), zap.String("reason", err.Error()))
 		return nil, mapSupportError(err)
 	}
 
@@ -82,6 +93,8 @@ func (m *adminModule) UpdateSupportTicketStatus(ctx context.Context, adminUserID
 		UserAgent:   meta.UserAgent,
 	})
 
+	m.logger.Info(ctx, "support ticket status updated successfully", zap.String("ticket_id", ticketID), zap.String("status", status))
+
 	return &adminDto.UpdateSupportTicketStatusResponse{
 		ID:     ticketID,
 		Status: status,
@@ -89,6 +102,8 @@ func (m *adminModule) UpdateSupportTicketStatus(ctx context.Context, adminUserID
 }
 
 func (m *adminModule) ReplySupportTicket(ctx context.Context, adminUserID, ticketID string, req adminDto.ReplySupportTicketRequest, meta authDto.SessionMeta) (*adminDto.ReplySupportTicketResponse, error) {
+	m.logger.Info(ctx, "admin replying to support ticket", zap.String("admin_id", adminUserID), zap.String("ticket_id", ticketID))
+
 	var adminReply, internalNote *string
 	if v := strings.TrimSpace(req.AdminReply); v != "" {
 		adminReply = &v
@@ -101,6 +116,7 @@ func (m *adminModule) ReplySupportTicket(ctx context.Context, adminUserID, ticke
 	}
 
 	if err := m.support.SaveTicketReply(ctx, ticketID, adminUserID, adminReply, internalNote); err != nil {
+		m.logger.Error(ctx, "failed to save ticket reply in persistence", zap.String("ticket_id", ticketID), zap.String("reason", err.Error()))
 		return nil, mapSupportError(err)
 	}
 
@@ -117,6 +133,8 @@ func (m *adminModule) ReplySupportTicket(ctx context.Context, adminUserID, ticke
 		IPAddress:   meta.IPAddress,
 		UserAgent:   meta.UserAgent,
 	})
+
+	m.logger.Info(ctx, "support ticket reply saved successfully", zap.String("ticket_id", ticketID))
 
 	return &adminDto.ReplySupportTicketResponse{
 		ID:         ticketID,

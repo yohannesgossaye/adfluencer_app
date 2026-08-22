@@ -12,15 +12,20 @@ import (
 	"context"
 	"errors"
 	"strings"
+
+	"go.uber.org/zap"
 )
 
 func (m *businessModule) ListSupportCampaignOptions(ctx context.Context, userID string) (*businessDto.ListSupportCampaignOptionsResponse, error) {
+	m.logger.Info(ctx, "listing campaign options for support ticket", zap.String("business_id", userID))
+
 	if err := m.requireActiveBusiness(ctx, userID); err != nil {
 		return nil, err
 	}
 
 	items, err := m.support.ListBusinessCampaignOptions(ctx, userID)
 	if err != nil {
+		m.logger.Error(ctx, "failed to query business campaign options", zap.String("business_id", userID), zap.String("reason", err.Error()))
 		return nil, err
 	}
 	if items == nil {
@@ -31,10 +36,13 @@ func (m *businessModule) ListSupportCampaignOptions(ctx context.Context, userID 
 }
 
 func (m *businessModule) CreateSupportTicket(ctx context.Context, userID string, req businessDto.CreateSupportTicketRequest, meta authDto.SessionMeta) (*commonDto.CreatedIDResponse, error) {
+	m.logger.Info(ctx, "creating business support ticket", zap.String("business_id", userID), zap.String("subject", req.Subject), zap.String("issue_type", req.IssueType))
+
 	if err := m.requireActiveBusiness(ctx, userID); err != nil {
 		return nil, err
 	}
 	if err := req.Validate(); err != nil {
+		m.logger.Warn(ctx, "support ticket validation failed", zap.String("reason", err.Error()))
 		return nil, supportDto.MapValidationError(err)
 	}
 
@@ -49,6 +57,7 @@ func (m *businessModule) CreateSupportTicket(ctx context.Context, userID string,
 			return nil, err
 		}
 		if !ok {
+			m.logger.Warn(ctx, "business does not own related campaign for support ticket", zap.String("campaign_id", campaignID))
 			return nil, customErr.ErrCampaignNotFound
 		}
 		relatedCampaignID = &campaignID
@@ -64,6 +73,7 @@ func (m *businessModule) CreateSupportTicket(ctx context.Context, userID string,
 		Priority:          priority,
 		RelatedCampaignID: relatedCampaignID,
 	}); err != nil {
+		m.logger.Error(ctx, "failed to persist support ticket", zap.String("ticket_id", ticketID), zap.String("reason", err.Error()))
 		return nil, err
 	}
 
@@ -78,16 +88,21 @@ func (m *businessModule) CreateSupportTicket(ctx context.Context, userID string,
 		UserAgent:    meta.UserAgent,
 	})
 
+	m.logger.Info(ctx, "support ticket created successfully", zap.String("ticket_id", ticketID), zap.String("business_id", userID))
+
 	return &commonDto.CreatedIDResponse{ID: ticketID}, nil
 }
 
 func (m *businessModule) ListSupportTickets(ctx context.Context, userID string) (*businessDto.ListSupportTicketsResponse, error) {
+	m.logger.Info(ctx, "listing business support tickets", zap.String("business_id", userID))
+
 	if err := m.requireActiveBusiness(ctx, userID); err != nil {
 		return nil, err
 	}
 
 	rows, err := m.support.ListTicketsByUser(ctx, userID)
 	if err != nil {
+		m.logger.Error(ctx, "failed to list support tickets from database", zap.String("business_id", userID), zap.String("reason", err.Error()))
 		return nil, err
 	}
 
@@ -100,12 +115,15 @@ func (m *businessModule) ListSupportTickets(ctx context.Context, userID string) 
 }
 
 func (m *businessModule) GetSupportTicket(ctx context.Context, userID, ticketID string) (*businessDto.SupportTicketDetailResponse, error) {
+	m.logger.Info(ctx, "fetching business support ticket details", zap.String("business_id", userID), zap.String("ticket_id", ticketID))
+
 	if err := m.requireActiveBusiness(ctx, userID); err != nil {
 		return nil, err
 	}
 
 	row, err := m.support.GetTicketByUser(ctx, userID, ticketID)
 	if err != nil {
+		m.logger.Warn(ctx, "failed to get support ticket", zap.String("ticket_id", ticketID), zap.String("reason", err.Error()))
 		return nil, mapSupportError(err)
 	}
 

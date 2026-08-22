@@ -2,7 +2,7 @@
 
 import { LoginForm, LoginFormHeader } from "@/components/auth/login-form";
 import { SignupForm, SignupFormHeader } from "@/components/auth/signup-form";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 
 import { useMarketingAuth } from "./marketing-auth-provider";
 
@@ -26,6 +26,8 @@ export function MarketingAuthModal() {
       }}
     >
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl" showCloseButton>
+        <DialogTitle className="sr-only">Authentication</DialogTitle>
+        <DialogDescription className="sr-only">Log in or create an account on Adfluence</DialogDescription>
         <div className="space-y-6 p-6 pr-14">
           {mode === "login" ? (
             <>

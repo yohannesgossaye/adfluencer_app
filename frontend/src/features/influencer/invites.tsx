@@ -1,26 +1,21 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import {
-  initialInfluencerInvites,
-  loadInfluencerInvites,
-  saveInfluencerInvites,
-  type InfluencerInvite,
-  type InfluencerInviteStatus,
-} from "@/data/influencer-invites-mock";
+import { influencerApi, type InfluencerInviteItem } from "@/lib/api/influencer";
 import { cn } from "@/lib/utils";
 
-const tabs: Array<{ id: "all" | InfluencerInviteStatus; label: string }> = [
+const tabs: Array<{ id: "all" | "pending" | "accepted" | "rejected"; label: string }> = [
   { id: "all", label: "All" },
   { id: "pending", label: "Pending" },
   { id: "accepted", label: "Accepted" },
   { id: "rejected", label: "Rejected" },
 ];
 
-function statusStyle(status: InfluencerInviteStatus) {
-  switch (status) {
+function statusStyle(status: string) {
+  const s = status.toLowerCase();
+  switch (s) {
     case "pending":
       return "border-amber-400/30 bg-amber-500/10 text-amber-200";
     case "accepted":
@@ -33,24 +28,40 @@ function statusStyle(status: InfluencerInviteStatus) {
 }
 
 export function InfluencerInvites() {
-  const [invites, setInvites] = useState<InfluencerInvite[]>(initialInfluencerInvites);
+  const [invites, setInvites] = useState<InfluencerInviteItem[]>([]);
   const [tab, setTab] = useState<(typeof tabs)[number]["id"]>("all");
+  const [isLoading, setIsLoading] = useState(true);
+
+  const loadInvites = async (statusFilter?: string) => {
+    try {
+      const res = await influencerApi.listInvites(
+        statusFilter && statusFilter !== "all" ? { status: statusFilter } : undefined
+      );
+      if (res.data?.items) {
+        setInvites(res.data.items);
+      }
+    } catch {
+      // fallback
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    setInvites(loadInfluencerInvites());
-  }, []);
+    loadInvites(tab);
+  }, [tab]);
 
-  const filtered = useMemo(() => {
-    if (tab === "all") return invites;
-    return invites.filter((i) => i.status === tab);
-  }, [invites, tab]);
-
-  const updateStatus = (id: string, status: InfluencerInviteStatus) => {
-    setInvites((prev) => {
-      const next = prev.map((i) => (i.id === id ? { ...i, status } : i));
-      saveInfluencerInvites(next);
-      return next;
-    });
+  const updateStatus = async (id: string, status: "accepted" | "rejected") => {
+    try {
+      if (status === "accepted") {
+        await influencerApi.acceptInvite(id);
+      } else {
+        await influencerApi.rejectInvite(id);
+      }
+      await loadInvites(tab);
+    } catch {
+      // fallback
+    }
   };
 
   return (
@@ -80,66 +91,79 @@ export function InfluencerInvites() {
         ))}
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        {filtered.map((inv) => (
-          <article
-            key={inv.id}
-            className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-5"
-          >
-            <div className="flex flex-wrap items-start justify-between gap-2">
-              <div>
-                <p className="font-semibold text-white">{inv.brand}</p>
-                <p className="text-sm text-[#CBD5E1]">{inv.campaign}</p>
-              </div>
-              <span
-                className={cn("rounded-full border px-2.5 py-0.5 text-xs capitalize", statusStyle(inv.status))}
-              >
-                {inv.status}
-              </span>
-            </div>
-            <dl className="mt-3 space-y-1 text-sm text-[#CBD5E1]">
-              <div>
-                <dt className="inline text-[#94A3B8]">Goal: </dt>
-                <dd className="inline text-white">{inv.goal}</dd>
-              </div>
-              <div>
-                <dt className="inline text-[#94A3B8]">Budget: </dt>
-                <dd className="inline text-white">{inv.budget}</dd>
-              </div>
-              <div>
-                <dt className="inline text-[#94A3B8]">Deliverables: </dt>
-                <dd className="inline text-white">{inv.deliverables}</dd>
-              </div>
-              <div>
-                <dt className="inline text-[#94A3B8]">Timeline: </dt>
-                <dd className="inline text-white">{inv.timeline}</dd>
-              </div>
-            </dl>
-            <p className="mt-3 rounded-xl border border-white/10 bg-[#06111F] p-3 text-sm text-[#CBD5E1]">
-              {inv.messagePreview}
-            </p>
-            {inv.status === "pending" ? (
-              <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-                <Button
-                  type="button"
-                  className="h-10 flex-1 rounded-xl bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)]"
-                  onClick={() => updateStatus(inv.id, "accepted")}
+      {invites.length === 0 && !isLoading ? (
+        <div className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-8 text-center">
+          <p className="text-white">No campaign invites found.</p>
+          <p className="mt-1 text-sm text-[#CBD5E1]">When businesses invite you to their campaigns, they will appear here.</p>
+        </div>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2">
+          {invites.map((inv) => (
+            <article
+              key={inv.id}
+              className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-5"
+            >
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <p className="font-semibold text-white">{inv.campaign?.business_name || "Brand"}</p>
+                  <p className="text-sm text-[#CBD5E1]">{inv.campaign?.title}</p>
+                </div>
+                <span
+                  className={cn("rounded-full border px-2.5 py-0.5 text-xs capitalize", statusStyle(inv.status))}
                 >
-                  Accept
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="h-10 flex-1 rounded-xl border-white/15 bg-transparent text-white hover:bg-white/10"
-                  onClick={() => updateStatus(inv.id, "rejected")}
-                >
-                  Reject
-                </Button>
+                  {inv.status}
+                </span>
               </div>
-            ) : null}
-          </article>
-        ))}
-      </div>
+              <dl className="mt-3 space-y-1 text-sm text-[#CBD5E1]">
+                <div>
+                  <dt className="inline text-[#94A3B8]">Platforms: </dt>
+                  <dd className="inline text-white capitalize">{inv.campaign?.platforms?.join(", ") || "Multi"}</dd>
+                </div>
+                <div>
+                  <dt className="inline text-[#94A3B8]">Budget: </dt>
+                  <dd className="inline text-white">
+                    {inv.campaign?.budget_min_etb != null && inv.campaign?.budget_max_etb != null
+                      ? `ETB ${inv.campaign.budget_min_etb.toLocaleString()} - ${inv.campaign.budget_max_etb.toLocaleString()}`
+                      : "Flexible"}
+                  </dd>
+                </div>
+                {inv.campaign?.start_date && inv.campaign?.end_date ? (
+                  <div>
+                    <dt className="inline text-[#94A3B8]">Timeline: </dt>
+                    <dd className="inline text-white">
+                      {new Date(inv.campaign.start_date).toLocaleDateString()} - {new Date(inv.campaign.end_date).toLocaleDateString()}
+                    </dd>
+                  </div>
+                ) : null}
+              </dl>
+              {inv.message ? (
+                <p className="mt-3 rounded-xl border border-white/10 bg-[#06111F] p-3 text-sm text-[#CBD5E1]">
+                  {inv.message}
+                </p>
+              ) : null}
+              {inv.status === "pending" ? (
+                <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                  <Button
+                    type="button"
+                    className="h-10 flex-1 rounded-xl bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)]"
+                    onClick={() => updateStatus(inv.id, "accepted")}
+                  >
+                    Accept
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-10 flex-1 rounded-xl border-white/15 bg-transparent text-white hover:bg-white/10"
+                    onClick={() => updateStatus(inv.id, "rejected")}
+                  >
+                    Reject
+                  </Button>
+                </div>
+              ) : null}
+            </article>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

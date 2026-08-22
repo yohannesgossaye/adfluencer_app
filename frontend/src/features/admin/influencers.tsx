@@ -7,83 +7,126 @@ import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  loadApplications,
-  saveApplications,
-  type AdminApplicationStatus,
-  type AdminInfluencerApplication,
-} from "@/data/admin-influencer-applications";
+  adminApi,
+  type InfluencerApplicationItem,
+  type InfluencerApplicationDetail,
+} from "@/lib/api/admin";
 import { cn } from "@/lib/utils";
 
-const tabs: Array<{ id: "all" | AdminApplicationStatus; label: string }> = [
+const tabs: Array<{ id: "all" | "pending" | "approved" | "rejected"; label: string }> = [
   { id: "all", label: "All" },
   { id: "pending", label: "Pending" },
   { id: "approved", label: "Approved" },
   { id: "rejected", label: "Rejected" },
 ];
 
-function statusBadge(s: AdminApplicationStatus) {
-  if (s === "pending") return "border-amber-400/30 bg-amber-500/10 text-amber-200";
-  if (s === "approved") return "border-emerald-400/30 bg-emerald-500/10 text-emerald-200";
+function statusBadge(s: string) {
+  const lower = s.toLowerCase();
+  if (lower === "pending") return "border-amber-400/30 bg-amber-500/10 text-amber-200";
+  if (lower === "approved" || lower === "active") return "border-emerald-400/30 bg-emerald-500/10 text-emerald-200";
   return "border-rose-400/30 bg-rose-500/10 text-rose-200";
 }
 
 export function AdminInfluencers() {
-  const [rows, setRows] = useState<AdminInfluencerApplication[]>([]);
+  const [rows, setRows] = useState<InfluencerApplicationItem[]>([]);
   const [tab, setTab] = useState<(typeof tabs)[number]["id"]>("all");
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedDetail, setSelectedDetail] = useState<InfluencerApplicationDetail | null>(null);
   const [mobileShowDetail, setMobileShowDetail] = useState(false);
   const [noteDraft, setNoteDraft] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+
+  const loadList = async () => {
+    try {
+      const res = await adminApi.listInfluencerApplications({
+        status: tab === "all" ? undefined : tab,
+        search: search.trim() || undefined,
+      });
+      if (res.data?.items) {
+        setRows(res.data.items);
+        if (!selectedId && res.data.items[0]) {
+          setSelectedId(res.data.items[0].user_id);
+        }
+      }
+    } catch {
+      // fallback
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const list = loadApplications();
-    setRows(list);
-    if (list[0]) setSelectedId((prev) => prev ?? list[0].id);
-  }, []);
-
-  const selected = useMemo(
-    () => rows.find((r) => r.id === selectedId) ?? null,
-    [rows, selectedId],
-  );
+    loadList();
+  }, [tab, search]);
 
   useEffect(() => {
-    const s = rows.find((r) => r.id === selectedId);
-    if (s) setNoteDraft(s.adminNotes);
-  }, [selectedId, rows]);
+    if (!selectedId) return;
+    async function loadItem() {
+      try {
+        const res = await adminApi.getInfluencerApplication(selectedId!);
+        if (res.data) {
+          setSelectedDetail(res.data);
+          setNoteDraft(res.data.admin_note || "");
+        }
+      } catch {
+        // fallback
+      }
+    }
+    loadItem();
+  }, [selectedId]);
 
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return rows.filter((r) => {
-      const tabOk = tab === "all" || r.status === tab;
-      const searchOk =
-        !q ||
-        r.name.toLowerCase().includes(q) ||
-        r.niche.toLowerCase().includes(q) ||
-        r.platform.toLowerCase().includes(q);
-      return tabOk && searchOk;
-    });
-  }, [rows, tab, search]);
+  const selected = useMemo(() => {
+    if (selectedDetail && selectedDetail.user_id === selectedId) {
+      return selectedDetail;
+    }
+    const item = rows.find((r) => r.user_id === selectedId);
+    return item ? ({
+      user_id: item.user_id,
+      status: item.status,
+      email: "",
+      profile: {
+        creator_name: item.creator_name,
+        profile_image_url: item.profile_image_url,
+        niches: item.primary_niche ? [{ id: "1", name: item.primary_niche, slug: "" }] : [],
+        platforms: item.primary_platform ? [item.primary_platform] : [],
+        social_links: {},
+        total_followers: item.total_followers,
+        engagement_rate: item.engagement_rate,
+        languages: ["Amharic", "English"],
+        portfolio_items: [],
+      },
+      completeness_percent: item.completeness_percent,
+      admin_note: "",
+      submitted_at: item.submitted_at,
+    } as InfluencerApplicationDetail) : null;
+  }, [selectedDetail, rows, selectedId]);
 
-  const persist = (next: AdminInfluencerApplication[]) => {
-    saveApplications(next);
-    setRows(next);
+  const setStatus = async (userId: string, status: "approved" | "rejected") => {
+    try {
+      if (status === "approved") {
+        await adminApi.approveInfluencerApplication(userId, { admin_note: noteDraft });
+      } else {
+        await adminApi.rejectInfluencerApplication(userId, { reason: "Application rejected by admin.", admin_note: noteDraft });
+      }
+      await loadList();
+    } catch {
+      // fallback
+    }
   };
 
-  const setStatus = (id: string, status: AdminApplicationStatus) => {
-    persist(rows.map((r) => (r.id === id ? { ...r, status } : r)));
+  const saveNotes = async () => {
+    if (!selectedId) return;
+    try {
+      await adminApi.updateInfluencerApplicationNotes(selectedId, { admin_note: noteDraft });
+      await loadList();
+    } catch {
+      // fallback
+    }
   };
 
-  const saveNotes = () => {
-    if (!selected) return;
-    persist(
-      rows.map((r) =>
-        r.id === selected.id ? { ...r, adminNotes: noteDraft } : r,
-      ),
-    );
-  };
-
-  const selectApplication = useCallback((id: string) => {
-    setSelectedId(id);
+  const selectApplication = useCallback((userId: string) => {
+    setSelectedId(userId);
     if (typeof window !== "undefined" && window.matchMedia("(max-width: 1279px)").matches) {
       setMobileShowDetail(true);
     }
@@ -125,76 +168,92 @@ export function AdminInfluencers() {
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
         <div className={cn("min-w-0 space-y-3", mobileShowDetail && "hidden xl:block")}>
-          {filtered.map((r) => (
-            <div
-              key={r.id}
-              role="button"
-              tabIndex={0}
-              onClick={() => selectApplication(r.id)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  selectApplication(r.id);
-                }
-              }}
-              className={cn(
-                "flex w-full min-w-0 cursor-pointer gap-4 rounded-2xl border p-4 text-left transition-colors",
-                selectedId === r.id
-                  ? "border-[color:var(--adfluence-orange)]/35 bg-[color:var(--adfluence-orange)]/10"
-                  : "border-white/10 bg-[rgba(255,255,255,0.08)] hover:border-white/20",
-              )}
-            >
-              <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-full border border-white/10">
-                <Image src={r.imageUrl} alt={r.name} fill className="object-cover" sizes="64px" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className="font-semibold text-white">{r.name}</p>
-                  <span
-                    className={cn(
-                      "rounded-full border px-2 py-0.5 text-[10px] font-medium capitalize",
-                      statusBadge(r.status),
-                    )}
-                  >
-                    {r.status}
-                  </span>
-                </div>
-                <p className="text-xs text-[#CBD5E1]">
-                  {r.niche} · {r.platform} · {r.followers.toLocaleString()} followers ·{" "}
-                  {r.engagementRate}% engagement
-                </p>
-                <p className="mt-1 text-xs text-[#94A3B8]">Submitted {r.submittedAt}</p>
-                <p className="mt-1 text-xs text-[#CBD5E1]">{r.completeness}</p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  <Button
-                    type="button"
-                    size="sm"
-                    className="h-11 bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)] sm:h-8"
-                    disabled={r.status !== "pending"}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setStatus(r.id, "approved");
-                    }}
-                  >
-                    Approve
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    className="h-11 border-white/15 text-white hover:bg-white/10 sm:h-8"
-                    disabled={r.status !== "pending"}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setStatus(r.id, "rejected");
-                    }}
-                  >
-                    Reject
-                  </Button>
-                </div>
-              </div>
+          {rows.length === 0 && !isLoading ? (
+            <div className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-8 text-center">
+              <p className="text-white">No influencer applications found.</p>
             </div>
-          ))}
+          ) : (
+            rows.map((r) => (
+              <div
+                key={r.user_id}
+                role="button"
+                tabIndex={0}
+                onClick={() => selectApplication(r.user_id)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    selectApplication(r.user_id);
+                  }
+                }}
+                className={cn(
+                  "flex w-full min-w-0 cursor-pointer gap-4 rounded-2xl border p-4 text-left transition-colors",
+                  selectedId === r.user_id
+                    ? "border-[color:var(--adfluence-orange)]/35 bg-[color:var(--adfluence-orange)]/10"
+                    : "border-white/10 bg-[rgba(255,255,255,0.08)] hover:border-white/20",
+                )}
+              >
+                <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-full border border-white/10">
+                  <Image
+                    src={r.profile_image_url || "/images/influencers/influencer-1.jpg"}
+                    alt={r.creator_name}
+                    fill
+                    className="object-cover"
+                    sizes="64px"
+                  />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="font-semibold text-white">{r.creator_name}</p>
+                    <span
+                      className={cn(
+                        "rounded-full border px-2 py-0.5 text-[10px] font-medium capitalize",
+                        statusBadge(r.status),
+                      )}
+                    >
+                      {r.status}
+                    </span>
+                  </div>
+                  <p className="text-xs text-[#CBD5E1]">
+                    {r.primary_niche || "General"} · {r.primary_platform || "Multi"} · {r.total_followers.toLocaleString()} followers
+                    {r.engagement_rate != null ? ` · ${r.engagement_rate}% engagement` : ""}
+                  </p>
+                  <p className="mt-1 text-xs text-[#94A3B8]">
+                    Submitted {new Date(r.submitted_at).toLocaleDateString()}
+                  </p>
+                  <p className="mt-1 text-xs text-[#CBD5E1]">
+                    Profile {r.completeness_percent}% complete
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="h-11 bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)] sm:h-8"
+                      disabled={r.status !== "pending"}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setStatus(r.user_id, "approved");
+                      }}
+                    >
+                      Approve
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-11 border-white/15 text-white hover:bg-white/10 sm:h-8"
+                      disabled={r.status !== "pending"}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setStatus(r.user_id, "rejected");
+                      }}
+                    >
+                      Reject
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
         </div>
 
         {selected ? (
@@ -216,23 +275,39 @@ export function AdminInfluencers() {
                 <ArrowLeft className="size-5" />
               </Button>
             </div>
-            <h2 className="text-lg font-semibold text-white">Details — {selected.name}</h2>
-            <p className="mt-2 text-sm text-[#CBD5E1]">{selected.bio}</p>
+            <h2 className="text-lg font-semibold text-white">Details — {selected.profile?.creator_name || "Creator"}</h2>
+            <p className="mt-2 text-sm text-[#CBD5E1]">{selected.profile?.bio || "No bio provided."}</p>
             <div className="mt-3 space-y-1 text-xs text-[#94A3B8]">
-              <p>TikTok: {selected.tiktok || "—"}</p>
-              <p>Instagram: {selected.instagram || "—"}</p>
-              <p>YouTube: {selected.youtube || "—"}</p>
+              <p>TikTok: {selected.profile?.social_links?.tiktok || "—"}</p>
+              <p>Instagram: {selected.profile?.social_links?.instagram || "—"}</p>
+              <p>YouTube: {selected.profile?.social_links?.youtube || "—"}</p>
             </div>
-            <p className="mt-3 text-sm text-[#CBD5E1]">
-              <span className="text-white">Audience:</span> {selected.audienceNotes}
-            </p>
-            <p className="mt-2 text-sm text-[#CBD5E1]">
-              <span className="text-white">Pricing:</span> {selected.pricing}
-            </p>
-            <p className="mt-3 text-xs font-medium uppercase text-[#94A3B8]">Sample content</p>
-            <div className="relative mt-2 aspect-video overflow-hidden rounded-xl border border-white/10">
-              <Image src={selected.imageUrl} alt={selected.name} fill className="object-cover" sizes="360px" />
-            </div>
+            {selected.profile?.audience_description ? (
+              <p className="mt-3 text-sm text-[#CBD5E1]">
+                <span className="text-white">Audience:</span> {selected.profile.audience_description}
+              </p>
+            ) : null}
+            {selected.profile?.min_price_etb != null ? (
+              <p className="mt-2 text-sm text-[#CBD5E1]">
+                <span className="text-white">Pricing:</span> ETB {selected.profile.min_price_etb.toLocaleString()} - {selected.profile.max_price_etb?.toLocaleString()}
+              </p>
+            ) : null}
+
+            {selected.profile?.portfolio_items && selected.profile.portfolio_items.length > 0 ? (
+              <>
+                <p className="mt-3 text-xs font-medium uppercase text-[#94A3B8]">Sample content</p>
+                <div className="relative mt-2 aspect-video overflow-hidden rounded-xl border border-white/10">
+                  <Image
+                    src={selected.profile.portfolio_items[0].file_url}
+                    alt={selected.profile.creator_name}
+                    fill
+                    className="object-cover"
+                    sizes="360px"
+                  />
+                </div>
+              </>
+            ) : null}
+
             <label className="mt-4 block text-sm">
               <span className="text-[#CBD5E1]">Admin notes</span>
               <textarea

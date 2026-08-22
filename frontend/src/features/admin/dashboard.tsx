@@ -4,21 +4,10 @@ import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { adminActivityFeed, adminAlerts } from "@/data/admin-activity-mock";
-import { adminPlatformKpis } from "@/data/admin-kpis";
 import {
-  initialAdminApplications,
-  loadApplications,
-  saveApplications,
-  type AdminInfluencerApplication,
-} from "@/data/admin-influencer-applications";
-import { initialAdminDisputes, loadDisputes, type AdminDispute } from "@/data/admin-disputes-mock";
-import {
-  initialSupportTickets,
-  loadSupportTickets,
-  type SupportTicket,
-} from "@/data/support";
-import { getBlockedEmails } from "@/lib/blocked-users";
+  adminApi,
+  type AdminDashboardSummaryResponse,
+} from "@/lib/api/admin";
 import { cn } from "@/lib/utils";
 
 function Kpi({ label, value }: { label: string; value: string }) {
@@ -36,68 +25,63 @@ function Kpi({ label, value }: { label: string; value: string }) {
 
 export function AdminDashboard() {
   const pathname = usePathname();
-  const [applications, setApplications] =
-    useState<AdminInfluencerApplication[]>(initialAdminApplications);
-  const [disputes, setDisputes] = useState<AdminDispute[]>(initialAdminDisputes);
-  const [tickets, setTickets] = useState<SupportTicket[]>(initialSupportTickets);
-  const [blockedCount, setBlockedCount] = useState(0);
+  const [summary, setSummary] = useState<AdminDashboardSummaryResponse | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    const refresh = () => {
-      setApplications(loadApplications());
-      setDisputes(loadDisputes());
-      setTickets(loadSupportTickets());
-      setBlockedCount(getBlockedEmails().length);
-    };
-    refresh();
-  }, [pathname]);
-
-  const pendingApprovals = useMemo(
-    () => applications.filter((a) => a.status === "pending").length,
-    [applications],
-  );
-  const openDisputes = useMemo(
-    () => disputes.filter((d) => d.status === "open" || d.status === "under_review").length,
-    [disputes],
-  );
-  const openTickets = useMemo(
-    () =>
-      tickets.filter(
-        (t) => t.status === "open" || t.status === "in_review" || t.status === "escalated",
-      ).length,
-    [tickets],
-  );
-
-  const previewPending = useMemo(
-    () => applications.filter((a) => a.status === "pending").slice(0, 3),
-    [applications],
-  );
-
-  const setAppStatus = (id: string, status: "approved" | "rejected") => {
-    setApplications((prev) => {
-      const next = prev.map((a) => (a.id === id ? { ...a, status } : a));
-      saveApplications(next);
-      return next;
-    });
+  const loadSummary = async () => {
+    try {
+      const res = await adminApi.getDashboardSummary();
+      if (res.data) {
+        setSummary(res.data);
+      }
+    } catch {
+      // fallback
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const kpis = useMemo(
-    () => [
-      { label: "Total Influencers", value: String(adminPlatformKpis.totalInfluencers) },
-      { label: "Total Businesses", value: String(adminPlatformKpis.totalBusinesses) },
-      { label: "Pending Influencer Approvals", value: String(pendingApprovals) },
-      { label: "Active Campaigns", value: String(adminPlatformKpis.activeCampaigns) },
-      { label: "Total Campaigns", value: String(adminPlatformKpis.totalCampaigns) },
-      { label: "Total Users", value: String(adminPlatformKpis.totalUsers) },
-      { label: "Open Disputes", value: String(openDisputes) },
-      { label: "Support Tickets", value: String(openTickets) },
-      { label: "Monthly Revenue", value: adminPlatformKpis.monthlyRevenue },
-      { label: "Platform Satisfaction", value: adminPlatformKpis.platformSatisfaction },
-      { label: "Blocked Users", value: String(blockedCount) },
-      { label: "Completed Contracts", value: adminPlatformKpis.completedContracts.toLocaleString() },
-    ],
-    [pendingApprovals, openDisputes, openTickets, blockedCount],
-  );
+  useEffect(() => {
+    loadSummary();
+  }, [pathname]);
+
+  const setAppStatus = async (userId: string, status: "approved" | "rejected") => {
+    try {
+      if (status === "approved") {
+        await adminApi.approveInfluencerApplication(userId);
+      } else {
+        await adminApi.rejectInfluencerApplication(userId, { reason: "Application rejected by admin." });
+      }
+      await loadSummary();
+    } catch {
+      // fallback
+    }
+  };
+
+  const kpis = useMemo(() => {
+    const k = summary?.kpis;
+    return [
+      { label: "Total Influencers", value: String(k?.total_influencers ?? 0) },
+      { label: "Total Businesses", value: String(k?.total_businesses ?? 0) },
+      { label: "Pending Approvals", value: String(k?.pending_influencer_approvals ?? 0) },
+      { label: "Active Campaigns", value: String(k?.active_campaigns ?? 0) },
+      { label: "Total Campaigns", value: String(k?.total_campaigns ?? 0) },
+      { label: "Total Users", value: String(k?.total_users ?? 0) },
+      { label: "Open Disputes", value: String(k?.open_disputes ?? 0) },
+      { label: "Support Tickets", value: String(k?.open_support_tickets ?? 0) },
+      {
+        label: "Monthly Revenue",
+        value: `ETB ${Math.round(k?.monthly_platform_revenue_etb ?? 0).toLocaleString()}`,
+      },
+      { label: "Platform Fee", value: "5% + 5%" },
+      { label: "Blocked Users", value: String(k?.blocked_users ?? 0) },
+      { label: "Completed Contracts", value: String(k?.completed_contracts ?? 0) },
+    ];
+  }, [summary]);
+
+  const previewPending = summary?.pending_approvals || [];
+  const activity = summary?.recent_activity || [];
+  const alerts = summary?.alerts || [];
 
   return (
     <div className="space-y-6 text-white">
@@ -116,97 +100,112 @@ export function AdminDashboard() {
 
       <div className="grid gap-6 xl:grid-cols-2">
         <section className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-5">
-          <h2 className="text-lg font-semibold text-white">Pending approvals</h2>
-          <p className="mt-1 text-xs text-[#CBD5E1]">Influencer applications awaiting review</p>
-          <ul className="mt-4 space-y-3">
-            {previewPending.map((a) => (
-              <li
-                key={a.id}
-                className="flex flex-col gap-2 rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)] p-3 sm:flex-row sm:items-center sm:justify-between"
-              >
-                <div>
-                  <p className="font-medium text-white">{a.name}</p>
-                  <p className="text-xs text-[#CBD5E1]">
-                    {a.niche} · {a.platform} · {a.followers.toLocaleString()} followers
-                  </p>
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    size="sm"
-                    className="h-11 rounded-lg bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)] sm:h-8"
-                    onClick={() => setAppStatus(a.id, "approved")}
-                  >
-                    Approve
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    className="h-11 rounded-lg border-white/15 text-white hover:bg-white/10 sm:h-8"
-                    onClick={() => setAppStatus(a.id, "rejected")}
-                  >
-                    Reject
-                  </Button>
-                </div>
-              </li>
-            ))}
-          </ul>
+          <h2 className="text-lg font-semibold text-white">Pending influencer approvals</h2>
+          {previewPending.length === 0 ? (
+            <p className="mt-3 text-sm text-[#CBD5E1]">No pending approvals.</p>
+          ) : (
+            <ul className="mt-3 space-y-3">
+              {previewPending.map((a) => (
+                <li
+                  key={a.user_id}
+                  className="flex flex-col justify-between gap-2 rounded-xl border border-white/10 bg-[#06111F] p-3 sm:flex-row sm:items-center"
+                >
+                  <div>
+                    <p className="font-medium text-white">{a.name}</p>
+                    <p className="text-xs text-[#CBD5E1]">
+                      {a.niche || "General"} · {a.platform || "Multi"} · {a.followers.toLocaleString()} followers
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="h-11 rounded-lg bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)] sm:h-8"
+                      onClick={() => setAppStatus(a.user_id, "approved")}
+                    >
+                      Approve
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-11 rounded-lg border-white/15 text-white hover:bg-white/10 sm:h-8"
+                      onClick={() => setAppStatus(a.user_id, "rejected")}
+                    >
+                      Reject
+                    </Button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
 
         <section className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-5">
           <h2 className="text-lg font-semibold text-white">Platform activity</h2>
-          <ul className="mt-3 space-y-2">
-            {adminActivityFeed.map((item) => (
-              <li
-                key={item.id}
-                className="flex items-start justify-between gap-2 border-b border-white/5 py-2 text-sm last:border-0"
-              >
-                <div>
-                  <p className="font-medium text-white">{item.label}</p>
-                  <p className="text-xs text-[#CBD5E1]">{item.detail}</p>
-                </div>
-                <span className="shrink-0 text-[10px] text-[#94A3B8]">{item.time}</span>
-              </li>
-            ))}
-          </ul>
+          {activity.length === 0 ? (
+            <p className="mt-3 text-sm text-[#CBD5E1]">No recent activity logs.</p>
+          ) : (
+            <ul className="mt-3 space-y-2">
+              {activity.map((item) => (
+                <li
+                  key={item.id}
+                  className="flex items-start justify-between gap-2 border-b border-white/5 py-2 text-sm last:border-0"
+                >
+                  <div>
+                    <p className="font-medium text-white">{item.label}</p>
+                    <p className="text-xs text-[#CBD5E1]">{item.detail}</p>
+                  </div>
+                  <span className="shrink-0 text-[10px] text-[#94A3B8]">
+                    {new Date(item.created_at).toLocaleDateString()}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
       </div>
 
       <section className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-5 md:p-6">
-        <h2 className="text-lg font-semibold text-white">Revenue / campaign performance</h2>
+        <h2 className="text-lg font-semibold text-white">Revenue / escrow performance</h2>
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           <div className="rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)] p-3">
-            <p className="text-xs text-[#CBD5E1]">Total campaign value (mock)</p>
-            <p className="text-lg font-semibold text-white">ETB 4.2M</p>
+            <p className="text-xs text-[#CBD5E1]">Total campaign escrow value</p>
+            <p className="text-lg font-semibold text-white">
+              ETB {Math.round(summary?.revenue_summary?.total_campaign_value_etb ?? 0).toLocaleString()}
+            </p>
           </div>
           <div className="rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)] p-3">
-            <p className="text-xs text-[#CBD5E1]">Platform commission (placeholder)</p>
-            <p className="text-lg font-semibold text-[color:var(--adfluence-orange)]">12.5%</p>
+            <p className="text-xs text-[#CBD5E1]">Total platform commission (5% + 5%)</p>
+            <p className="text-lg font-semibold text-[color:var(--adfluence-orange)]">
+              ETB {Math.round(summary?.revenue_summary?.total_platform_fees_etb ?? 0).toLocaleString()}
+            </p>
           </div>
         </div>
       </section>
 
-      <section className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-5">
-        <h2 className="text-lg font-semibold text-white">Alerts</h2>
-        <ul className="mt-3 space-y-2">
-          {adminAlerts.map((al) => (
-            <li
-              key={al.id}
-              className={cn(
-                "rounded-xl border px-3 py-2 text-sm",
-                al.severity === "high"
-                  ? "border-rose-400/30 bg-rose-500/10 text-rose-100"
-                  : al.severity === "medium"
-                    ? "border-amber-400/25 bg-amber-500/10 text-amber-100"
-                    : "border-white/10 bg-[color:var(--adfluence-surface)] text-[#CBD5E1]",
-              )}
-            >
-              <span className="font-medium text-white">{al.title}</span> — {al.detail}
-            </li>
-          ))}
-        </ul>
-      </section>
+      {alerts.length > 0 ? (
+        <section className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-5">
+          <h2 className="text-lg font-semibold text-white">Alerts</h2>
+          <ul className="mt-3 space-y-2">
+            {alerts.map((al) => (
+              <li
+                key={al.id}
+                className={cn(
+                  "rounded-xl border px-3 py-2 text-sm",
+                  al.severity === "high"
+                    ? "border-rose-400/30 bg-rose-500/10 text-rose-100"
+                    : al.severity === "medium"
+                      ? "border-amber-400/25 bg-amber-500/10 text-amber-100"
+                      : "border-white/10 bg-[color:var(--adfluence-surface)] text-[#CBD5E1]",
+                )}
+              >
+                <span className="font-medium text-white">{al.title}</span> — {al.detail}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
     </div>
   );
 }

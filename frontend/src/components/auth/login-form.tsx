@@ -1,16 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
+import axios from "axios";
 
 import { BrandLogo } from "@/components/common/brand-logo";
 import { GradientButton } from "@/components/common/gradient-button";
 import { useAuth } from "@/components/providers/auth-provider";
-import { mockUsers } from "@/data/mock-users";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { isEmailBlocked } from "@/lib/blocked-users";
+import { authApi } from "@/lib/api/auth";
 import { setMockUser } from "@/lib/mock-auth";
 
 type LoginFormProps = {
@@ -29,41 +29,65 @@ export function LoginForm({
   onCancel,
 }: LoginFormProps) {
   const router = useRouter();
-  const { setAccessToken } = useAuth();
+  const searchParams = useSearchParams();
+  const nextParam = searchParams.get("next") || undefined;
+  const { setSession } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const onSubmit = (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) {
-      setError("Incorrect email or password.");
+      setError("Please enter your email and password.");
       return;
     }
-    const matchedUser = mockUsers.find(
-      (u) =>
-        u.email.toLowerCase() === email.trim().toLowerCase() &&
-        u.password === password,
-    );
-    if (!matchedUser) {
-      setError("Incorrect email or password.");
-      return;
-    }
-    if (isEmailBlocked(matchedUser.email)) {
-      setError("This account has been blocked. Please contact Adfluence support.");
-      return;
-    }
+
     setError(null);
-    setAccessToken("demo-session-token");
-    setMockUser({
-      email: matchedUser.email,
-      role: matchedUser.role,
-      name: matchedUser.name,
-      redirect: matchedUser.redirect,
-    });
-    onSuccess?.();
-    router.push(matchedUser.redirect);
+    setIsLoading(true);
+
+    try {
+      const res = await authApi.login({
+        email: email.trim(),
+        password,
+        remember_me: rememberMe,
+        next: nextParam,
+      });
+
+      if (res.data) {
+        const { user, profile, tokens, redirect_to } = res.data;
+        setSession(tokens, user, profile);
+
+        const displayName =
+          profile.business_name ||
+          profile.creator_name ||
+          profile.full_name ||
+          user.email;
+
+        setMockUser({
+          email: user.email,
+          role: user.role,
+          name: displayName,
+          redirect: redirect_to,
+        });
+
+        onSuccess?.();
+        const targetRoute = nextParam || redirect_to || "/dashboard";
+        router.push(targetRoute);
+      }
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err) && err.response?.data?.message) {
+        setError(err.response.data.message);
+      } else if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Login failed. Please check your credentials.");
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -118,17 +142,18 @@ export function LoginForm({
             type="button"
             variant="outline"
             onClick={onCancel}
+            disabled={isLoading}
             className="h-12 flex-1 rounded-xl border-white/15 bg-transparent text-white hover:bg-white/10"
           >
             Cancel
           </Button>
-          <GradientButton className="h-12 flex-1 rounded-xl px-6" type="submit">
-            Login
+          <GradientButton className="h-12 flex-1 rounded-xl px-6" type="submit" disabled={isLoading}>
+            {isLoading ? "Logging in..." : "Login"}
           </GradientButton>
         </div>
       ) : (
-        <GradientButton className="h-12 w-full rounded-xl px-6" type="submit">
-          Login
+        <GradientButton className="h-12 w-full rounded-xl px-6" type="submit" disabled={isLoading}>
+          {isLoading ? "Logging in..." : "Login"}
         </GradientButton>
       )}
 

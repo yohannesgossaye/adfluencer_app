@@ -44,19 +44,25 @@ func InitBusinessModule(business storage.BusinessPersistence, influencer storage
 }
 
 func (m *businessModule) GetProfile(ctx context.Context, userID string) (*businessDto.GetProfileResponse, error) {
+	m.logger.Info(ctx, "fetching business profile", zap.String("user_id", userID))
+
 	user, err := m.auth.GetUserByID(ctx, userID)
 	if err != nil {
 		if errors.Is(err, customErr.ErrUserNotFound) {
+			m.logger.Warn(ctx, "business user not found", zap.String("user_id", userID))
 			return nil, customErr.ErrUnauthorized
 		}
+		m.logger.Error(ctx, "failed to get business user from auth persistence", zap.String("user_id", userID), zap.String("reason", err.Error()))
 		return nil, err
 	}
 	if err := ensureReadableStatus(user.Status); err != nil {
+		m.logger.Warn(ctx, "business profile not readable due to status", zap.String("user_id", userID), zap.String("status", user.Status))
 		return nil, err
 	}
 
 	rec, err := m.business.GetProfileByUserID(ctx, userID)
 	if err != nil {
+		m.logger.Error(ctx, "failed to get business profile details", zap.String("user_id", userID), zap.String("reason", err.Error()))
 		return nil, err
 	}
 
@@ -64,14 +70,19 @@ func (m *businessModule) GetProfile(ctx context.Context, userID string) (*busine
 }
 
 func (m *businessModule) UpdateProfile(ctx context.Context, userID string, req businessDto.UpdateProfileRequest, meta authDto.SessionMeta) (*businessDto.GetProfileResponse, error) {
+	m.logger.Info(ctx, "updating business profile", zap.String("user_id", userID), zap.String("business_name", req.BusinessName))
+
 	user, err := m.auth.GetUserByID(ctx, userID)
 	if err != nil {
 		if errors.Is(err, customErr.ErrUserNotFound) {
+			m.logger.Warn(ctx, "user not found during business profile update", zap.String("user_id", userID))
 			return nil, customErr.ErrUnauthorized
 		}
+		m.logger.Error(ctx, "failed to query user for business update", zap.String("user_id", userID), zap.String("reason", err.Error()))
 		return nil, err
 	}
 	if err := ensureEditableStatus(user.Status); err != nil {
+		m.logger.Warn(ctx, "business profile is locked for edits", zap.String("user_id", userID), zap.String("status", user.Status))
 		return nil, err
 	}
 
@@ -99,6 +110,7 @@ func (m *businessModule) UpdateProfile(ctx context.Context, userID string, req b
 		MonthlyMarketingBudget: req.MonthlyMarketingBudget,
 	})
 	if err != nil {
+		m.logger.Error(ctx, "failed to update business profile in database", zap.String("user_id", userID), zap.String("reason", err.Error()))
 		return nil, err
 	}
 
@@ -113,11 +125,16 @@ func (m *businessModule) UpdateProfile(ctx context.Context, userID string, req b
 		UserAgent:    meta.UserAgent,
 	})
 
+	m.logger.Info(ctx, "business profile updated successfully", zap.String("user_id", userID))
+
 	return m.buildResponse(user, rec), nil
 }
 
 func (m *businessModule) UploadLogo(ctx context.Context, userID string, filename, contentType string, data []byte, meta authDto.SessionMeta) (*businessDto.UploadLogoResponse, error) {
+	m.logger.Info(ctx, "uploading business logo", zap.String("user_id", userID), zap.String("filename", filename))
+
 	if !m.files.Enabled() {
+		m.logger.Warn(ctx, "storage service not configured for logo upload")
 		return nil, customErr.ErrStorageNotConfigured
 	}
 
@@ -126,38 +143,46 @@ func (m *businessModule) UploadLogo(ctx context.Context, userID string, filename
 		if errors.Is(err, customErr.ErrUserNotFound) {
 			return nil, customErr.ErrUnauthorized
 		}
+		m.logger.Error(ctx, "failed to query user for logo upload", zap.String("user_id", userID), zap.String("reason", err.Error()))
 		return nil, err
 	}
 	if err := ensureEditableStatus(user.Status); err != nil {
+		m.logger.Warn(ctx, "logo upload rejected due to status", zap.String("user_id", userID), zap.String("status", user.Status))
 		return nil, err
 	}
 
 	validated, err := platformStorage.ValidateAvatarFile(filename, contentType, data)
 	if err != nil {
 		if errors.Is(err, platformStorage.ErrUnsupportedFormat) || errors.Is(err, platformStorage.ErrInvalidFile) {
+			m.logger.Warn(ctx, "logo validation failed: invalid format or file", zap.String("filename", filename))
 			return nil, customErr.ErrInvalidFile
 		}
+		m.logger.Error(ctx, "logo validation error", zap.String("reason", err.Error()))
 		return nil, err
 	}
 
 	rec, err := m.business.GetProfileByUserID(ctx, userID)
 	if err != nil {
+		m.logger.Error(ctx, "failed to get business profile for logo upload", zap.String("user_id", userID), zap.String("reason", err.Error()))
 		return nil, err
 	}
 
 	objectKey := platformStorage.BusinessLogoObjectKey(userID, validated.Extension)
 	if _, err := m.files.UploadBytes(ctx, objectKey, bytes.NewReader(validated.Data), validated.Size, validated.ContentType); err != nil {
+		m.logger.Error(ctx, "failed to upload logo bytes to S3", zap.String("object_key", objectKey), zap.String("reason", err.Error()))
 		return nil, err
 	}
 
 	publicURL, err := m.files.GetFileURL(ctx, objectKey, 0)
 	if err != nil {
 		_ = m.files.Delete(ctx, objectKey)
+		m.logger.Error(ctx, "failed to get public URL for logo", zap.String("object_key", objectKey), zap.String("reason", err.Error()))
 		return nil, err
 	}
 
 	if err := m.business.UpdateLogoURL(ctx, userID, publicURL); err != nil {
 		_ = m.files.Delete(ctx, objectKey)
+		m.logger.Error(ctx, "failed to persist logo URL to database", zap.String("user_id", userID), zap.String("reason", err.Error()))
 		return nil, err
 	}
 
@@ -181,31 +206,39 @@ func (m *businessModule) UploadLogo(ctx context.Context, userID string, filename
 		UserAgent:    meta.UserAgent,
 	})
 
+	m.logger.Info(ctx, "business logo uploaded successfully", zap.String("user_id", userID), zap.String("url", publicURL))
+
 	return &businessDto.UploadLogoResponse{LogoURL: publicURL}, nil
 }
 
 func (m *businessModule) CompleteProfile(ctx context.Context, userID string, meta authDto.SessionMeta) (*businessDto.CompleteProfileResponse, error) {
+	m.logger.Info(ctx, "completing business profile", zap.String("user_id", userID))
+
 	user, err := m.auth.GetUserByID(ctx, userID)
 	if err != nil {
 		if errors.Is(err, customErr.ErrUserNotFound) {
 			return nil, customErr.ErrUnauthorized
 		}
+		m.logger.Error(ctx, "failed to query user for profile completion", zap.String("user_id", userID), zap.String("reason", err.Error()))
 		return nil, err
 	}
 
 	switch model.UserStatus(user.Status) {
 	case model.PendingProfileStatus, model.RejectedStatus:
 	default:
+		m.logger.Warn(ctx, "invalid status for profile complete", zap.String("user_id", userID), zap.String("status", user.Status))
 		return nil, customErr.ErrInvalidStatusForComplete
 	}
 
 	rec, err := m.business.GetProfileByUserID(ctx, userID)
 	if err != nil {
+		m.logger.Error(ctx, "failed to get business profile", zap.String("user_id", userID), zap.String("reason", err.Error()))
 		return nil, err
 	}
 
 	completeness := helper.BuildCompleteness(rec.ProfileDetailResponse)
 	if !completeness.CanComplete {
+		m.logger.Warn(ctx, "business profile is incomplete", zap.String("user_id", userID))
 		return nil, customErr.ErrProfileIncomplete
 	}
 
@@ -213,6 +246,7 @@ func (m *businessModule) CompleteProfile(ctx context.Context, userID string, met
 		if errors.Is(err, businessDto.ErrInvalidStatusForComplete) {
 			return nil, customErr.ErrInvalidStatusForComplete
 		}
+		m.logger.Error(ctx, "failed to complete business profile in persistence", zap.String("user_id", userID), zap.String("reason", err.Error()))
 		return nil, err
 	}
 
@@ -227,6 +261,8 @@ func (m *businessModule) CompleteProfile(ctx context.Context, userID string, met
 		IPAddress:    meta.IPAddress,
 		UserAgent:    meta.UserAgent,
 	})
+
+	m.logger.Info(ctx, "business profile completed successfully", zap.String("user_id", userID))
 
 	return &businessDto.CompleteProfileResponse{
 		Status:      string(model.ActiveStatus),

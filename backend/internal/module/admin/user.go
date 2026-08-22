@@ -3,18 +3,21 @@ package admin
 import (
 	customErr "adinfluence_service_app/internal/constant/errors"
 	"adinfluence_service_app/internal/constant/model"
-	authDto "adinfluence_service_app/internal/constant/model/dto/auth"
 	adminDto "adinfluence_service_app/internal/constant/model/dto/admin"
+	authDto "adinfluence_service_app/internal/constant/model/dto/auth"
 	commonDto "adinfluence_service_app/internal/constant/model/dto/common"
 	adminPersist "adinfluence_service_app/internal/storage/persist/admin"
 	"context"
 	"errors"
 	"strings"
 
+	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 )
 
 func (m *adminModule) ListUsers(ctx context.Context, query adminDto.ListUsersQuery) (*adminDto.ListUsersResponse, error) {
+	m.logger.Info(ctx, "admin listing users", zap.String("role", query.Role), zap.String("status", query.Status))
+
 	query = query.Normalize()
 
 	var (
@@ -38,6 +41,7 @@ func (m *adminModule) ListUsers(ctx context.Context, query adminDto.ListUsersQue
 	})
 
 	if err := g.Wait(); err != nil {
+		m.logger.Error(ctx, "failed to query users or user stats", zap.String("reason", err.Error()))
 		return nil, err
 	}
 
@@ -47,15 +51,18 @@ func (m *adminModule) ListUsers(ctx context.Context, query adminDto.ListUsersQue
 	}
 
 	return &adminDto.ListUsersResponse{
-		Items: items,
-		Stats: *stats,
+		Items:      items,
+		Stats:      *stats,
 		Pagination: commonDto.NewListMeta(query.Page, query.Limit, total),
 	}, nil
 }
 
 func (m *adminModule) GetUser(ctx context.Context, userID string) (*adminDto.UserDetailResponse, error) {
+	m.logger.Info(ctx, "admin fetching user details", zap.String("target_user_id", userID))
+
 	row, err := m.admin.GetUser(ctx, userID)
 	if err != nil {
+		m.logger.Warn(ctx, "failed to get user", zap.String("target_user_id", userID), zap.String("reason", err.Error()))
 		return nil, mapUserError(err)
 	}
 	item := mapUserListItem(*row)
@@ -66,7 +73,10 @@ func (m *adminModule) GetUser(ctx context.Context, userID string) (*adminDto.Use
 }
 
 func (m *adminModule) BlockUser(ctx context.Context, adminUserID, targetUserID string, req adminDto.BlockUserRequest, meta authDto.SessionMeta) (*adminDto.BlockUserResponse, error) {
+	m.logger.Info(ctx, "admin blocking user", zap.String("admin_id", adminUserID), zap.String("target_user_id", targetUserID), zap.String("reason", req.Reason))
+
 	if err := m.admin.BlockUser(ctx, targetUserID, strings.TrimSpace(req.Reason)); err != nil {
+		m.logger.Error(ctx, "failed to block user in persistence", zap.String("target_user_id", targetUserID), zap.String("reason", err.Error()))
 		return nil, mapUserError(err)
 	}
 
@@ -81,11 +91,16 @@ func (m *adminModule) BlockUser(ctx context.Context, adminUserID, targetUserID s
 		UserAgent:    meta.UserAgent,
 	})
 
+	m.logger.Info(ctx, "user blocked successfully", zap.String("target_user_id", targetUserID))
+
 	return &adminDto.BlockUserResponse{UserID: targetUserID, Status: "blocked"}, nil
 }
 
 func (m *adminModule) UnblockUser(ctx context.Context, adminUserID, targetUserID string, meta authDto.SessionMeta) (*adminDto.UnblockUserResponse, error) {
+	m.logger.Info(ctx, "admin unblocking user", zap.String("admin_id", adminUserID), zap.String("target_user_id", targetUserID))
+
 	if err := m.admin.UnblockUser(ctx, targetUserID); err != nil {
+		m.logger.Error(ctx, "failed to unblock user in persistence", zap.String("target_user_id", targetUserID), zap.String("reason", err.Error()))
 		return nil, mapUserError(err)
 	}
 
@@ -100,11 +115,16 @@ func (m *adminModule) UnblockUser(ctx context.Context, adminUserID, targetUserID
 		UserAgent:    meta.UserAgent,
 	})
 
+	m.logger.Info(ctx, "user unblocked successfully", zap.String("target_user_id", targetUserID))
+
 	return &adminDto.UnblockUserResponse{UserID: targetUserID, Status: "active"}, nil
 }
 
 func (m *adminModule) RemoveUser(ctx context.Context, adminUserID, targetUserID string, req adminDto.RemoveUserRequest, meta authDto.SessionMeta) (*adminDto.RemoveUserResponse, error) {
+	m.logger.Info(ctx, "admin removing user", zap.String("admin_id", adminUserID), zap.String("target_user_id", targetUserID), zap.String("reason", req.Reason))
+
 	if err := m.admin.RemoveUser(ctx, targetUserID, strings.TrimSpace(req.Reason)); err != nil {
+		m.logger.Error(ctx, "failed to remove user in persistence", zap.String("target_user_id", targetUserID), zap.String("reason", err.Error()))
 		return nil, mapUserError(err)
 	}
 
@@ -118,6 +138,8 @@ func (m *adminModule) RemoveUser(ctx context.Context, adminUserID, targetUserID 
 		IPAddress:    meta.IPAddress,
 		UserAgent:    meta.UserAgent,
 	})
+
+	m.logger.Info(ctx, "user removed successfully", zap.String("target_user_id", targetUserID))
 
 	return &adminDto.RemoveUserResponse{UserID: targetUserID, Status: "removed"}, nil
 }

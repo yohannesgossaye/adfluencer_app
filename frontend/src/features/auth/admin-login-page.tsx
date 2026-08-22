@@ -2,47 +2,69 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import axios from "axios";
 
 import { AuthPageCard } from "@/components/auth/auth-page-card";
 import { BrandLogo } from "@/components/common/brand-logo";
 import { GradientButton } from "@/components/common/gradient-button";
 import { useAuth } from "@/components/providers/auth-provider";
-import { mockUsers } from "@/data/mock-users";
 import { Input } from "@/components/ui/input";
-import { isEmailBlocked } from "@/lib/blocked-users";
+import { authApi } from "@/lib/api/auth";
 import { setMockUser } from "@/lib/mock-auth";
 
 export function AdminLoginPageFeature() {
   const router = useRouter();
-  const { setAccessToken } = useAuth();
+  const { setSession } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const onSubmit = (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const admin = mockUsers.find((u) => u.role === "admin");
-    if (
-      !admin ||
-      email.trim().toLowerCase() !== admin.email.toLowerCase() ||
-      password !== admin.password
-    ) {
-      setError("Invalid admin credentials.");
+    if (!email || !password) {
+      setError("Please enter your admin email and password.");
       return;
     }
-    if (isEmailBlocked(admin.email)) {
-      setError("This account has been blocked. Please contact Adfluence support.");
-      return;
-    }
+
     setError(null);
-    setAccessToken("demo-admin-token");
-    setMockUser({
-      email: admin.email,
-      role: admin.role,
-      name: admin.name,
-      redirect: admin.redirect,
-    });
-    router.push(admin.redirect);
+    setIsLoading(true);
+
+    try {
+      const res = await authApi.login({
+        email: email.trim(),
+        password,
+        portal: "admin",
+      });
+
+      if (res.data) {
+        const { user, profile, tokens, redirect_to } = res.data;
+        if (user.role !== "admin") {
+          setError("Admin access required.");
+          return;
+        }
+
+        setSession(tokens, user, profile);
+        setMockUser({
+          email: user.email,
+          role: "admin",
+          name: profile.full_name || "Adfluence Admin",
+          redirect: redirect_to || "/admin/dashboard",
+        });
+
+        router.push(redirect_to || "/admin/dashboard");
+      }
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err) && err.response?.data?.message) {
+        setError(err.response.data.message);
+      } else if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Invalid admin credentials.");
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -84,8 +106,8 @@ export function AdminLoginPageFeature() {
               placeholder="••••••••"
             />
           </div>
-          <GradientButton className="h-12 w-full rounded-xl px-6" type="submit">
-            Login
+          <GradientButton className="h-12 w-full rounded-xl px-6" type="submit" disabled={isLoading}>
+            {isLoading ? "Logging in..." : "Login"}
           </GradientButton>
           {error ? (
             <p className="rounded-xl border border-red-400/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">

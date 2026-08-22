@@ -4,8 +4,8 @@ import (
 	customErr "adinfluence_service_app/internal/constant/errors"
 	"adinfluence_service_app/internal/constant/model"
 	adminDto "adinfluence_service_app/internal/constant/model/dto/admin"
-	commonDto "adinfluence_service_app/internal/constant/model/dto/common"
 	authDto "adinfluence_service_app/internal/constant/model/dto/auth"
+	commonDto "adinfluence_service_app/internal/constant/model/dto/common"
 	influencerDto "adinfluence_service_app/internal/constant/model/dto/influencer"
 	"adinfluence_service_app/internal/module/admin/helper"
 	influencerHelper "adinfluence_service_app/internal/module/influencer/helper"
@@ -17,6 +17,7 @@ import (
 	"strings"
 	"time"
 
+	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -37,9 +38,12 @@ func InitAdminModule(admin storage.AdminPersistence, influencer storage.Influenc
 }
 
 func (m *adminModule) ListApplications(ctx context.Context, query adminDto.ListApplicationsQuery) (*adminDto.ListApplicationsResponse, error) {
+	m.logger.Info(ctx, "admin listing influencer verification applications", zap.String("status", query.Status))
+
 	query = query.Normalize()
 	rows, total, err := m.admin.ListInfluencerApplications(ctx, query)
 	if err != nil {
+		m.logger.Error(ctx, "failed to query influencer applications", zap.String("reason", err.Error()))
 		return nil, err
 	}
 
@@ -49,12 +53,14 @@ func (m *adminModule) ListApplications(ctx context.Context, query adminDto.ListA
 	}
 
 	return &adminDto.ListApplicationsResponse{
-		Items: items,
+		Items:      items,
 		Pagination: commonDto.NewListMeta(query.Page, query.Limit, total),
 	}, nil
 }
 
 func (m *adminModule) GetApplication(ctx context.Context, userID string) (*adminDto.ApplicationDetailResponse, error) {
+	m.logger.Info(ctx, "admin fetching influencer application details", zap.String("target_user_id", userID))
+
 	var (
 		row     *adminDto.ApplicationRow
 		profile *influencerDto.ProfileRecord
@@ -80,6 +86,7 @@ func (m *adminModule) GetApplication(ctx context.Context, userID string) (*admin
 	})
 
 	if err := g.Wait(); err != nil {
+		m.logger.Error(ctx, "failed to get influencer application", zap.String("target_user_id", userID), zap.String("reason", err.Error()))
 		return nil, err
 	}
 
@@ -146,6 +153,8 @@ func (m *adminModule) GetApplication(ctx context.Context, userID string) (*admin
 }
 
 func (m *adminModule) ApproveApplication(ctx context.Context, adminUserID, targetUserID string, req adminDto.ApproveApplicationRequest, meta authDto.SessionMeta) (*adminDto.ApproveApplicationResponse, error) {
+	m.logger.Info(ctx, "admin approving influencer application", zap.String("admin_id", adminUserID), zap.String("target_user_id", targetUserID))
+
 	var note *string
 	if v := strings.TrimSpace(req.AdminNote); v != "" {
 		note = &v
@@ -153,8 +162,10 @@ func (m *adminModule) ApproveApplication(ctx context.Context, adminUserID, targe
 
 	if err := m.admin.ApproveInfluencerApplication(ctx, targetUserID, adminUserID, note); err != nil {
 		if errors.Is(err, adminPersist.ErrInvalidStatusForReview) {
+			m.logger.Warn(ctx, "cannot approve application in current status", zap.String("target_user_id", targetUserID))
 			return nil, customErr.ErrInvalidStatusForReview
 		}
+		m.logger.Error(ctx, "failed to approve influencer application", zap.String("target_user_id", targetUserID), zap.String("reason", err.Error()))
 		return nil, err
 	}
 
@@ -170,6 +181,8 @@ func (m *adminModule) ApproveApplication(ctx context.Context, adminUserID, targe
 		UserAgent:    meta.UserAgent,
 	})
 
+	m.logger.Info(ctx, "influencer application approved successfully", zap.String("target_user_id", targetUserID))
+
 	return &adminDto.ApproveApplicationResponse{
 		UserID:     targetUserID,
 		Status:     string(model.ActiveStatus),
@@ -179,6 +192,8 @@ func (m *adminModule) ApproveApplication(ctx context.Context, adminUserID, targe
 
 func (m *adminModule) RejectApplication(ctx context.Context, adminUserID, targetUserID string, req adminDto.RejectApplicationRequest, meta authDto.SessionMeta) (*adminDto.RejectApplicationResponse, error) {
 	reason := strings.TrimSpace(req.Reason)
+	m.logger.Info(ctx, "admin rejecting influencer application", zap.String("admin_id", adminUserID), zap.String("target_user_id", targetUserID), zap.String("reason", reason))
+
 	var note *string
 	if v := strings.TrimSpace(req.AdminNote); v != "" {
 		note = &v
@@ -186,8 +201,10 @@ func (m *adminModule) RejectApplication(ctx context.Context, adminUserID, target
 
 	if err := m.admin.RejectInfluencerApplication(ctx, targetUserID, reason, note); err != nil {
 		if errors.Is(err, adminPersist.ErrInvalidStatusForReview) {
+			m.logger.Warn(ctx, "cannot reject application in current status", zap.String("target_user_id", targetUserID))
 			return nil, customErr.ErrInvalidStatusForReview
 		}
+		m.logger.Error(ctx, "failed to reject influencer application", zap.String("target_user_id", targetUserID), zap.String("reason", err.Error()))
 		return nil, err
 	}
 
@@ -202,6 +219,8 @@ func (m *adminModule) RejectApplication(ctx context.Context, adminUserID, target
 		UserAgent:    meta.UserAgent,
 	})
 
+	m.logger.Info(ctx, "influencer application rejected successfully", zap.String("target_user_id", targetUserID))
+
 	return &adminDto.RejectApplicationResponse{
 		UserID: targetUserID,
 		Status: string(model.RejectedStatus),
@@ -210,10 +229,13 @@ func (m *adminModule) RejectApplication(ctx context.Context, adminUserID, target
 }
 
 func (m *adminModule) UpdateAdminNotes(ctx context.Context, targetUserID string, req adminDto.UpdateAdminNotesRequest) error {
+	m.logger.Info(ctx, "admin updating internal notes on influencer", zap.String("target_user_id", targetUserID))
+
 	if err := m.admin.UpdateInfluencerAdminNote(ctx, targetUserID, strings.TrimSpace(req.AdminNote)); err != nil {
 		if errors.Is(err, adminPersist.ErrApplicationNotFound) {
 			return customErr.ErrApplicationNotFound
 		}
+		m.logger.Error(ctx, "failed to update internal note", zap.String("target_user_id", targetUserID), zap.String("reason", err.Error()))
 		return err
 	}
 	return nil

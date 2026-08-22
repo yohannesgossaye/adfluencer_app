@@ -43,21 +43,27 @@ func InitInfluencerModule(influencer storage.InfluencerPersistence, contracts st
 }
 
 func (m *influencerModule) GetProfile(ctx context.Context, userID string) (*influencerDto.GetProfileResponse, error) {
+	m.logger.Info(ctx, "fetching influencer profile", zap.String("user_id", userID))
+
 	user, err := m.auth.GetUserByID(ctx, userID)
 	if err != nil {
 		if errors.Is(err, customErr.ErrUserNotFound) {
+			m.logger.Warn(ctx, "influencer user not found", zap.String("user_id", userID))
 			return nil, customErr.ErrUnauthorized
 		}
+		m.logger.Error(ctx, "failed to get influencer user from persistence", zap.String("user_id", userID), zap.String("reason", err.Error()))
 		return nil, err
 	}
 	if err := ensureEditableStatus(user.Status); err != nil && user.Status != string(model.PendingApprovalStatus) && user.Status != string(model.ActiveStatus) {
 		if user.Status == string(model.BlockedStatus) || user.Status == string(model.RemovedStatus) {
+			m.logger.Warn(ctx, "influencer profile locked due to status", zap.String("user_id", userID), zap.String("status", user.Status))
 			return nil, err
 		}
 	}
 
 	rec, err := m.influencer.GetProfileByUserID(ctx, userID)
 	if err != nil {
+		m.logger.Error(ctx, "failed to get influencer profile details", zap.String("user_id", userID), zap.String("reason", err.Error()))
 		return nil, err
 	}
 
@@ -65,23 +71,29 @@ func (m *influencerModule) GetProfile(ctx context.Context, userID string) (*infl
 }
 
 func (m *influencerModule) UpdateProfile(ctx context.Context, userID string, req influencerDto.UpdateProfileRequest, meta authDto.SessionMeta) (*influencerDto.GetProfileResponse, error) {
+	m.logger.Info(ctx, "updating influencer profile", zap.String("user_id", userID), zap.String("creator_name", req.CreatorName))
+
 	user, err := m.auth.GetUserByID(ctx, userID)
 	if err != nil {
 		if errors.Is(err, customErr.ErrUserNotFound) {
 			return nil, customErr.ErrUnauthorized
 		}
+		m.logger.Error(ctx, "failed to query user for influencer update", zap.String("user_id", userID), zap.String("reason", err.Error()))
 		return nil, err
 	}
 
 	if err := ensureEditableStatus(user.Status); err != nil {
+		m.logger.Warn(ctx, "influencer profile locked for update", zap.String("user_id", userID), zap.String("status", user.Status))
 		return nil, err
 	}
 
 	categories, err := m.influencer.ResolveCategoryIDs(ctx, req.Niches)
 	if err != nil {
 		if errors.Is(err, influencerDto.ErrUnknownCategory) {
+			m.logger.Warn(ctx, "unknown niche categories provided for influencer", zap.Strings("niches", req.Niches))
 			return nil, customErr.ErrUnknownCategory
 		}
+		m.logger.Error(ctx, "failed to resolve category IDs", zap.String("reason", err.Error()))
 		return nil, err
 	}
 
@@ -89,6 +101,7 @@ func (m *influencerModule) UpdateProfile(ctx context.Context, userID string, req
 	socialMap := helper.SocialLinksToMap(req.SocialLinks)
 	socialJSON, err := json.Marshal(socialMap)
 	if err != nil {
+		m.logger.Error(ctx, "failed to marshal social links JSON", zap.String("reason", err.Error()))
 		return nil, err
 	}
 
@@ -134,6 +147,7 @@ func (m *influencerModule) UpdateProfile(ctx context.Context, userID string, req
 		CategoryIDs:         categoryIDs,
 		Platforms:           platforms,
 	}); err != nil {
+		m.logger.Error(ctx, "failed to update influencer profile in database", zap.String("user_id", userID), zap.String("reason", err.Error()))
 		return nil, err
 	}
 
@@ -153,26 +167,33 @@ func (m *influencerModule) UpdateProfile(ctx context.Context, userID string, req
 		return nil, err
 	}
 
+	m.logger.Info(ctx, "influencer profile updated successfully", zap.String("user_id", userID))
+
 	return m.buildResponse(user, rec), nil
 }
 
 func (m *influencerModule) SubmitProfile(ctx context.Context, userID string, meta authDto.SessionMeta) (*influencerDto.SubmitProfileResponse, error) {
+	m.logger.Info(ctx, "submitting influencer profile for review", zap.String("user_id", userID))
+
 	user, err := m.auth.GetUserByID(ctx, userID)
 	if err != nil {
 		if errors.Is(err, customErr.ErrUserNotFound) {
 			return nil, customErr.ErrUnauthorized
 		}
+		m.logger.Error(ctx, "failed to query user for profile submission", zap.String("user_id", userID), zap.String("reason", err.Error()))
 		return nil, err
 	}
 
 	switch model.UserStatus(user.Status) {
 	case model.PendingProfileStatus, model.RejectedStatus:
 	default:
+		m.logger.Warn(ctx, "invalid status for profile submit", zap.String("user_id", userID), zap.String("status", user.Status))
 		return nil, customErr.ErrInvalidStatusForSubmit
 	}
 
 	rec, err := m.influencer.GetProfileByUserID(ctx, userID)
 	if err != nil {
+		m.logger.Error(ctx, "failed to get influencer profile for submission", zap.String("user_id", userID), zap.String("reason", err.Error()))
 		return nil, err
 	}
 
@@ -181,6 +202,7 @@ func (m *influencerModule) SubmitProfile(ctx context.Context, userID string, met
 		Platforms: rec.Platforms,
 	})
 	if !completeness.CanSubmit {
+		m.logger.Warn(ctx, "influencer profile incomplete for submission", zap.String("user_id", userID))
 		return nil, customErr.ErrProfileIncomplete
 	}
 
@@ -188,6 +210,7 @@ func (m *influencerModule) SubmitProfile(ctx context.Context, userID string, met
 		if errors.Is(err, influencerDto.ErrInvalidStatusForSubmit) {
 			return nil, customErr.ErrInvalidStatusForSubmit
 		}
+		m.logger.Error(ctx, "failed to persist profile submission", zap.String("user_id", userID), zap.String("reason", err.Error()))
 		return nil, err
 	}
 
@@ -203,6 +226,8 @@ func (m *influencerModule) SubmitProfile(ctx context.Context, userID string, met
 		UserAgent:    meta.UserAgent,
 	})
 
+	m.logger.Info(ctx, "influencer profile submitted successfully", zap.String("user_id", userID))
+
 	return &influencerDto.SubmitProfileResponse{
 		Status:      string(model.PendingApprovalStatus),
 		Message:     "Profile submitted for review",
@@ -211,7 +236,10 @@ func (m *influencerModule) SubmitProfile(ctx context.Context, userID string, met
 }
 
 func (m *influencerModule) UploadAvatar(ctx context.Context, userID string, filename, contentType string, data []byte, meta authDto.SessionMeta) (*influencerDto.UploadAvatarResponse, error) {
+	m.logger.Info(ctx, "uploading influencer avatar", zap.String("user_id", userID), zap.String("filename", filename))
+
 	if !m.files.Enabled() {
+		m.logger.Warn(ctx, "storage service not configured for avatar upload")
 		return nil, customErr.ErrStorageNotConfigured
 	}
 
@@ -220,38 +248,46 @@ func (m *influencerModule) UploadAvatar(ctx context.Context, userID string, file
 		if errors.Is(err, customErr.ErrUserNotFound) {
 			return nil, customErr.ErrUnauthorized
 		}
+		m.logger.Error(ctx, "failed to query user for avatar upload", zap.String("user_id", userID), zap.String("reason", err.Error()))
 		return nil, err
 	}
 	if err := ensureEditableStatus(user.Status); err != nil {
+		m.logger.Warn(ctx, "avatar upload rejected due to status", zap.String("user_id", userID), zap.String("status", user.Status))
 		return nil, err
 	}
 
 	validated, err := platformStorage.ValidateAvatarFile(filename, contentType, data)
 	if err != nil {
 		if errors.Is(err, platformStorage.ErrUnsupportedFormat) || errors.Is(err, platformStorage.ErrInvalidFile) {
+			m.logger.Warn(ctx, "avatar validation failed: invalid format or file", zap.String("filename", filename))
 			return nil, customErr.ErrInvalidFile
 		}
+		m.logger.Error(ctx, "avatar validation error", zap.String("reason", err.Error()))
 		return nil, err
 	}
 
 	rec, err := m.influencer.GetProfileByUserID(ctx, userID)
 	if err != nil {
+		m.logger.Error(ctx, "failed to get influencer profile for avatar upload", zap.String("user_id", userID), zap.String("reason", err.Error()))
 		return nil, err
 	}
 
 	objectKey := platformStorage.AvatarObjectKey(userID, validated.Extension)
 	if _, err := m.files.UploadBytes(ctx, objectKey, bytes.NewReader(validated.Data), validated.Size, validated.ContentType); err != nil {
+		m.logger.Error(ctx, "failed to upload avatar bytes to S3", zap.String("object_key", objectKey), zap.String("reason", err.Error()))
 		return nil, err
 	}
 
 	publicURL, err := m.files.GetFileURL(ctx, objectKey, 0)
 	if err != nil {
 		_ = m.files.Delete(ctx, objectKey)
+		m.logger.Error(ctx, "failed to get public URL for avatar", zap.String("object_key", objectKey), zap.String("reason", err.Error()))
 		return nil, err
 	}
 
 	if err := m.influencer.UpdateProfileImageURL(ctx, userID, publicURL); err != nil {
 		_ = m.files.Delete(ctx, objectKey)
+		m.logger.Error(ctx, "failed to persist avatar URL in database", zap.String("user_id", userID), zap.String("reason", err.Error()))
 		return nil, err
 	}
 
@@ -275,11 +311,16 @@ func (m *influencerModule) UploadAvatar(ctx context.Context, userID string, file
 		UserAgent:    meta.UserAgent,
 	})
 
+	m.logger.Info(ctx, "influencer avatar uploaded successfully", zap.String("user_id", userID), zap.String("url", publicURL))
+
 	return &influencerDto.UploadAvatarResponse{ProfileImageURL: publicURL}, nil
 }
 
 func (m *influencerModule) UploadPortfolio(ctx context.Context, userID string, filename, contentType string, data []byte, meta authDto.SessionMeta) (*influencerDto.UploadPortfolioResponse, error) {
+	m.logger.Info(ctx, "uploading portfolio item", zap.String("user_id", userID), zap.String("filename", filename))
+
 	if !m.files.Enabled() {
+		m.logger.Warn(ctx, "storage service not configured for portfolio upload")
 		return nil, customErr.ErrStorageNotConfigured
 	}
 
@@ -288,9 +329,11 @@ func (m *influencerModule) UploadPortfolio(ctx context.Context, userID string, f
 		if errors.Is(err, customErr.ErrUserNotFound) {
 			return nil, customErr.ErrUnauthorized
 		}
+		m.logger.Error(ctx, "failed to query user for portfolio upload", zap.String("user_id", userID), zap.String("reason", err.Error()))
 		return nil, err
 	}
 	if err := ensureEditableStatus(user.Status); err != nil {
+		m.logger.Warn(ctx, "portfolio upload rejected due to status", zap.String("user_id", userID), zap.String("status", user.Status))
 		return nil, err
 	}
 
@@ -301,8 +344,10 @@ func (m *influencerModule) UploadPortfolio(ctx context.Context, userID string, f
 	validated, err := platformStorage.ValidatePortfolioFile(filename, contentType, data)
 	if err != nil {
 		if errors.Is(err, platformStorage.ErrUnsupportedFormat) || errors.Is(err, platformStorage.ErrInvalidFile) {
+			m.logger.Warn(ctx, "portfolio validation failed: invalid format or file", zap.String("filename", filename))
 			return nil, customErr.ErrInvalidFile
 		}
+		m.logger.Error(ctx, "portfolio validation error", zap.String("reason", err.Error()))
 		return nil, err
 	}
 
@@ -311,17 +356,20 @@ func (m *influencerModule) UploadPortfolio(ctx context.Context, userID string, f
 		return nil, err
 	}
 	if count >= 3 {
+		m.logger.Warn(ctx, "portfolio limit of 3 reached", zap.String("user_id", userID))
 		return nil, customErr.ErrPortfolioLimitReached
 	}
 
 	objectKey := platformStorage.PortfolioObjectKey(userID, validated.Extension)
 	if _, err := m.files.UploadBytes(ctx, objectKey, bytes.NewReader(validated.Data), validated.Size, validated.ContentType); err != nil {
+		m.logger.Error(ctx, "failed to upload portfolio bytes to S3", zap.String("object_key", objectKey), zap.String("reason", err.Error()))
 		return nil, err
 	}
 
 	publicURL, err := m.files.GetFileURL(ctx, objectKey, 0)
 	if err != nil {
 		_ = m.files.Delete(ctx, objectKey)
+		m.logger.Error(ctx, "failed to get public URL for portfolio item", zap.String("object_key", objectKey), zap.String("reason", err.Error()))
 		return nil, err
 	}
 
@@ -340,6 +388,7 @@ func (m *influencerModule) UploadPortfolio(ctx context.Context, userID string, f
 		if errors.Is(err, influencerDto.ErrPortfolioLimitReached) {
 			return nil, customErr.ErrPortfolioLimitReached
 		}
+		m.logger.Error(ctx, "failed to persist portfolio item record", zap.String("item_id", itemID), zap.String("reason", err.Error()))
 		return nil, err
 	}
 
@@ -359,6 +408,8 @@ func (m *influencerModule) UploadPortfolio(ctx context.Context, userID string, f
 		UserAgent:    meta.UserAgent,
 	})
 
+	m.logger.Info(ctx, "portfolio item uploaded successfully", zap.String("user_id", userID), zap.String("item_id", itemID), zap.String("url", publicURL))
+
 	return &influencerDto.UploadPortfolioResponse{
 		Item:           *item,
 		PortfolioItems: items,
@@ -367,6 +418,8 @@ func (m *influencerModule) UploadPortfolio(ctx context.Context, userID string, f
 }
 
 func (m *influencerModule) DeletePortfolio(ctx context.Context, userID, itemID string, meta authDto.SessionMeta) (*influencerDto.DeletePortfolioResponse, error) {
+	m.logger.Info(ctx, "deleting portfolio item", zap.String("user_id", userID), zap.String("item_id", itemID))
+
 	if !m.files.Enabled() {
 		return nil, customErr.ErrStorageNotConfigured
 	}
@@ -394,6 +447,7 @@ func (m *influencerModule) DeletePortfolio(ctx context.Context, userID, itemID s
 		if errors.Is(err, influencerDto.ErrPortfolioItemNotFound) {
 			return nil, customErr.ErrPortfolioItemNotFound
 		}
+		m.logger.Error(ctx, "failed to delete portfolio item from database", zap.String("item_id", itemID), zap.String("reason", err.Error()))
 		return nil, err
 	}
 
@@ -416,6 +470,8 @@ func (m *influencerModule) DeletePortfolio(ctx context.Context, userID, itemID s
 		IPAddress:    meta.IPAddress,
 		UserAgent:    meta.UserAgent,
 	})
+
+	m.logger.Info(ctx, "portfolio item deleted successfully", zap.String("user_id", userID), zap.String("item_id", itemID))
 
 	return &influencerDto.DeletePortfolioResponse{
 		PortfolioItems: items,

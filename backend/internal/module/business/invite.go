@@ -11,12 +11,15 @@ import (
 	"errors"
 	"strings"
 
+	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 
 	"adinfluence_service_app/platform/utils"
 )
 
 func (m *businessModule) GetInfluencerForBusiness(ctx context.Context, userID, influencerUserID, campaignID string) (*businessDto.BusinessInfluencerViewResponse, error) {
+	m.logger.Info(ctx, "business viewing influencer profile", zap.String("business_id", userID), zap.String("influencer_id", influencerUserID))
+
 	if err := m.requireActiveBusiness(ctx, userID); err != nil {
 		return nil, err
 	}
@@ -46,9 +49,11 @@ func (m *businessModule) GetInfluencerForBusiness(ctx context.Context, userID, i
 	})
 
 	if err := g.Wait(); err != nil {
+		m.logger.Error(ctx, "failed to query influencer profile details", zap.String("influencer_id", influencerUserID), zap.String("reason", err.Error()))
 		return nil, err
 	}
 	if !verified {
+		m.logger.Warn(ctx, "influencer is not verified or active", zap.String("influencer_id", influencerUserID))
 		return nil, customErr.ErrCreatorNotFound
 	}
 
@@ -121,10 +126,13 @@ func buildInfluencerView(rec *influencerDto.ProfileRecord) *businessDto.Business
 }
 
 func (m *businessModule) CreateInvite(ctx context.Context, userID, campaignID string, req businessDto.CreateInviteRequest, meta authDto.SessionMeta) (*commonDto.CreatedIDResponse, error) {
+	m.logger.Info(ctx, "creating campaign invite", zap.String("business_id", userID), zap.String("campaign_id", campaignID), zap.String("influencer_id", req.InfluencerUserID))
+
 	if err := m.requireActiveBusiness(ctx, userID); err != nil {
 		return nil, err
 	}
 	if err := req.Validate(); err != nil {
+		m.logger.Warn(ctx, "create invite validation failed", zap.String("reason", err.Error()))
 		return nil, err
 	}
 
@@ -137,6 +145,7 @@ func (m *businessModule) CreateInvite(ctx context.Context, userID, campaignID st
 		return nil, err
 	}
 	if !ok {
+		m.logger.Warn(ctx, "cannot invite non-verified creator", zap.String("influencer_id", req.InfluencerUserID))
 		return nil, customErr.ErrCreatorNotFound
 	}
 
@@ -148,6 +157,7 @@ func (m *businessModule) CreateInvite(ctx context.Context, userID, campaignID st
 		InfluencerUserID: req.InfluencerUserID,
 		Message:          businessDto.OptionalInviteMessage(req.Message),
 	}); err != nil {
+		m.logger.Error(ctx, "failed to persist campaign invite", zap.String("invite_id", inviteID), zap.String("reason", err.Error()))
 		return nil, mapInviteError(err)
 	}
 
@@ -162,16 +172,21 @@ func (m *businessModule) CreateInvite(ctx context.Context, userID, campaignID st
 		UserAgent:    meta.UserAgent,
 	})
 
+	m.logger.Info(ctx, "campaign invite created successfully", zap.String("invite_id", inviteID))
+
 	return &commonDto.CreatedIDResponse{ID: inviteID}, nil
 }
 
 func (m *businessModule) ListInvites(ctx context.Context, userID, campaignID string) (*businessDto.ListInvitesResponse, error) {
+	m.logger.Info(ctx, "listing campaign invites", zap.String("business_id", userID), zap.String("campaign_id", campaignID))
+
 	if err := m.requireActiveBusiness(ctx, userID); err != nil {
 		return nil, err
 	}
 
 	items, err := m.business.ListInvites(ctx, userID, campaignID)
 	if err != nil {
+		m.logger.Error(ctx, "failed to query campaign invites", zap.String("campaign_id", campaignID), zap.String("reason", err.Error()))
 		return nil, mapCampaignError(err)
 	}
 	if items == nil {
@@ -182,6 +197,8 @@ func (m *businessModule) ListInvites(ctx context.Context, userID, campaignID str
 }
 
 func (m *businessModule) CancelInvite(ctx context.Context, userID, campaignID, inviteID string, meta authDto.SessionMeta) error {
+	m.logger.Info(ctx, "cancelling campaign invite", zap.String("business_id", userID), zap.String("campaign_id", campaignID), zap.String("invite_id", inviteID))
+
 	if err := m.requireActiveBusiness(ctx, userID); err != nil {
 		return err
 	}
@@ -191,6 +208,7 @@ func (m *businessModule) CancelInvite(ctx context.Context, userID, campaignID, i
 	}
 
 	if err := m.business.CancelInvite(ctx, userID, campaignID, inviteID); err != nil {
+		m.logger.Error(ctx, "failed to cancel campaign invite", zap.String("invite_id", inviteID), zap.String("reason", err.Error()))
 		return mapInviteError(err)
 	}
 
@@ -204,6 +222,8 @@ func (m *businessModule) CancelInvite(ctx context.Context, userID, campaignID, i
 		IPAddress:    meta.IPAddress,
 		UserAgent:    meta.UserAgent,
 	})
+
+	m.logger.Info(ctx, "campaign invite cancelled successfully", zap.String("invite_id", inviteID))
 
 	return nil
 }

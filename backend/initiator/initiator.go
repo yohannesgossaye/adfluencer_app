@@ -14,6 +14,8 @@ import (
 	"adinfluence_service_app/platform/sms"
 
 	"github.com/go-chi/chi/v5"
+	chimiddleware "github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
 	"go.uber.org/zap"
 )
 
@@ -67,6 +69,21 @@ func Initiator(ctx context.Context) {
 	fileStorage := initFileStorage(ctx, cfg.S3, logger)
 
 	r := chi.NewRouter()
+
+	// Enable CORS for frontend integration (browser access from localhost:3000 / network IPs)
+	r.Use(cors.Handler(cors.Options{
+		AllowedOrigins:   []string{"http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:*", "http://192.168.*:*"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token", "Origin"},
+		ExposedHeaders:   []string{"Link", "Content-Length"},
+		AllowCredentials: true,
+		MaxAge:           300,
+	}))
+
+	r.Use(chimiddleware.RequestID)
+	r.Use(chimiddleware.RealIP)
+	r.Use(chimiddleware.Logger)
+	r.Use(chimiddleware.Recoverer)
 
 	postgresRepo := InitPersistence(db, logger)
 	tokens := jwt.NewTokenManager(jwt.ManagerConfig{

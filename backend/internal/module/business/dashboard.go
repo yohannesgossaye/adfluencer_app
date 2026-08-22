@@ -6,11 +6,15 @@ import (
 	"adinfluence_service_app/internal/module/business/helper"
 	"context"
 
+	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 )
 
 func (m *businessModule) GetDashboardSummary(ctx context.Context, userID string) (*businessDto.DashboardSummaryResponse, error) {
+	m.logger.Info(ctx, "fetching business dashboard summary", zap.String("user_id", userID))
+
 	if err := m.requireActiveBusiness(ctx, userID); err != nil {
+		m.logger.Warn(ctx, "business dashboard access denied", zap.String("user_id", userID), zap.String("reason", err.Error()))
 		return nil, err
 	}
 
@@ -48,6 +52,7 @@ func (m *businessModule) GetDashboardSummary(ctx context.Context, userID string)
 	})
 
 	if err := g.Wait(); err != nil {
+		m.logger.Error(ctx, "failed to load parallel business dashboard summary data", zap.String("user_id", userID), zap.String("reason", err.Error()))
 		return nil, err
 	}
 

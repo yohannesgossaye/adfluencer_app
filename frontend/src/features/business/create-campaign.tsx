@@ -2,9 +2,11 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import axios from "axios";
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { businessApi } from "@/lib/api/business";
 
 type CampaignFormState = {
   title: string;
@@ -81,6 +83,7 @@ export function CreateCampaign() {
   const router = useRouter();
   const [form, setForm] = useState<CampaignFormState>(initialForm);
   const [error, setError] = useState<string>("");
+  const [isLoading, setIsLoading] = useState(false);
 
   const estimatedMatches = useMemo(() => {
     let score = 8;
@@ -93,10 +96,9 @@ export function CreateCampaign() {
     return score;
   }, [form]);
 
-  const onSubmit = () => {
+  const onSubmit = async () => {
     const requiredMissing =
       !form.title ||
-      !form.businessName ||
       !form.goal ||
       !form.description ||
       !form.niche ||
@@ -108,7 +110,7 @@ export function CreateCampaign() {
       !form.endDate;
 
     if (requiredMissing) {
-      setError("Please complete the required campaign details.");
+      setError("Please complete all required campaign details.");
       return;
     }
 
@@ -117,15 +119,84 @@ export function CreateCampaign() {
       return;
     }
 
-    const draft = {
-      ...form,
-      estimatedMatches,
-      createdAt: new Date().toISOString(),
-    };
-
-    localStorage.setItem("adfluence_campaign_draft", JSON.stringify(draft));
     setError("");
-    router.push("/business/recommendations");
+    setIsLoading(true);
+
+    let budgetMin = 10000;
+    let budgetMax = 25000;
+    if (form.budgetRange === "Under 10,000 ETB") {
+      budgetMin = 0;
+      budgetMax = 10000;
+    } else if (form.budgetRange === "10,000–25,000 ETB") {
+      budgetMin = 10000;
+      budgetMax = 25000;
+    } else if (form.budgetRange === "25,000–50,000 ETB") {
+      budgetMin = 25000;
+      budgetMax = 50000;
+    } else if (form.budgetRange === "50,000+ ETB") {
+      budgetMin = 50000;
+      budgetMax = 200000;
+    }
+
+    const campaignDeliverables = form.deliverables.map((d) => ({
+      type: d.toLowerCase().replace(/\s+/g, "_"),
+      quantity: 1,
+      description: d,
+    }));
+
+    if (campaignDeliverables.length === 0) {
+      campaignDeliverables.push({
+        type: "post",
+        quantity: 1,
+        description: "Standard campaign post",
+      });
+    }
+
+    try {
+      const res = await businessApi.createCampaign({
+        title: form.title.trim(),
+        goal: form.goal,
+        description: form.description.trim(),
+        niche: form.niche,
+        target_audience: form.targetAudience,
+        city: form.location,
+        platforms: form.platforms.map((p) => p.toLowerCase()),
+        budget_min_etb: budgetMin,
+        budget_max_etb: budgetMax,
+        creator_size_preference: form.creatorSize.toLowerCase().includes("micro")
+          ? "micro"
+          : form.creatorSize.toLowerCase().includes("mid")
+            ? "mid"
+            : "macro",
+        number_of_creators_needed: Number(form.creatorsNeeded) || 1,
+        deliverables: campaignDeliverables,
+        start_date: new Date(form.startDate).toISOString(),
+        end_date: new Date(form.endDate).toISOString(),
+        additional_notes: form.additionalNotes,
+      });
+
+      if (res.data?.campaign) {
+        const campaignId = res.data.campaign.id;
+        // Trigger smart matching algorithm for this new campaign
+        try {
+          await businessApi.generateRecommendations(campaignId);
+        } catch {
+          // Ignore matching generation error if already computed
+        }
+
+        router.push(`/business/recommendations?campaign_id=${campaignId}`);
+      }
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err) && err.response?.data?.message) {
+        setError(err.response.data.message);
+      } else if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Failed to create campaign. Please try again.");
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -449,9 +520,10 @@ export function CreateCampaign() {
             </p>
             <Button
               onClick={onSubmit}
+              disabled={isLoading}
               className="h-11 w-full rounded-xl bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)]"
             >
-              Find Influencers
+              {isLoading ? "Creating & Matching..." : "Find Influencers"}
             </Button>
           </div>
         </aside>

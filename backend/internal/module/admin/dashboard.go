@@ -5,6 +5,7 @@ import (
 	"context"
 	"strings"
 
+	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -16,6 +17,8 @@ const (
 )
 
 func (m *adminModule) GetDashboardSummary(ctx context.Context) (*adminDto.DashboardSummaryResponse, error) {
+	m.logger.Info(ctx, "fetching admin dashboard summary")
+
 	var (
 		kpis     *adminDto.DashboardKPIRow
 		pending  []adminDto.DashboardPendingApprovalRow
@@ -57,6 +60,7 @@ func (m *adminModule) GetDashboardSummary(ctx context.Context) (*adminDto.Dashbo
 	})
 
 	if err := g.Wait(); err != nil {
+		m.logger.Error(ctx, "failed to load admin dashboard summary data", zap.String("reason", err.Error()))
 		return nil, err
 	}
 

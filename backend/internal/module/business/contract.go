@@ -13,24 +13,33 @@ import (
 	"strings"
 
 	"adinfluence_service_app/platform/utils"
+
+	"go.uber.org/zap"
 )
 
 func (m *businessModule) CreateContract(ctx context.Context, userID string, req businessDto.CreateContractRequest, meta authDto.SessionMeta) (*commonDto.CreatedIDResponse, error) {
+	m.logger.Info(ctx, "creating contract", zap.String("business_id", userID), zap.String("invite_id", req.InviteID), zap.String("title", req.Title))
+
 	if err := m.requireVerifiedBusiness(ctx, userID); err != nil {
+		m.logger.Warn(ctx, "cannot create contract: business not verified", zap.String("business_id", userID), zap.String("reason", err.Error()))
 		return nil, err
 	}
 	if err := req.Validate(); err != nil {
+		m.logger.Warn(ctx, "contract validation failed", zap.String("reason", err.Error()))
 		return nil, err
 	}
 	if err := validateContractDeliverables(req.Deliverables); err != nil {
+		m.logger.Warn(ctx, "contract deliverables validation failed", zap.String("reason", err.Error()))
 		return nil, err
 	}
 
 	invite, err := m.contracts.GetAcceptedInvite(ctx, userID, req.InviteID)
 	if err != nil {
+		m.logger.Error(ctx, "failed to get accepted invite", zap.String("invite_id", req.InviteID), zap.String("reason", err.Error()))
 		return nil, mapContractError(err)
 	}
 	if invite.CampaignStatus != "active" {
+		m.logger.Warn(ctx, "campaign not active for contract creation", zap.String("campaign_id", invite.CampaignID), zap.String("status", invite.CampaignStatus))
 		return nil, customErr.ErrInvalidCampaignStatus
 	}
 
@@ -39,6 +48,7 @@ func (m *businessModule) CreateContract(ctx context.Context, userID string, req 
 		return nil, err
 	}
 	if exists {
+		m.logger.Warn(ctx, "contract already exists for invite", zap.String("invite_id", req.InviteID))
 		return nil, customErr.ErrContractAlreadyExists
 	}
 
@@ -73,6 +83,7 @@ func (m *businessModule) CreateContract(ctx context.Context, userID string, req 
 		EndDate:          endDate,
 		Deliverables:     req.Deliverables,
 	}); err != nil {
+		m.logger.Error(ctx, "failed to persist contract", zap.String("contract_id", contractID), zap.String("reason", err.Error()))
 		return nil, mapContractError(err)
 	}
 
@@ -87,10 +98,14 @@ func (m *businessModule) CreateContract(ctx context.Context, userID string, req 
 		UserAgent:    meta.UserAgent,
 	})
 
+	m.logger.Info(ctx, "contract created successfully", zap.String("contract_id", contractID), zap.String("business_id", userID), zap.String("influencer_id", invite.InfluencerUserID))
+
 	return &commonDto.CreatedIDResponse{ID: contractID}, nil
 }
 
 func (m *businessModule) ListContracts(ctx context.Context, userID string, query contractDto.ListQuery) (*businessDto.ListContractsResponse, error) {
+	m.logger.Info(ctx, "listing business contracts", zap.String("business_id", userID), zap.String("status", query.Status))
+
 	if err := m.requireActiveBusiness(ctx, userID); err != nil {
 		return nil, err
 	}
@@ -98,22 +113,26 @@ func (m *businessModule) ListContracts(ctx context.Context, userID string, query
 	query = query.Normalize()
 	items, total, err := m.contracts.ListContractsForBusiness(ctx, userID, query)
 	if err != nil {
+		m.logger.Error(ctx, "failed to list contracts from persistence", zap.String("business_id", userID), zap.String("reason", err.Error()))
 		return nil, err
 	}
 
 	return &businessDto.ListContractsResponse{
-		Items: items,
+		Items:      items,
 		Pagination: commonDto.NewListMeta(query.Page, query.Limit, total),
 	}, nil
 }
 
 func (m *businessModule) GetContract(ctx context.Context, userID, contractID string) (*contractDto.DetailResponse, error) {
+	m.logger.Info(ctx, "fetching business contract details", zap.String("business_id", userID), zap.String("contract_id", contractID))
+
 	if err := m.requireActiveBusiness(ctx, userID); err != nil {
 		return nil, err
 	}
 
 	rec, err := m.contracts.GetContractForBusiness(ctx, userID, contractID)
 	if err != nil {
+		m.logger.Warn(ctx, "contract lookup failed", zap.String("contract_id", contractID), zap.String("reason", err.Error()))
 		return nil, mapContractError(err)
 	}
 	detail := rec.DetailResponse
@@ -121,6 +140,8 @@ func (m *businessModule) GetContract(ctx context.Context, userID, contractID str
 }
 
 func (m *businessModule) PayContract(ctx context.Context, userID, contractID string, meta authDto.SessionMeta) (*businessDto.PayContractResponse, error) {
+	m.logger.Info(ctx, "funding contract escrow payment", zap.String("business_id", userID), zap.String("contract_id", contractID))
+
 	if err := m.requireVerifiedBusiness(ctx, userID); err != nil {
 		return nil, err
 	}
@@ -128,6 +149,7 @@ func (m *businessModule) PayContract(ctx context.Context, userID, contractID str
 	paymentID := utils.GenerateUUID()
 	payment, err := m.contracts.StubPayContract(ctx, userID, contractID, paymentID)
 	if err != nil {
+		m.logger.Error(ctx, "failed to execute escrow payment for contract", zap.String("contract_id", contractID), zap.String("reason", err.Error()))
 		return nil, mapContractError(err)
 	}
 
@@ -147,6 +169,8 @@ func (m *businessModule) PayContract(ctx context.Context, userID, contractID str
 		UserAgent:    meta.UserAgent,
 	})
 
+	m.logger.Info(ctx, "contract escrow payment completed successfully", zap.String("contract_id", contractID), zap.String("payment_id", paymentID))
+
 	return &businessDto.PayContractResponse{
 		Contract: rec.DetailResponse,
 		Payment:  *payment,
@@ -154,6 +178,8 @@ func (m *businessModule) PayContract(ctx context.Context, userID, contractID str
 }
 
 func (m *businessModule) ApproveWork(ctx context.Context, userID, contractID string, meta authDto.SessionMeta) (*businessDto.ApproveWorkResponse, error) {
+	m.logger.Info(ctx, "approving contract work deliverables", zap.String("business_id", userID), zap.String("contract_id", contractID))
+
 	if err := m.requireVerifiedBusiness(ctx, userID); err != nil {
 		return nil, err
 	}
@@ -161,6 +187,7 @@ func (m *businessModule) ApproveWork(ctx context.Context, userID, contractID str
 	payoutID := utils.GenerateUUID()
 	payout, err := m.contracts.ApproveWork(ctx, userID, contractID, payoutID)
 	if err != nil {
+		m.logger.Error(ctx, "failed to approve work in persistence", zap.String("contract_id", contractID), zap.String("reason", err.Error()))
 		return nil, mapContractError(err)
 	}
 
@@ -180,6 +207,8 @@ func (m *businessModule) ApproveWork(ctx context.Context, userID, contractID str
 		UserAgent:    meta.UserAgent,
 	})
 
+	m.logger.Info(ctx, "contract work approved successfully", zap.String("contract_id", contractID), zap.String("payout_id", payoutID))
+
 	return &businessDto.ApproveWorkResponse{
 		Contract: rec.DetailResponse,
 		Payout:   *payout,
@@ -187,11 +216,14 @@ func (m *businessModule) ApproveWork(ctx context.Context, userID, contractID str
 }
 
 func (m *businessModule) CancelContract(ctx context.Context, userID, contractID string, meta authDto.SessionMeta) (*businessDto.ContractMutationResponse, error) {
+	m.logger.Info(ctx, "cancelling contract", zap.String("business_id", userID), zap.String("contract_id", contractID))
+
 	if err := m.requireVerifiedBusiness(ctx, userID); err != nil {
 		return nil, err
 	}
 
 	if err := m.contracts.CancelContract(ctx, userID, contractID); err != nil {
+		m.logger.Error(ctx, "failed to cancel contract in persistence", zap.String("contract_id", contractID), zap.String("reason", err.Error()))
 		return nil, mapContractError(err)
 	}
 
@@ -210,6 +242,8 @@ func (m *businessModule) CancelContract(ctx context.Context, userID, contractID 
 		IPAddress:    meta.IPAddress,
 		UserAgent:    meta.UserAgent,
 	})
+
+	m.logger.Info(ctx, "contract cancelled successfully", zap.String("contract_id", contractID))
 
 	return &businessDto.ContractMutationResponse{Contract: rec.DetailResponse}, nil
 }

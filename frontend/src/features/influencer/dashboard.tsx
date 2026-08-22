@@ -1,18 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowRight, MessageSquare } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
-  initialInfluencerInvites,
-  loadInfluencerInvites,
-  saveInfluencerInvites,
-  type InfluencerInvite,
-} from "@/data/influencer-invites-mock";
+  influencerApi,
+  type InfluencerDashboardSummaryResponse,
+} from "@/lib/api/influencer";
 import { initialCreatorConversations } from "@/data/influencer-chat-mock";
 import { initialInfluencerContracts } from "@/data/influencer-contracts-mock";
+
 function KpiCard({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
     <article className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-5">
@@ -26,31 +25,50 @@ function KpiCard({ label, value, hint }: { label: string; value: string; hint?: 
 }
 
 export function InfluencerDashboard() {
-  const [invites, setInvites] = useState<InfluencerInvite[]>(initialInfluencerInvites);
+  const [summary, setSummary] = useState<InfluencerDashboardSummaryResponse | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const loadDashboard = async () => {
+    try {
+      const res = await influencerApi.getDashboardSummary();
+      if (res.data) {
+        setSummary(res.data);
+      }
+    } catch {
+      // Fallback gracefully
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    setInvites(loadInfluencerInvites());
+    loadDashboard();
   }, []);
 
-  const pendingInvites = useMemo(() => invites.filter((i) => i.status === "pending"), [invites]);
-  const dashboardInvites = useMemo(() => pendingInvites.slice(0, 3), [pendingInvites]);
+  const kpis = summary?.kpis;
+  const completeness = summary?.completeness;
+  const earnings = summary?.earnings_summary;
+  const pendingInvites = summary?.pending_invites || [];
+  const greetingName = summary?.greeting?.creator_name || "Creator";
 
-  const pendingCount = invites.filter((i) => i.status === "pending").length;
-  const activeCollabs = initialInfluencerContracts.filter((c) => c.status === "active").length;
-
-  const setInviteStatus = (id: string, status: "accepted" | "rejected") => {
-    setInvites((prev) => {
-      const next = prev.map((i) => (i.id === id ? { ...i, status } : i));
-      saveInfluencerInvites(next);
-      return next;
-    });
+  const setInviteStatus = async (id: string, status: "accepted" | "rejected") => {
+    try {
+      if (status === "accepted") {
+        await influencerApi.acceptInvite(id);
+      } else {
+        await influencerApi.rejectInvite(id);
+      }
+      await loadDashboard();
+    } catch {
+      // Fallback
+    }
   };
 
   return (
     <div className="space-y-6 text-white">
       <section className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-white">Welcome back, Biruk</h1>
+          <h1 className="text-2xl font-semibold text-white">Welcome back, {greetingName}</h1>
           <p className="mt-1 max-w-xl text-sm text-[#CBD5E1]">
             Manage your creator profile, campaign invites, contracts, and earnings.
           </p>
@@ -64,41 +82,61 @@ export function InfluencerDashboard() {
       </section>
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <KpiCard label="Campaign Invites" value={String(pendingCount)} hint="Awaiting your response" />
-        <KpiCard label="Active Collaborations" value={String(activeCollabs)} />
-        <KpiCard label="Estimated Earnings" value="ETB 42K" hint="This quarter (mock)" />
-        <KpiCard label="Profile Score" value="86%" hint="Strong visibility" />
+        <KpiCard
+          label="Campaign Invites"
+          value={String(kpis?.pending_invites ?? 0)}
+          hint="Awaiting your response"
+        />
+        <KpiCard
+          label="Active Collaborations"
+          value={String(kpis?.active_collaborations ?? 0)}
+        />
+        <KpiCard
+          label="Completed Earnings"
+          value={`ETB ${Math.round(kpis?.total_completed_earnings_etb ?? 0).toLocaleString()}`}
+          hint="Total cleared balance"
+        />
+        <KpiCard
+          label="Profile Score"
+          value={`${kpis?.profile_score_percent ?? completeness?.percent ?? 0}%`}
+          hint={completeness?.can_submit ? "Ready for verification" : "In progress"}
+        />
       </section>
 
       <section className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-5 md:p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h2 className="text-lg font-semibold text-white">Profile completion</h2>
-            <p className="mt-1 text-sm text-[#CBD5E1]">Complete your profile to unlock premium campaigns.</p>
+            <p className="mt-1 text-sm text-[#CBD5E1]">Complete your profile to unlock premium brand campaigns.</p>
           </div>
           <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-sm font-semibold text-white">
-            86%
+            {completeness?.percent ?? 0}%
           </span>
         </div>
         <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/10">
-          <div className="h-full w-[86%] rounded-full bg-[color:var(--adfluence-orange)]" />
+          <div
+            className="h-full rounded-full bg-[color:var(--adfluence-orange)]"
+            style={{ width: `${completeness?.percent ?? 0}%` }}
+          />
         </div>
-        <ul className="mt-4 space-y-2 text-sm text-[#CBD5E1]">
-          <li className="flex items-center gap-2">
-            <span className="text-[color:var(--adfluence-orange)]">○</span> Add more content samples
-          </li>
-          <li className="flex items-center gap-2">
-            <span className="text-[color:var(--adfluence-orange)]">○</span> Update pricing packages
-          </li>
-          <li className="flex items-center gap-2">
-            <span className="text-[color:var(--adfluence-orange)]">○</span> Connect TikTok profile
-          </li>
-        </ul>
+        {completeness?.missing && completeness.missing.length > 0 ? (
+          <ul className="mt-4 space-y-2 text-sm text-[#CBD5E1]">
+            {completeness.missing.map((item) => (
+              <li key={item} className="flex items-center gap-2">
+                <span className="text-[color:var(--adfluence-orange)]">○</span> {item}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-4 text-sm text-emerald-300">✓ All profile requirements completed!</p>
+        )}
         <Button
           asChild
           className="mt-4 h-10 rounded-xl bg-white/10 text-white hover:bg-white/15"
         >
-          <Link href="/influencer/profile">Complete Profile</Link>
+          <Link href="/influencer/profile">
+            {completeness?.can_submit ? "Review & Submit Profile" : "Complete Profile"}
+          </Link>
         </Button>
       </section>
 
@@ -113,19 +151,22 @@ export function InfluencerDashboard() {
           </Link>
         </div>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {dashboardInvites.length === 0 ? (
+          {pendingInvites.length === 0 ? (
             <p className="text-sm text-[#CBD5E1]">No pending invites right now.</p>
           ) : (
-            dashboardInvites.map((inv) => (
+            pendingInvites.slice(0, 3).map((inv) => (
               <article
                 key={inv.id}
                 className="flex flex-col rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-4"
               >
-                <p className="font-semibold text-white">{inv.brand}</p>
-                <p className="text-sm text-[#CBD5E1]">{inv.campaign}</p>
-                <p className="mt-2 text-xs text-[#94A3B8]">Goal: {inv.goal}</p>
-                <p className="text-xs text-[#94A3B8]">Budget: {inv.budget}</p>
-                <p className="text-xs text-[#94A3B8]">Deadline: {inv.deadline}</p>
+                <p className="font-semibold text-white">{inv.business_name}</p>
+                <p className="text-sm text-[#CBD5E1]">{inv.campaign_title}</p>
+                <p className="mt-2 text-xs text-[#94A3B8]">Budget: {inv.budget_summary || "Flexible"}</p>
+                {inv.end_date ? (
+                  <p className="text-xs text-[#94A3B8]">
+                    Deadline: {new Date(inv.end_date).toLocaleDateString()}
+                  </p>
+                ) : null}
                 <span className="mt-2 inline-flex w-fit rounded-full border border-amber-400/30 bg-amber-500/10 px-2 py-0.5 text-xs capitalize text-amber-200">
                   {inv.status}
                 </span>
@@ -166,15 +207,23 @@ export function InfluencerDashboard() {
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
           <div className="rounded-xl border border-white/10 bg-[#06111F] p-3">
             <p className="text-xs text-[#CBD5E1]">Pending payout</p>
-            <p className="text-lg font-semibold text-amber-200">ETB 8,400</p>
+            <p className="text-lg font-semibold text-amber-200">
+              ETB {Math.round(earnings?.pending_payout_etb ?? 0).toLocaleString()}
+            </p>
           </div>
           <div className="rounded-xl border border-white/10 bg-[#06111F] p-3">
             <p className="text-xs text-[#CBD5E1]">Completed earnings</p>
-            <p className="text-lg font-semibold text-emerald-300">ETB 34,200</p>
+            <p className="text-lg font-semibold text-emerald-300">
+              ETB {Math.round(earnings?.completed_earnings_etb ?? 0).toLocaleString()}
+            </p>
           </div>
           <div className="rounded-xl border border-white/10 bg-[#06111F] p-3">
             <p className="text-xs text-[#CBD5E1]">Next payout</p>
-            <p className="text-lg font-semibold text-white">Jun 5, 2026</p>
+            <p className="text-lg font-semibold text-white">
+              {earnings?.next_payout_at
+                ? new Date(earnings.next_payout_at).toLocaleDateString()
+                : "Bi-weekly"}
+            </p>
           </div>
         </div>
       </section>

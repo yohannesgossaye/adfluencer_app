@@ -5,11 +5,15 @@ import (
 	"adinfluence_service_app/internal/module/influencer/helper"
 	"context"
 
+	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 )
 
 func (m *influencerModule) GetDashboardSummary(ctx context.Context, userID string) (*influencerDto.DashboardSummaryResponse, error) {
+	m.logger.Info(ctx, "fetching influencer dashboard summary", zap.String("user_id", userID))
+
 	if err := m.requireActiveInfluencer(ctx, userID); err != nil {
+		m.logger.Warn(ctx, "influencer dashboard access rejected: account not active", zap.String("user_id", userID), zap.String("reason", err.Error()))
 		return nil, err
 	}
 
@@ -47,6 +51,7 @@ func (m *influencerModule) GetDashboardSummary(ctx context.Context, userID strin
 	})
 
 	if err := g.Wait(); err != nil {
+		m.logger.Error(ctx, "failed to load parallel influencer dashboard data", zap.String("user_id", userID), zap.String("reason", err.Error()))
 		return nil, err
 	}
 

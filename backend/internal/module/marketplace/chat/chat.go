@@ -10,6 +10,8 @@ import (
 	"errors"
 	"strings"
 	"time"
+
+	"go.uber.org/zap"
 )
 
 type chatService struct {
@@ -33,6 +35,8 @@ func (s *chatService) GetHub() *realtime.Hub {
 }
 
 func (s *chatService) GetOrCreateConversation(ctx context.Context, currentUserID string, req dto.CreateConversationRequest) (*dto.ConversationItem, error) {
+	s.log.Info(ctx, "chat get or create conversation", zap.String("current_user_id", currentUserID), zap.String("recipient_user_id", req.RecipientUserID))
+
 	if req.RecipientUserID == "" {
 		return nil, errors.New("recipient_user_id is required")
 	}
@@ -43,17 +47,33 @@ func (s *chatService) GetOrCreateConversation(ctx context.Context, currentUserID
 
 	// Verify recipient exists
 	if _, err := s.authRepo.GetUserByID(ctx, req.RecipientUserID); err != nil {
+		s.log.Warn(ctx, "recipient user not found for conversation", zap.String("recipient_user_id", req.RecipientUserID))
 		return nil, errors.New("recipient user not found")
 	}
 
-	return s.chatRepo.GetOrCreateConversation(ctx, currentUserID, req.RecipientUserID, req.CampaignID)
+	res, err := s.chatRepo.GetOrCreateConversation(ctx, currentUserID, req.RecipientUserID, req.CampaignID)
+	if err != nil {
+		s.log.Error(ctx, "failed to get or create conversation in persistence", zap.String("reason", err.Error()))
+		return nil, err
+	}
+
+	s.log.Info(ctx, "conversation ready", zap.String("conversation_id", res.ID))
+	return res, nil
 }
 
 func (s *chatService) ListConversations(ctx context.Context, currentUserID string, limit, offset int) ([]dto.ConversationItem, error) {
-	return s.chatRepo.ListConversationsByUserID(ctx, currentUserID, limit, offset)
+	s.log.Info(ctx, "listing chat conversations", zap.String("current_user_id", currentUserID))
+	items, err := s.chatRepo.ListConversationsByUserID(ctx, currentUserID, limit, offset)
+	if err != nil {
+		s.log.Error(ctx, "failed to list conversations from database", zap.String("current_user_id", currentUserID), zap.String("reason", err.Error()))
+		return nil, err
+	}
+	return items, nil
 }
 
 func (s *chatService) GetConversation(ctx context.Context, currentUserID, conversationID string) (*dto.ConversationItem, error) {
+	s.log.Info(ctx, "fetching chat conversation details", zap.String("current_user_id", currentUserID), zap.String("conversation_id", conversationID))
+
 	if conversationID == "" {
 		return nil, errors.New("conversation_id is required")
 	}
@@ -63,6 +83,7 @@ func (s *chatService) GetConversation(ctx context.Context, currentUserID, conver
 		return nil, err
 	}
 	if !isParticipant {
+		s.log.Warn(ctx, "unauthorized conversation access attempt", zap.String("current_user_id", currentUserID), zap.String("conversation_id", conversationID))
 		return nil, errors.New("unauthorized: you are not a participant in this conversation")
 	}
 
@@ -70,6 +91,8 @@ func (s *chatService) GetConversation(ctx context.Context, currentUserID, conver
 }
 
 func (s *chatService) SendMessage(ctx context.Context, currentUserID string, req dto.SendMessageRequest) (*dto.Message, error) {
+	s.log.Info(ctx, "sending chat message", zap.String("sender_user_id", currentUserID), zap.String("conversation_id", req.ConversationID))
+
 	req.Body = strings.TrimSpace(req.Body)
 
 	if req.ConversationID == "" {
@@ -86,18 +109,21 @@ func (s *chatService) SendMessage(ctx context.Context, currentUserID string, req
 		return nil, err
 	}
 	if !isSenderParticipant {
+		s.log.Warn(ctx, "sender not participant in conversation", zap.String("sender_id", currentUserID), zap.String("conversation_id", req.ConversationID))
 		return nil, errors.New("unauthorized: sender is not a participant in this conversation")
 	}
 
 	// Auto-detect receiver if not provided or verify if provided
 	otherUserID, err := s.chatRepo.GetOtherParticipantID(ctx, req.ConversationID, currentUserID)
 	if err != nil {
+		s.log.Error(ctx, "failed to get conversation recipient", zap.String("conversation_id", req.ConversationID), zap.String("reason", err.Error()))
 		return nil, err
 	}
 	req.ReceiverUserID = otherUserID
 
 	msg, err := s.chatRepo.InsertMessage(ctx, req, currentUserID)
 	if err != nil {
+		s.log.Error(ctx, "failed to insert message into persistence", zap.String("conversation_id", req.ConversationID), zap.String("reason", err.Error()))
 		return nil, err
 	}
 
@@ -110,10 +136,14 @@ func (s *chatService) SendMessage(ctx context.Context, currentUserID string, req
 	s.hub.SendToUser(msg.ReceiverUserID, outgoing)
 	s.hub.SendToUser(msg.SenderUserID, outgoing)
 
+	s.log.Info(ctx, "chat message sent & broadcasted successfully", zap.String("message_id", msg.ID), zap.String("conversation_id", msg.ConversationID))
+
 	return msg, nil
 }
 
 func (s *chatService) GetMessages(ctx context.Context, currentUserID, conversationID, cursor string, limit int) ([]dto.Message, *dto.CursorPaginationMeta, error) {
+	s.log.Info(ctx, "fetching chat messages", zap.String("current_user_id", currentUserID), zap.String("conversation_id", conversationID))
+
 	if conversationID == "" {
 		return nil, nil, errors.New("conversation_id is required")
 	}
@@ -123,6 +153,7 @@ func (s *chatService) GetMessages(ctx context.Context, currentUserID, conversati
 		return nil, nil, err
 	}
 	if !isParticipant {
+		s.log.Warn(ctx, "unauthorized access to chat message history", zap.String("current_user_id", currentUserID), zap.String("conversation_id", conversationID))
 		return nil, nil, errors.New("unauthorized: you are not a participant in this conversation")
 	}
 
@@ -130,6 +161,8 @@ func (s *chatService) GetMessages(ctx context.Context, currentUserID, conversati
 }
 
 func (s *chatService) MarkMessagesAsRead(ctx context.Context, currentUserID, conversationID string) error {
+	s.log.Info(ctx, "marking conversation messages as read", zap.String("current_user_id", currentUserID), zap.String("conversation_id", conversationID))
+
 	if conversationID == "" {
 		return errors.New("conversation_id is required")
 	}
@@ -143,6 +176,7 @@ func (s *chatService) MarkMessagesAsRead(ctx context.Context, currentUserID, con
 	}
 
 	if err := s.chatRepo.MarkMessagesAsRead(ctx, conversationID, currentUserID); err != nil {
+		s.log.Error(ctx, "failed to mark messages read in database", zap.String("conversation_id", conversationID), zap.String("reason", err.Error()))
 		return err
 	}
 
@@ -164,6 +198,8 @@ func (s *chatService) MarkMessagesAsRead(ctx context.Context, currentUserID, con
 }
 
 func (s *chatService) DeleteMessage(ctx context.Context, currentUserID, messageID, deleteType string) (*dto.Message, error) {
+	s.log.Info(ctx, "deleting message", zap.String("current_user_id", currentUserID), zap.String("message_id", messageID), zap.String("delete_type", deleteType))
+
 	if messageID == "" {
 		return nil, errors.New("message_id is required")
 	}
@@ -174,6 +210,7 @@ func (s *chatService) DeleteMessage(ctx context.Context, currentUserID, messageI
 
 	deletedMsg, err := s.chatRepo.DeleteMessage(ctx, messageID, currentUserID, deleteType)
 	if err != nil {
+		s.log.Error(ctx, "failed to delete message from database", zap.String("message_id", messageID), zap.String("reason", err.Error()))
 		return nil, err
 	}
 
@@ -202,6 +239,8 @@ func (s *chatService) DeleteMessage(ctx context.Context, currentUserID, messageI
 		}
 		s.hub.SendToUser(currentUserID, event)
 	}
+
+	s.log.Info(ctx, "message deleted successfully", zap.String("message_id", messageID), zap.String("delete_type", deleteType))
 
 	return deletedMsg, nil
 }

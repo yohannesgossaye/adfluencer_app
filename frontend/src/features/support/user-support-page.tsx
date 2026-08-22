@@ -13,6 +13,8 @@ import {
   type SupportTicket,
 } from "@/data/support";
 import { getMockUser } from "@/lib/mock-auth";
+import { businessApi } from "@/lib/api/business";
+import { influencerApi } from "@/lib/api/influencer";
 import { cn } from "@/lib/utils";
 
 const fieldShell =
@@ -57,8 +59,60 @@ export function UserSupportPage({
   const [related, setRelated] = useState<string>(relatedOptions[0] ?? "");
   const [success, setSuccess] = useState(false);
   const [myTickets, setMyTickets] = useState<SupportTicket[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const refreshMine = () => {
+  const refreshMine = async () => {
+    if (role === "business") {
+      try {
+        const res = await businessApi.listSupportTickets();
+        if (res.data?.items) {
+          const mapped: SupportTicket[] = res.data.items.map((t) => ({
+            id: t.id,
+            senderName: "Business",
+            role: "business",
+            email: "",
+            subject: t.subject,
+            message: "",
+            type: t.issue_type,
+            priority: (t.priority.toLowerCase() as SupportPriority) || "medium",
+            status: (t.status.toLowerCase() as SupportTicket["status"]) || "open",
+            date: t.created_at.slice(0, 10),
+            relatedCampaign: t.related_campaign_title || undefined,
+            reply: t.admin_reply || undefined,
+            source: "user",
+          }));
+          setMyTickets(mapped);
+          return;
+        }
+      } catch {
+        // fallback
+      }
+    } else if (role === "influencer") {
+      try {
+        const res = await influencerApi.listSupportTickets();
+        if (res.data?.items) {
+          const mapped: SupportTicket[] = res.data.items.map((t) => ({
+            id: t.id,
+            senderName: "Creator",
+            role: "influencer",
+            email: "",
+            subject: t.subject,
+            message: "",
+            type: t.issue_type,
+            priority: (t.priority.toLowerCase() as SupportPriority) || "medium",
+            status: (t.status.toLowerCase() as SupportTicket["status"]) || "open",
+            date: t.created_at.slice(0, 10),
+            relatedCampaign: t.related_campaign_title || undefined,
+            reply: t.admin_reply || undefined,
+            source: "user",
+          }));
+          setMyTickets(mapped);
+          return;
+        }
+      } catch {
+        // fallback
+      }
+    }
     const user = getMockUser();
     const all = loadSupportTickets();
     setMyTickets(filterTicketsForPortalUser(all, role, user?.email ?? null));
@@ -70,10 +124,54 @@ export function UserSupportPage({
 
   const sessionUser = getMockUser();
 
-  const submit = () => {
+  const submit = async () => {
     const trimmedSubject = subject.trim();
     const trimmedMessage = message.trim();
     if (!trimmedSubject || !trimmedMessage) return;
+
+    setIsSubmitting(true);
+    if (role === "business") {
+      try {
+        await businessApi.createSupportTicket({
+          issue_type: issueType.toLowerCase().replace(/\s+/g, "_"),
+          subject: trimmedSubject,
+          message: trimmedMessage,
+          priority: priority.toLowerCase(),
+        });
+        setSuccess(true);
+        setSubject("");
+        setMessage("");
+        setPriority("medium");
+        await refreshMine();
+        setTimeout(() => setSuccess(false), 4000);
+        return;
+      } catch {
+        // fallback
+      } finally {
+        setIsSubmitting(false);
+      }
+    } else if (role === "influencer") {
+      try {
+        await influencerApi.createSupportTicket({
+          issue_type: issueType.toLowerCase().replace(/\s+/g, "_"),
+          subject: trimmedSubject,
+          message: trimmedMessage,
+          priority: priority.toLowerCase(),
+        });
+        setSuccess(true);
+        setSubject("");
+        setMessage("");
+        setPriority("medium");
+        await refreshMine();
+        setTimeout(() => setSuccess(false), 4000);
+        return;
+      } catch {
+        // fallback
+      } finally {
+        setIsSubmitting(false);
+      }
+    }
+
     const session = getMockUser();
     const email = session?.email ?? "";
     const senderName = session?.name ?? "Guest";
@@ -99,7 +197,8 @@ export function UserSupportPage({
     setIssueType(issueTypeOptions[0] ?? "");
     setRelated(relatedOptions[0] ?? "");
     refreshMine();
-    window.setTimeout(() => setSuccess(false), 5000);
+    setTimeout(() => setSuccess(false), 4000);
+    setIsSubmitting(false);
   };
 
   return (

@@ -3,12 +3,16 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import axios from "axios";
 
 import { BrandLogo } from "@/components/common/brand-logo";
 import { GradientButton } from "@/components/common/gradient-button";
+import { useAuth } from "@/components/providers/auth-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { authApi } from "@/lib/api/auth";
+import { setMockUser } from "@/lib/mock-auth";
 import type { MarketingAuthRole } from "@/lib/marketing-auth-url";
 
 type SignupFormProps = {
@@ -29,6 +33,7 @@ export function SignupForm({
   onCancel,
 }: SignupFormProps) {
   const router = useRouter();
+  const { setSession } = useAuth();
   const [role, setRole] = useState<MarketingAuthRole>(initialRole);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -36,6 +41,8 @@ export function SignupForm({
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     setRole(initialRole);
@@ -46,18 +53,71 @@ export function SignupForm({
     [role],
   );
 
-  const onSubmit = (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !email || !phone || !password || !confirmPassword) return;
-    setMessage("Demo signup complete. Please use a mock login account to continue.");
-    onSuccess?.();
-    setTimeout(() => {
-      if (onSwitchToLogin) {
-        onSwitchToLogin();
-      } else {
-        router.push("/auth/login");
+    if (!name || !email || !phone || !password || !confirmPassword) {
+      setError("Please fill in all required fields.");
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters.");
+      return;
+    }
+
+    setError(null);
+    setMessage(null);
+    setIsLoading(true);
+
+    try {
+      const res = await authApi.signup({
+        role,
+        name: name.trim(),
+        email: email.trim(),
+        phone_number: phone.trim(),
+        password,
+        confirm_password: confirmPassword,
+      });
+
+      if (res.data) {
+        const { user, profile, tokens, redirect_to } = res.data;
+        if (tokens) {
+          setSession(tokens, user, profile);
+        }
+
+        const displayName =
+          profile?.business_name ||
+          profile?.creator_name ||
+          profile?.full_name ||
+          user.email;
+
+        setMockUser({
+          email: user.email,
+          role: user.role,
+          name: displayName,
+          redirect: redirect_to,
+        });
+
+        setMessage("Account created successfully! Redirecting...");
+        onSuccess?.();
+        setTimeout(() => {
+          router.push(redirect_to || (role === "business" ? "/business/dashboard" : "/influencer/profile"));
+        }, 1000);
       }
-    }, 1200);
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err) && err.response?.data?.message) {
+        setError(err.response.data.message);
+      } else if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Failed to create account. Please try again.");
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -170,19 +230,26 @@ export function SignupForm({
             type="button"
             variant="outline"
             onClick={onCancel}
+            disabled={isLoading}
             className="h-12 flex-1 rounded-xl border-white/15 bg-transparent text-white hover:bg-white/10"
           >
             Cancel
           </Button>
-          <GradientButton className="h-12 flex-1 rounded-xl px-6" type="submit">
-            Create Account
+          <GradientButton className="h-12 flex-1 rounded-xl px-6" type="submit" disabled={isLoading}>
+            {isLoading ? "Creating Account..." : "Create Account"}
           </GradientButton>
         </div>
       ) : (
-        <GradientButton className="h-12 w-full rounded-xl px-6" type="submit">
-          Create Account
+        <GradientButton className="h-12 w-full rounded-xl px-6" type="submit" disabled={isLoading}>
+          {isLoading ? "Creating Account..." : "Create Account"}
         </GradientButton>
       )}
+
+      {error ? (
+        <p className="rounded-xl border border-red-400/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+          {error}
+        </p>
+      ) : null}
 
       {message ? (
         <p className="rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">

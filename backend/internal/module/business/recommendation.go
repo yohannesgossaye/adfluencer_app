@@ -10,9 +10,13 @@ import (
 	"context"
 
 	"adinfluence_service_app/platform/utils"
+
+	"go.uber.org/zap"
 )
 
 func (m *businessModule) GenerateRecommendations(ctx context.Context, userID, campaignID string, meta authDto.SessionMeta) (*businessDto.GenerateRecommendationsResponse, error) {
+	m.logger.Info(ctx, "generating AI/Smart recommendations for campaign", zap.String("business_id", userID), zap.String("campaign_id", campaignID))
+
 	if err := m.requireActiveBusiness(ctx, userID); err != nil {
 		return nil, err
 	}
@@ -24,6 +28,7 @@ func (m *businessModule) GenerateRecommendations(ctx context.Context, userID, ca
 
 	candidates, err := m.business.ListMatchCandidates(ctx)
 	if err != nil {
+		m.logger.Error(ctx, "failed to query candidates for recommendation", zap.String("campaign_id", campaignID), zap.String("reason", err.Error()))
 		return nil, err
 	}
 
@@ -35,6 +40,7 @@ func (m *businessModule) GenerateRecommendations(ctx context.Context, userID, ca
 
 	generated, err := m.business.ReplaceRecommendations(ctx, campaignID, ranked)
 	if err != nil {
+		m.logger.Error(ctx, "failed to persist campaign recommendations", zap.String("campaign_id", campaignID), zap.String("reason", err.Error()))
 		return nil, err
 	}
 
@@ -49,6 +55,8 @@ func (m *businessModule) GenerateRecommendations(ctx context.Context, userID, ca
 		UserAgent:    meta.UserAgent,
 	})
 
+	m.logger.Info(ctx, "campaign recommendations generated successfully", zap.String("campaign_id", campaignID), zap.Int("count", generated))
+
 	return &businessDto.GenerateRecommendationsResponse{
 		Generated: generated,
 		Total:     generated,
@@ -56,6 +64,8 @@ func (m *businessModule) GenerateRecommendations(ctx context.Context, userID, ca
 }
 
 func (m *businessModule) ListRecommendations(ctx context.Context, userID, campaignID string, query businessDto.ListRecommendationsQuery) (*businessDto.ListRecommendationsResponse, error) {
+	m.logger.Info(ctx, "listing campaign recommendations", zap.String("business_id", userID), zap.String("campaign_id", campaignID))
+
 	if err := m.requireActiveBusiness(ctx, userID); err != nil {
 		return nil, err
 	}
@@ -67,6 +77,7 @@ func (m *businessModule) ListRecommendations(ctx context.Context, userID, campai
 	query = query.Normalize()
 	items, total, err := m.business.ListRecommendations(ctx, campaignID, query)
 	if err != nil {
+		m.logger.Error(ctx, "failed to query recommendations", zap.String("campaign_id", campaignID), zap.String("reason", err.Error()))
 		return nil, err
 	}
 	if items == nil {
@@ -74,7 +85,7 @@ func (m *businessModule) ListRecommendations(ctx context.Context, userID, campai
 	}
 
 	return &businessDto.ListRecommendationsResponse{
-		Items: items,
+		Items:      items,
 		Pagination: commonDto.NewListMeta(query.Page, query.Limit, total),
 	}, nil
 }

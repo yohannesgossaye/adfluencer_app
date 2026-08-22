@@ -1,26 +1,26 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  loadAdminUsers,
-  saveAdminUsers,
-  type AdminUserRecord,
-  type AdminUserRole,
-  type AdminUserStatus,
-} from "@/data/admin-users-mock";
-import { blockUserEmail, unblockUserEmail } from "@/lib/blocked-users";
+  adminApi,
+  type AdminUserListItem,
+  type AdminUserStats,
+} from "@/lib/api/admin";
 import { cn } from "@/lib/utils";
 
-function statusStyle(s: AdminUserStatus) {
-  switch (s) {
+function statusStyle(s: string) {
+  const lower = s.toLowerCase();
+  switch (lower) {
     case "active":
       return "border-emerald-400/30 bg-emerald-500/10 text-emerald-200";
     case "pending":
       return "border-amber-400/30 bg-amber-500/10 text-amber-200";
     case "blocked":
+    case "suspended":
+    case "rejected":
       return "border-rose-400/30 bg-rose-500/10 text-rose-200";
     default:
       return "border-white/10 bg-white/5 text-[#94A3B8]";
@@ -28,55 +28,68 @@ function statusStyle(s: AdminUserStatus) {
 }
 
 export function AdminUsers() {
-  const [users, setUsers] = useState<AdminUserRecord[]>([]);
-  const [roleFilter, setRoleFilter] = useState<"all" | AdminUserRole>("all");
-  const [statusFilter, setStatusFilter] = useState<"all" | AdminUserStatus>("all");
+  const [users, setUsers] = useState<AdminUserListItem[]>([]);
+  const [stats, setStats] = useState<AdminUserStats>({
+    total: 0,
+    active: 0,
+    blocked: 0,
+    pending: 0,
+  });
+  const [roleFilter, setRoleFilter] = useState<"all" | "business" | "influencer" | "admin">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "pending" | "blocked" | "removed">("all");
   const [search, setSearch] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+
+  const loadUsers = async () => {
+    try {
+      const res = await adminApi.listUsers({
+        role: roleFilter === "all" ? undefined : roleFilter,
+        status: statusFilter === "all" ? undefined : statusFilter,
+        search: search.trim() || undefined,
+      });
+      if (res.data?.items) {
+        setUsers(res.data.items);
+      }
+      if (res.data?.stats) {
+        setStats(res.data.stats);
+      }
+    } catch {
+      // fallback
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    setUsers(loadAdminUsers());
-  }, []);
+    loadUsers();
+  }, [roleFilter, statusFilter, search]);
 
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return users.filter((u) => {
-      const roleOk = roleFilter === "all" || u.role === roleFilter;
-      const statusOk = statusFilter === "all" || u.status === statusFilter;
-      const searchOk =
-        !q ||
-        u.name.toLowerCase().includes(q) ||
-        u.email.toLowerCase().includes(q);
-      return roleOk && statusOk && searchOk;
-    });
-  }, [users, roleFilter, statusFilter, search]);
-
-  const persist = (next: AdminUserRecord[]) => {
-    saveAdminUsers(next);
-    setUsers(next);
+  const block = async (u: AdminUserListItem) => {
+    try {
+      await adminApi.blockUser(u.user_id, { reason: "Blocked by administrator" });
+      await loadUsers();
+    } catch {
+      // fallback
+    }
   };
 
-  const block = (u: AdminUserRecord) => {
-    blockUserEmail(u.email);
-    persist(users.map((x) => (x.id === u.id ? { ...x, status: "blocked" as const } : x)));
+  const unblock = async (u: AdminUserListItem) => {
+    try {
+      await adminApi.unblockUser(u.user_id);
+      await loadUsers();
+    } catch {
+      // fallback
+    }
   };
 
-  const unblock = (u: AdminUserRecord) => {
-    unblockUserEmail(u.email);
-    persist(users.map((x) => (x.id === u.id ? { ...x, status: "active" as const } : x)));
+  const remove = async (u: AdminUserListItem) => {
+    try {
+      await adminApi.removeUser(u.user_id, { reason: "Purged by administrator" });
+      await loadUsers();
+    } catch {
+      // fallback
+    }
   };
-
-  const remove = (u: AdminUserRecord) => {
-    persist(users.map((x) => (x.id === u.id ? { ...x, status: "removed" as const } : x)));
-  };
-
-  const stats = useMemo(() => {
-    return {
-      total: users.length,
-      active: users.filter((u) => u.status === "active").length,
-      blocked: users.filter((u) => u.status === "blocked").length,
-      pending: users.filter((u) => u.status === "pending").length,
-    };
-  }, [users]);
 
   return (
     <div className="space-y-6 text-white">
@@ -147,69 +160,73 @@ export function AdminUsers() {
       />
 
       <div className="space-y-3 min-w-0">
-        {filtered.map((u) => (
-          <article
-            key={u.id}
-            className="w-full min-w-0 rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-4"
-          >
-            <div className="flex flex-wrap items-start justify-between gap-2">
-              <div>
-                <p className="font-semibold text-white">{u.name}</p>
-                <p className="text-sm text-[#CBD5E1]">{u.email}</p>
-                <p className="mt-1 text-xs capitalize text-[#94A3B8]">
-                  {u.role} · Joined {u.joinedAt} · Last active {u.lastActive}
-                </p>
-                <p className="mt-1 text-xs text-[#94A3B8]">
-                  Campaigns {u.campaignsCount} · Contracts {u.contractsCount}
-                </p>
+        {users.length === 0 && !isLoading ? (
+          <div className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-8 text-center">
+            <p className="text-white">No users found.</p>
+          </div>
+        ) : (
+          users.map((u) => (
+            <article
+              key={u.user_id}
+              className="w-full min-w-0 rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-4"
+            >
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <p className="font-semibold text-white">{u.name}</p>
+                  <p className="text-sm text-[#CBD5E1]">{u.email}</p>
+                  <p className="mt-1 text-xs capitalize text-[#94A3B8]">
+                    {u.role} · Joined {new Date(u.joined_at).toLocaleDateString()}
+                    {u.last_active_at ? ` · Last active ${new Date(u.last_active_at).toLocaleDateString()}` : ""}
+                  </p>
+                  <p className="mt-1 text-xs text-[#94A3B8]">
+                    Campaigns {u.campaigns_count} · Contracts {u.contracts_count}
+                  </p>
+                </div>
+                <span
+                  className={cn(
+                    "rounded-full border px-2.5 py-0.5 text-xs capitalize",
+                    statusStyle(u.status),
+                  )}
+                >
+                  {u.status}
+                </span>
               </div>
-              <span
-                className={cn(
-                  "rounded-full border px-2.5 py-0.5 text-xs capitalize",
-                  statusStyle(u.status),
-                )}
-              >
-                {u.status}
-              </span>
-            </div>
-            {u.status === "blocked" ? (
-              <p className="mt-2 text-xs text-rose-200">
-                Blocked users cannot log in.
-              </p>
-            ) : null}
-            <div className="mt-3 flex flex-wrap gap-2">
-              <Button size="sm" className="h-11 sm:h-8 bg-white/10 text-white hover:bg-white/15">
-                View
-              </Button>
-              <Button
-                size="sm"
-                className="h-11 sm:h-8 bg-rose-500/20 text-rose-100 hover:bg-rose-500/30"
-                disabled={u.status === "blocked" || u.status === "removed"}
-                onClick={() => block(u)}
-              >
-                Block
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-11 sm:h-8 border-white/15 text-white hover:bg-white/10"
-                disabled={u.status !== "blocked"}
-                onClick={() => unblock(u)}
-              >
-                Unblock
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-11 sm:h-8 border-white/15 text-white hover:bg-white/10"
-                disabled={u.status === "removed"}
-                onClick={() => remove(u)}
-              >
-                Remove
-              </Button>
-            </div>
-          </article>
-        ))}
+              {u.status === "blocked" || u.status === "suspended" ? (
+                <p className="mt-2 text-xs text-rose-200">
+                  Blocked users cannot log in.
+                </p>
+              ) : null}
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  className="h-11 sm:h-8 bg-rose-500/20 text-rose-100 hover:bg-rose-500/30"
+                  disabled={u.status === "blocked" || u.status === "removed"}
+                  onClick={() => block(u)}
+                >
+                  Block
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-11 sm:h-8 border-white/15 text-white hover:bg-white/10"
+                  disabled={u.status !== "blocked"}
+                  onClick={() => unblock(u)}
+                >
+                  Unblock
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-11 sm:h-8 border-white/15 text-white hover:bg-white/10"
+                  disabled={u.status === "removed"}
+                  onClick={() => remove(u)}
+                >
+                  Remove
+                </Button>
+              </div>
+            </article>
+          ))
+        )}
       </div>
     </div>
   );

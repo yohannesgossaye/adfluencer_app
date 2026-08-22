@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowLeft } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { influencerApi } from "@/lib/api/influencer";
 import {
   influencerContractStats,
   initialInfluencerContracts,
@@ -17,12 +18,12 @@ function formatEtb(n: number) {
   return `ETB ${n.toLocaleString()}`;
 }
 
-function statusBadge(status: InfluencerContractStatus) {
-  switch (status) {
+function statusBadge(status: string) {
+  const s = status.toLowerCase();
+  switch (s) {
     case "pending_review":
-      return "border-amber-400/30 bg-amber-500/10 text-amber-200";
     case "pending":
-      return "border-orange-400/30 bg-orange-500/10 text-orange-200";
+      return "border-amber-400/30 bg-amber-500/10 text-amber-200";
     case "accepted":
       return "border-violet-400/30 bg-violet-500/10 text-violet-200";
     case "active":
@@ -36,13 +37,8 @@ function statusBadge(status: InfluencerContractStatus) {
   }
 }
 
-function statusLabel(status: InfluencerContractStatus) {
-  switch (status) {
-    case "pending_review":
-      return "Pending review";
-    default:
-      return status.replace("_", " ");
-  }
+function statusLabel(status: string) {
+  return status.replace("_", " ");
 }
 
 export function InfluencerContracts() {
@@ -51,6 +47,46 @@ export function InfluencerContracts() {
   );
   const [selectedId, setSelectedId] = useState(initialInfluencerContracts[0]?.id ?? "");
   const [mobileShowDetail, setMobileShowDetail] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const loadContracts = async () => {
+    try {
+      const res = await influencerApi.listContracts();
+      if (res.data?.items && res.data.items.length > 0) {
+        const mapped: InfluencerContractRecord[] = res.data.items.map((c) => ({
+          id: c.id,
+          brand: c.business?.business_name || "Partner Brand",
+          campaign: c.campaign?.title || "Campaign",
+          deliverables: c.deliverables?.map((d) => d.type).join(", ") || "Post",
+          timeline: c.start_date && c.end_date
+            ? `${new Date(c.start_date).toLocaleDateString()} - ${new Date(c.end_date).toLocaleDateString()}`
+            : "Ongoing",
+          amountEtb: c.fees?.influencer_receivable_etb || c.fees?.amount_etb || 0,
+          status: (c.status.toLowerCase() as InfluencerContractStatus) || "pending",
+          terms: c.description || "Platform escrow standard terms (5% fee applied).",
+          deadline: c.end_date ? new Date(c.end_date).toLocaleDateString() : "TBD",
+          notes: c.payment?.status ? `Payment status: ${c.payment.status}` : "Standard escrow contract",
+          checklist: c.deliverables?.map((d, i) => ({
+            id: d.id || `deliv-${i}`,
+            label: `${d.quantity}x ${d.type}`,
+            done: d.status === "completed",
+          })) || [],
+        }));
+        setRows(mapped);
+        if (!selectedId || !mapped.some((m) => m.id === selectedId)) {
+          setSelectedId(mapped[0].id);
+        }
+      }
+    } catch {
+      // fallback to mock
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadContracts();
+  }, []);
 
   const selected = useMemo(
     () => rows.find((r) => r.id === selectedId) ?? rows[0],
@@ -64,24 +100,34 @@ export function InfluencerContracts() {
     }
   }, []);
 
-  const acceptContract = (id: string) => {
-    setRows((prev) =>
-      prev.map((r) => {
-        if (r.id !== id) return r;
-        if (r.status === "pending_review" || r.status === "pending") return { ...r, status: "active" };
-        return r;
-      }),
-    );
+  const acceptContract = async (id: string) => {
+    try {
+      await influencerApi.acceptContract(id);
+      await loadContracts();
+    } catch {
+      setRows((prev) =>
+        prev.map((r) => {
+          if (r.id !== id) return r;
+          if (r.status === "pending_review" || r.status === "pending") return { ...r, status: "active" };
+          return r;
+        }),
+      );
+    }
   };
 
-  const rejectContract = (id: string) => {
-    setRows((prev) =>
-      prev.map((r) => {
-        if (r.id !== id) return r;
-        if (r.status === "completed" || r.status === "rejected") return r;
-        return { ...r, status: "rejected" };
-      }),
-    );
+  const rejectContract = async (id: string) => {
+    try {
+      await influencerApi.rejectContract(id);
+      await loadContracts();
+    } catch {
+      setRows((prev) =>
+        prev.map((r) => {
+          if (r.id !== id) return r;
+          if (r.status === "completed" || r.status === "rejected") return r;
+          return { ...r, status: "rejected" };
+        }),
+      );
+    }
   };
 
   const markComplete = (id: string) => {
