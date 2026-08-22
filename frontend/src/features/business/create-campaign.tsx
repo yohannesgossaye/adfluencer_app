@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
 
@@ -33,8 +33,6 @@ const goals = [
   "Sales conversion",
   "Event promotion",
 ] as const;
-
-const niches = ["Beauty", "Fashion", "Food", "Tech", "Fitness", "Lifestyle", "Travel"] as const;
 
 const locations = ["Addis Ababa", "Ethiopia wide", "Regional campaign"] as const;
 
@@ -82,8 +80,23 @@ function toggleArrayValue(arr: string[], value: string) {
 export function CreateCampaign() {
   const router = useRouter();
   const [form, setForm] = useState<CampaignFormState>(initialForm);
+  const [categories, setCategories] = useState<Array<{ id: string; name: string; slug: string }>>([]);
   const [error, setError] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    async function loadCategories() {
+      try {
+        const res = await businessApi.listCategories();
+        if (res.data?.items) {
+          setCategories(res.data.items);
+        }
+      } catch {
+        // fallback
+      }
+    }
+    loadCategories();
+  }, []);
 
   const estimatedMatches = useMemo(() => {
     let score = 8;
@@ -97,25 +110,48 @@ export function CreateCampaign() {
   }, [form]);
 
   const onSubmit = async () => {
-    const requiredMissing =
-      !form.title ||
-      !form.goal ||
-      !form.description ||
-      !form.niche ||
-      !form.location ||
-      form.platforms.length === 0 ||
-      !form.budgetRange ||
-      !form.creatorSize ||
-      !form.startDate ||
-      !form.endDate;
-
-    if (requiredMissing) {
-      setError("Please complete all required campaign details.");
+    if (!form.title.trim() || form.title.trim().length < 3) {
+      setError("Please enter a campaign title (at least 3 characters).");
       return;
     }
-
+    if (!form.goal) {
+      setError("Please select a campaign goal.");
+      return;
+    }
+    if (!form.description.trim() || form.description.trim().length < 20) {
+      setError("Please enter a campaign description (at least 20 characters).");
+      return;
+    }
+    if (!form.niche) {
+      setError("Please select an industry / niche.");
+      return;
+    }
+    if (!form.location) {
+      setError("Please select a campaign location (e.g. Addis Ababa).");
+      return;
+    }
+    if (form.platforms.length === 0) {
+      setError("Please select at least one target platform.");
+      return;
+    }
+    if (!form.budgetRange) {
+      setError("Please select a budget range.");
+      return;
+    }
+    if (!form.creatorSize) {
+      setError("Please select a preferred creator size.");
+      return;
+    }
+    if (!form.startDate) {
+      setError("Please select a campaign start date.");
+      return;
+    }
+    if (!form.endDate) {
+      setError("Please select a campaign end date.");
+      return;
+    }
     if (form.endDate < form.startDate) {
-      setError("Campaign end date must be after the start date.");
+      setError("Campaign end date must be on or after the start date.");
       return;
     }
 
@@ -170,14 +206,13 @@ export function CreateCampaign() {
             : "macro",
         number_of_creators_needed: Number(form.creatorsNeeded) || 1,
         deliverables: campaignDeliverables,
-        start_date: new Date(form.startDate).toISOString(),
-        end_date: new Date(form.endDate).toISOString(),
+        start_date: form.startDate.slice(0, 10),
+        end_date: form.endDate.slice(0, 10),
         additional_notes: form.additionalNotes,
       });
 
-      if (res.data?.campaign) {
-        const campaignId = res.data.campaign.id;
-        // Trigger smart matching algorithm for this new campaign
+      const campaignId = (res.data as any)?.id || (res.data as any)?.campaign?.id;
+      if (campaignId) {
         try {
           await businessApi.generateRecommendations(campaignId);
         } catch {
@@ -185,6 +220,8 @@ export function CreateCampaign() {
         }
 
         router.push(`/business/recommendations?campaign_id=${campaignId}`);
+      } else {
+        router.push("/business/campaigns");
       }
     } catch (err: unknown) {
       if (axios.isAxiosError(err) && err.response?.data?.message) {
@@ -301,9 +338,9 @@ export function CreateCampaign() {
                   <option value="" disabled>
                     Select industry
                   </option>
-                  {niches.map((niche) => (
-                    <option key={niche} value={niche} className="bg-[color:var(--adfluence-surface)]">
-                      {niche}
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.name} className="bg-[color:var(--adfluence-surface)]">
+                      {c.name}
                     </option>
                   ))}
                 </select>
@@ -481,10 +518,29 @@ export function CreateCampaign() {
           </section>
 
           {error ? (
-            <p className="rounded-xl border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
+            <p className="rounded-xl border border-rose-400/30 bg-rose-500/10 p-4 text-sm text-rose-200">
               {error}
             </p>
           ) : null}
+
+          <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-center">
+            <Button
+              type="button"
+              onClick={onSubmit}
+              disabled={isLoading}
+              className="h-12 rounded-xl bg-[color:var(--adfluence-orange)] px-8 text-base font-semibold text-white shadow-lg shadow-[color:var(--adfluence-orange)]/20 hover:bg-[color:var(--adfluence-orange-hover)]"
+            >
+              {isLoading ? "Creating Campaign..." : "Create Campaign"}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => router.push("/business/campaigns")}
+              className="h-12 rounded-xl border-white/10 text-sm text-[#CBD5E1] hover:bg-white/5"
+            >
+              Cancel
+            </Button>
+          </div>
         </div>
 
         <aside className="xl:sticky xl:top-6 xl:h-fit">
@@ -518,12 +574,18 @@ export function CreateCampaign() {
             <p className="text-xs text-[#CBD5E1]">
               Recommendations are based on niche, platform, budget, and creator fit.
             </p>
+            {error ? (
+              <p className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-300">
+                {error}
+              </p>
+            ) : null}
             <Button
+              type="button"
               onClick={onSubmit}
               disabled={isLoading}
-              className="h-11 w-full rounded-xl bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)]"
+              className="h-12 w-full rounded-xl bg-[color:var(--adfluence-orange)] text-base font-semibold text-white shadow-lg shadow-[color:var(--adfluence-orange)]/20 hover:bg-[color:var(--adfluence-orange-hover)]"
             >
-              {isLoading ? "Creating & Matching..." : "Find Influencers"}
+              {isLoading ? "Creating Campaign..." : "Create Campaign"}
             </Button>
           </div>
         </aside>

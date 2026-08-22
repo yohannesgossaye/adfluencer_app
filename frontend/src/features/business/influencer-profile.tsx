@@ -2,363 +2,247 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import { MessageSquare, Send, ShieldCheck } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { influencers } from "@/data/influencers";
+import { businessApi, type InfluencerViewDetail } from "@/lib/api/business";
+import { chatApi } from "@/lib/api/chat";
+
+import { UserAvatar } from "@/components/common/user-avatar";
 
 type InfluencerProfileProps = {
   influencerId: string;
 };
 
-const invitedStorageKey = "adfluence_invited_influencers";
-
-const biosByNiche: Record<string, string> = {
-  beauty:
-    "Creates lifestyle and beauty content for young urban audiences in Ethiopia with strong product storytelling and trusted recommendations.",
-  fashion:
-    "Shares trend-driven fashion content, styling tips, and creator-led brand integrations optimized for local audiences.",
-  food: "Builds food-first social content focused on discovery, culture, and authentic culinary reviews.",
-  tech: "Produces practical technology explainers, app reviews, and performance-focused creator content.",
-  fitness:
-    "Publishes active lifestyle and wellness content designed to drive high engagement and action.",
-  lifestyle:
-    "Creates relatable day-in-the-life content that blends entertainment and premium brand collaborations.",
-  travel:
-    "Highlights destination and experience content with strong visual storytelling and discovery reach.",
-};
-
-const contentStyleByNiche: Record<string, string> = {
-  beauty: "Short-form tutorials, product demos, and before/after formats.",
-  fashion: "Outfit reels, trend edits, and premium visual styling.",
-  food: "Taste tests, venue highlights, and recipe snippets.",
-  tech: "Explainers, comparisons, and honest product walkthroughs.",
-  fitness: "Routine breakdowns, challenge formats, and coaching tips.",
-  lifestyle: "Daily moments, relatable storytelling, and authentic recommendations.",
-  travel: "Destination guides, visual itineraries, and local discovery series.",
-};
-
-const audienceByCity: Record<string, string> = {
-  "Addis Ababa": "Urban Gen Z and millennial audiences across major Ethiopian cities.",
-  "Bahir Dar": "Regional audiences with growing creator engagement in lifestyle and commerce.",
-  Hawassa: "Emerging digital audiences interested in technology and creator-driven trends.",
-};
-
-function parsePriceRange(priceRangeEtb?: string) {
-  if (!priceRangeEtb) return { min: 15000, max: 30000, text: "ETB 15K - 30K" };
-  const cleaned = priceRangeEtb.replaceAll("ETB", "").replaceAll(",", "");
-  const [minRaw, maxRaw] = cleaned.split("-").map((v) => Number(v.trim().replace("K", "000")));
-  const min = Number.isFinite(minRaw) ? minRaw : 15000;
-  const max = Number.isFinite(maxRaw) ? maxRaw : 30000;
-  return { min, max, text: priceRangeEtb };
-}
-
-function getCreatorSizeFromFollowers(followers: number) {
-  if (followers < 70000) return "Micro creator";
-  if (followers < 110000) return "Mid-tier creator";
-  return "Large creator";
-}
-
-function getMatchScore(value?: number) {
-  return Math.min(96, Math.max(78, value ?? 86));
-}
-
-function getFitRows(score: number) {
-  return [
-    { label: "Niche fit", value: Math.min(98, score + 2) },
-    { label: "Platform fit", value: Math.max(76, score - 3) },
-    { label: "Budget fit", value: Math.max(74, score - 6) },
-    { label: "Audience fit", value: Math.min(99, score + 1) },
-    { label: "Verified profile", value: 96 },
-  ];
-}
-
 export function InfluencerProfile({ influencerId }: InfluencerProfileProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const campaignId = searchParams.get("campaign_id") || undefined;
+
+  const [creator, setCreator] = useState<InfluencerViewDetail | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [inviteSent, setInviteSent] = useState(false);
-  const influencer = influencers.find((entry) => entry.id === influencerId);
+  const [isInviting, setIsInviting] = useState(false);
+  const [statusMessage, setStatusMessage] = useState("");
 
   useEffect(() => {
-    if (!influencer) return;
-    const raw = localStorage.getItem(invitedStorageKey);
-    if (!raw) return;
-    try {
-      const invited = JSON.parse(raw) as string[];
-      setInviteSent(invited.includes(influencer.id));
-    } catch {
-      setInviteSent(false);
+    async function loadCreator() {
+      try {
+        const res = await businessApi.getInfluencerForBusiness(influencerId, campaignId);
+        if (res.data) {
+          setCreator(res.data);
+        }
+      } catch {
+        // Fallback
+      } finally {
+        setIsLoading(false);
+      }
     }
-  }, [influencer]);
+    loadCreator();
+  }, [influencerId, campaignId]);
 
-  if (!influencer) {
+  const handleSendInvite = async () => {
+    if (!campaignId || !creator) return;
+    setIsInviting(true);
+    try {
+      await businessApi.createInvite(campaignId, {
+        influencer_user_id: creator.influencer_user_id,
+        message: `Hello ${creator.creator_name}, we'd love to invite you to collaborate with us!`,
+      });
+      setInviteSent(true);
+      setStatusMessage("Invitation sent successfully!");
+      setTimeout(() => setStatusMessage(""), 3500);
+    } catch {
+      setStatusMessage("Failed to send invitation. You may have already invited this creator.");
+      setTimeout(() => setStatusMessage(""), 3500);
+    } finally {
+      setIsInviting(false);
+    }
+  };
+
+  const handleStartChat = async () => {
+    if (!creator) return;
+    try {
+      const res = await chatApi.getOrCreateConversation({
+        recipient_user_id: creator.influencer_user_id,
+        campaign_id: campaignId,
+      });
+      if (res.data?.id) {
+        router.push("/business/messages");
+      }
+    } catch {
+      router.push("/business/messages");
+    }
+  };
+
+  if (isLoading) {
     return (
-      <div className="space-y-6 text-white">
-        <section className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-8 text-center">
-          <h1 className="text-2xl font-semibold text-white">Influencer not found</h1>
-          <p className="mt-2 text-sm text-[#CBD5E1]">
-            The profile you requested is unavailable in this mock dataset.
-          </p>
-          <Button
-            asChild
-            className="mt-5 h-11 rounded-xl bg-[color:var(--adfluence-orange)] px-6 text-white hover:bg-[color:var(--adfluence-orange-hover)]"
-          >
-            <Link href="/business/recommendations">Back to Recommendations</Link>
-          </Button>
-        </section>
+      <div className="flex h-64 items-center justify-center text-[#CBD5E1]">
+        Loading creator profile...
       </div>
     );
   }
 
-  const score = getMatchScore(influencer.matchScore);
-  const price = parsePriceRange(influencer.priceRangeEtb);
-  const creatorSize = getCreatorSizeFromFollowers(influencer.followers);
-  const responseTime = score >= 92 ? "Within 6 hours" : score >= 86 ? "Within 12 hours" : "Within 24 hours";
-  const bio = biosByNiche[influencer.niche] ?? biosByNiche.lifestyle;
-  const contentStyle = contentStyleByNiche[influencer.niche] ?? contentStyleByNiche.lifestyle;
-  const audience = audienceByCity[influencer.city] ?? "Audience concentrated in Ethiopian urban markets.";
-  const avgReach = Math.round(influencer.followers * 0.22);
-  const avgViews = Math.round(influencer.followers * 0.18);
-  const completedCampaigns = Math.max(4, Math.round(influencer.followers / 16000));
-  const fitRows = getFitRows(score);
+  if (!creator) {
+    return (
+      <div className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-8 text-center text-white">
+        <p className="text-lg font-semibold">Creator Not Found</p>
+        <p className="mt-1 text-sm text-[#CBD5E1]">The creator profile you are looking for does not exist or has been removed.</p>
+        <Link href="/business/recommendations">
+          <Button className="mt-4 bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)]">
+            Back to Recommendations
+          </Button>
+        </Link>
+      </div>
+    );
+  }
 
-  const contentSamples = [
-    {
-      id: "sample-1",
-      platform: influencer.platforms[0] ?? "Instagram",
-      type: influencer.platforms[0] === "YouTube" ? "YouTube Short" : influencer.platforms[0] === "TikTok" ? "TikTok" : "Reel",
-      views: `${Math.round(avgViews * 1.2).toLocaleString()} views`,
-      engagement: `${(influencer.engagementRate + 0.7).toFixed(1)}% engagement`,
-    },
-    {
-      id: "sample-2",
-      platform: "Instagram",
-      type: "Story",
-      views: `${Math.round(avgViews * 0.8).toLocaleString()} views`,
-      engagement: `${(influencer.engagementRate + 0.3).toFixed(1)}% engagement`,
-    },
-    {
-      id: "sample-3",
-      platform: "TikTok",
-      type: "TikTok",
-      views: `${Math.round(avgViews * 1.35).toLocaleString()} views`,
-      engagement: `${(influencer.engagementRate + 0.9).toFixed(1)}% engagement`,
-    },
-    {
-      id: "sample-4",
-      platform: "YouTube",
-      type: "YouTube Short",
-      views: `${Math.round(avgViews * 1.05).toLocaleString()} views`,
-      engagement: `${(influencer.engagementRate + 0.4).toFixed(1)}% engagement`,
-    },
-  ];
+  const platforms = creator.platforms || [];
+  const niches = creator.niches || [];
+  const audience = creator.audience_description || "Dynamic engaged local audience.";
 
-  const onInvite = () => {
-    const raw = localStorage.getItem(invitedStorageKey);
-    let invited: string[] = [];
-    if (raw) {
-      try {
-        invited = JSON.parse(raw) as string[];
-      } catch {
-        invited = [];
-      }
-    }
-    if (!invited.includes(influencer.id)) {
-      invited.push(influencer.id);
-      localStorage.setItem(invitedStorageKey, JSON.stringify(invited));
-    }
-    setInviteSent(true);
+  const primaryNiche = creator.niches?.[0]?.name || "Creator";
+  const avgReach = Math.round((creator.total_followers || 50000) * 0.22);
+  const breakdown = creator.score_breakdown || {
+    niche: 95,
+    platform: 90,
+    budget: 85,
+    creator_size: 90,
+    verified: creator.is_verified ? 100 : 80,
   };
 
-  const packageCards = useMemo(
-    () => [
-      {
-        title: "Basic",
-        items: ["1 short video", "1 story", "Creator posting included"],
-        price: `From ETB ${Math.round(price.min * 0.9).toLocaleString()}`,
-      },
-      {
-        title: "Standard",
-        items: ["2 videos", "3 stories", "30-day usage rights"],
-        price: `From ETB ${Math.round((price.min + price.max) / 2).toLocaleString()}`,
-        recommended: true,
-      },
-      {
-        title: "Premium",
-        items: ["Campaign bundle", "Multi-platform package", "Priority revisions"],
-        price: `From ETB ${Math.round(price.max * 1.2).toLocaleString()}`,
-      },
-    ],
-    [price.max, price.min],
-  );
+  const fitRows = [
+    { label: "Niche fit", value: breakdown.niche },
+    { label: "Platform fit", value: breakdown.platform },
+    { label: "Budget fit", value: breakdown.budget },
+    { label: "Audience fit", value: breakdown.creator_size },
+    { label: "Verified profile", value: breakdown.verified },
+  ];
 
   return (
     <div className="space-y-6 text-white">
-      <section className="grid gap-5 rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-5 lg:grid-cols-[320px_minmax(0,1fr)]">
-        <div className="relative h-72 overflow-hidden rounded-2xl border border-white/10 md:h-80">
-          <Image
-            src={influencer.imageUrl || "/images/influencers/influencer-1.jpg"}
-            alt={influencer.name}
-            fill
-            className="object-cover"
+      {statusMessage ? (
+        <p className="rounded-xl border border-emerald-400/30 bg-emerald-500/10 p-3 text-sm text-emerald-200">
+          {statusMessage}
+        </p>
+      ) : null}
+
+      <section className="flex flex-col gap-6 rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-6 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+          <UserAvatar
+            src={creator.profile_image_url}
+            name={creator.creator_name}
+            size="2xl"
+            fallback="CR"
           />
-          <span className="absolute right-3 top-3 rounded-full bg-[#0B1A2B]/90 px-2.5 py-1 text-xs font-medium text-emerald-300">
-            Verified
-          </span>
-        </div>
-
-        <div className="space-y-4">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <h1 className="text-2xl font-semibold text-white">{influencer.name}</h1>
-              <p className="mt-1 text-sm capitalize text-[#CBD5E1]">
-                {influencer.niche} • {influencer.city}
-              </p>
-              <p className="mt-1 text-sm text-[#CBD5E1]">
-                Platforms: {influencer.platforms.join(", ")}
-              </p>
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-2xl font-bold text-white">{creator.creator_name}</h1>
+              {creator.is_verified ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-xs font-medium text-emerald-300">
+                  <ShieldCheck className="size-3.5" />
+                  Verified Creator
+                </span>
+              ) : null}
             </div>
-            <span className="rounded-full bg-[color:var(--adfluence-orange)]/15 px-3 py-1 text-xs font-semibold text-orange-200">
-              Match score {score}%
-            </span>
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)] p-3">
-              <p className="text-xs text-[#CBD5E1]">Followers</p>
-              <p className="mt-1 text-lg font-semibold text-white">
-                {influencer.followers.toLocaleString()}
-              </p>
-            </div>
-            <div className="rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)] p-3">
-              <p className="text-xs text-[#CBD5E1]">Engagement rate</p>
-              <p className="mt-1 text-lg font-semibold text-white">{influencer.engagementRate}%</p>
-            </div>
-            <div className="rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)] p-3">
-              <p className="text-xs text-[#CBD5E1]">Price range</p>
-              <p className="mt-1 text-lg font-semibold text-white">{price.text}</p>
-            </div>
-            <div className="rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)] p-3">
-              <p className="text-xs text-[#CBD5E1]">Response time</p>
-              <p className="mt-1 text-lg font-semibold text-white">{responseTime}</p>
-            </div>
-          </div>
-
-          <div className="grid gap-2 sm:grid-cols-3">
-            <Button
-              onClick={onInvite}
-              className="h-11 rounded-xl bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)]"
-            >
-              {inviteSent ? "Invite Sent" : "Invite to Campaign"}
-            </Button>
-            <Button asChild className="h-11 rounded-xl bg-white/10 text-white hover:bg-white/15">
-              <Link href="/business/messages">Message</Link>
-            </Button>
-            <Button asChild className="h-11 rounded-xl bg-white/10 text-white hover:bg-white/15">
-              <Link href="/business/contracts">Create Contract</Link>
-            </Button>
+            <p className="mt-1 text-sm text-[#CBD5E1]">
+              {primaryNiche} • {creator.platforms.join(", ")} • {creator.city || "Ethiopia"}
+            </p>
+            <p className="mt-1 text-xs text-[#CBD5E1]">
+              Full Name: {creator.full_name} · Languages:{" "}
+              {creator.languages?.length ? creator.languages.join(", ") : "Amharic, English"}
+            </p>
           </div>
         </div>
+
+        <div className="flex flex-wrap gap-3">
+          <Button
+            onClick={handleStartChat}
+            variant="outline"
+            className="h-11 rounded-xl border-white/15 bg-transparent px-5 text-white hover:bg-white/10"
+          >
+            <MessageSquare className="mr-2 size-4" />
+            Direct Message
+          </Button>
+          <Button
+            onClick={handleSendInvite}
+            disabled={inviteSent || isInviting}
+            className="h-11 rounded-xl bg-[color:var(--adfluence-orange)] px-6 text-white hover:bg-[color:var(--adfluence-orange-hover)] disabled:opacity-60"
+          >
+            <Send className="mr-2 size-4" />
+            {isInviting ? "Sending..." : inviteSent ? "Invitation Sent" : "Invite to Campaign"}
+          </Button>
+        </div>
+      </section>
+
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <article className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-4">
+          <p className="text-xs text-[#CBD5E1]">Total Followers</p>
+          <p className="mt-2 text-2xl font-bold text-white">
+            {creator.total_followers.toLocaleString()}
+          </p>
+        </article>
+        <article className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-4">
+          <p className="text-xs text-[#CBD5E1]">Engagement Rate</p>
+          <p className="mt-2 text-2xl font-bold text-white">
+            {creator.engagement_rate ? `${creator.engagement_rate}%` : "5.8%"}
+          </p>
+        </article>
+        <article className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-4">
+          <p className="text-xs text-[#CBD5E1]">Estimated Reach</p>
+          <p className="mt-2 text-2xl font-bold text-white">{avgReach.toLocaleString()}</p>
+        </article>
+        <article className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-4">
+          <p className="text-xs text-[#CBD5E1]">Price Range</p>
+          <p className="mt-2 text-xl font-bold text-[color:var(--adfluence-orange)]">
+            ETB {(creator.min_price_etb || 15000).toLocaleString()} -{" "}
+            {(creator.max_price_etb || 30000).toLocaleString()}
+          </p>
+        </article>
       </section>
 
       <section className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-5">
         <h2 className="text-lg font-semibold text-white">About Creator</h2>
-        <div className="mt-3 grid gap-3 text-sm text-[#CBD5E1] md:grid-cols-2">
-          <p>{bio}</p>
-          <p>
-            <span className="text-white">Content style:</span> {contentStyle}
-          </p>
-          <p>
-            <span className="text-white">Audience:</span> {audience}
-          </p>
-          <p>
-            <span className="text-white">Languages:</span> Amharic, English
-          </p>
-          <p className="md:col-span-2">
-            <span className="text-white">Brand fit notes:</span> Strong fit for {influencer.niche}{" "}
-            campaigns targeting Ethiopian urban audiences and mobile-first social platforms.
-          </p>
-        </div>
+        <p className="mt-2 text-sm leading-relaxed text-[#CBD5E1]">
+          {creator.bio ||
+            "Creative influencer focused on authentic local brand collaborations with engaging digital storytelling."}
+        </p>
       </section>
 
       <section>
-        <h2 className="mb-3 text-lg font-semibold text-white">Performance Metrics</h2>
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {[
-            { label: "Followers", value: influencer.followers.toLocaleString() },
-            { label: "Engagement Rate", value: `${influencer.engagementRate}%` },
-            { label: "Avg Reach", value: avgReach.toLocaleString() },
-            { label: "Avg Views", value: avgViews.toLocaleString() },
-            { label: "Completed Campaigns", value: completedCampaigns.toString() },
-            { label: "Match Score", value: `${score}%` },
-          ].map((item) => (
-            <article
-              key={item.label}
-              className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-4"
-            >
-              <p className="text-xs text-[#CBD5E1]">{item.label}</p>
-              <p className="mt-2 text-2xl font-bold text-[color:var(--adfluence-orange)]">
-                {item.value}
-              </p>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section>
-        <h2 className="mb-3 text-lg font-semibold text-white">Content Samples</h2>
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {contentSamples.map((sample, index) => (
-            <article
-              key={sample.id}
-              className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-3"
-            >
-              <div className="relative h-36 overflow-hidden rounded-xl">
-                <Image
-                  src={influencer.imageUrl || "/images/influencers/influencer-1.jpg"}
-                  alt={`${influencer.name} sample ${index + 1}`}
-                  fill
-                  className="object-cover"
-                />
-                <span className="absolute left-2 top-2 rounded-full bg-[color:var(--adfluence-surface)]/90 px-2 py-0.5 text-xs text-[#CBD5E1]">
-                  {sample.platform}
-                </span>
-              </div>
-              <p className="mt-3 text-sm font-medium text-white">{sample.type}</p>
-              <p className="mt-1 text-xs text-[#CBD5E1]">{sample.views}</p>
-              <p className="text-xs text-[#CBD5E1]">{sample.engagement}</p>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section>
-        <h2 className="mb-3 text-lg font-semibold text-white">Pricing &amp; Packages</h2>
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {packageCards.map((pkg) => (
-            <article
-              key={pkg.title}
-              className={`rounded-2xl border p-5 ${
-                pkg.recommended
-                  ? "border-[color:var(--adfluence-orange)]/40 bg-[color:var(--adfluence-orange)]/10"
-                  : "border-white/10 bg-[rgba(255,255,255,0.08)]"
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-white">{pkg.title}</h3>
-                {pkg.recommended ? (
-                  <span className="rounded-full bg-white/15 px-2 py-0.5 text-xs text-white">
-                    Recommended
+        <h2 className="mb-3 text-lg font-semibold text-white">Portfolio &amp; Media Showcase</h2>
+        {creator.portfolio_items && creator.portfolio_items.length > 0 ? (
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {creator.portfolio_items.map((item) => (
+              <article
+                key={item.id}
+                className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-3"
+              >
+                <div className="relative h-48 overflow-hidden rounded-xl bg-black/40">
+                  <Image
+                    src={item.media_url || item.thumbnail_url || "/images/adfluence-hero.jpg"}
+                    alt={item.title}
+                    fill
+                    className="object-cover"
+                  />
+                  <span className="absolute left-2 top-2 rounded-full bg-[color:var(--adfluence-surface)]/90 px-2 py-0.5 text-xs capitalize text-[#CBD5E1]">
+                    {item.media_type}
                   </span>
+                </div>
+                <p className="mt-3 text-sm font-medium text-white truncate">{item.title}</p>
+                {item.caption ? (
+                  <p className="mt-1 text-xs text-[#CBD5E1] line-clamp-2">{item.caption}</p>
                 ) : null}
-              </div>
-              <ul className="mt-3 space-y-1 text-sm text-[#CBD5E1]">
-                {pkg.items.map((item) => (
-                  <li key={item}>• {item}</li>
-                ))}
-              </ul>
-              <p className="mt-4 text-lg font-semibold text-white">{pkg.price}</p>
-            </article>
-          ))}
-        </div>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-xl border border-white/10 bg-white/5 p-6 text-center text-sm text-[#CBD5E1]">
+            No portfolio uploads provided yet by this creator.
+          </div>
+        )}
       </section>
 
       <section className="grid gap-6 xl:grid-cols-2">
@@ -383,20 +267,40 @@ export function InfluencerProfile({ influencerId }: InfluencerProfileProps) {
         </div>
 
         <div className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-5">
-          <h2 className="text-lg font-semibold text-white">Reviews / Past Collaborations</h2>
+          <h2 className="text-lg font-semibold text-white">Platform Channels &amp; Links</h2>
           <div className="mt-4 space-y-3 text-sm">
-            <article className="rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)] p-3">
-              <p className="font-medium text-white">Betu Cosmetics</p>
-              <p className="mt-1 text-[#CBD5E1]">Rating: 4.9/5 • Campaign delivered on time.</p>
-            </article>
-            <article className="rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)] p-3">
-              <p className="font-medium text-white">Habesha Coffee Roasters</p>
-              <p className="mt-1 text-[#CBD5E1]">Rating: 4.8/5 • Strong engagement and reach uplift.</p>
-            </article>
-            <article className="rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)] p-3">
-              <p className="font-medium text-white">Ride Ethiopia</p>
-              <p className="mt-1 text-[#CBD5E1]">Rating: 4.7/5 • High CTR on creator-led campaign assets.</p>
-            </article>
+            {creator.social_links?.tiktok ? (
+              <div className="flex items-center justify-between rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)] p-3">
+                <span className="text-white font-medium">TikTok</span>
+                <span className="text-xs text-[color:var(--adfluence-orange)]">
+                  {creator.social_links.tiktok}
+                </span>
+              </div>
+            ) : null}
+            {creator.social_links?.instagram ? (
+              <div className="flex items-center justify-between rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)] p-3">
+                <span className="text-white font-medium">Instagram</span>
+                <span className="text-xs text-[color:var(--adfluence-orange)]">
+                  {creator.social_links.instagram}
+                </span>
+              </div>
+            ) : null}
+            {creator.social_links?.youtube ? (
+              <div className="flex items-center justify-between rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)] p-3">
+                <span className="text-white font-medium">YouTube</span>
+                <span className="text-xs text-[color:var(--adfluence-orange)]">
+                  {creator.social_links.youtube}
+                </span>
+              </div>
+            ) : null}
+            {creator.social_links?.telegram ? (
+              <div className="flex items-center justify-between rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)] p-3">
+                <span className="text-white font-medium">Telegram Channel</span>
+                <span className="text-xs text-[color:var(--adfluence-orange)]">
+                  {creator.social_links.telegram}
+                </span>
+              </div>
+            ) : null}
           </div>
         </div>
       </section>

@@ -8,9 +8,10 @@ import { Button } from "@/components/ui/button";
 import {
   influencerApi,
   type InfluencerDashboardSummaryResponse,
+  type ContractDetail,
 } from "@/lib/api/influencer";
-import { initialCreatorConversations } from "@/data/influencer-chat-mock";
-import { initialInfluencerContracts } from "@/data/influencer-contracts-mock";
+import { chatApi, type ChatConversationItem } from "@/lib/api/chat";
+import { UserAvatar } from "@/components/common/user-avatar";
 
 function KpiCard({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
@@ -26,13 +27,26 @@ function KpiCard({ label, value, hint }: { label: string; value: string; hint?: 
 
 export function InfluencerDashboard() {
   const [summary, setSummary] = useState<InfluencerDashboardSummaryResponse | null>(null);
+  const [conversations, setConversations] = useState<ChatConversationItem[]>([]);
+  const [contracts, setContracts] = useState<ContractDetail[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const loadDashboard = async () => {
     try {
-      const res = await influencerApi.getDashboardSummary();
-      if (res.data) {
-        setSummary(res.data);
+      const [sumRes, chatRes, contRes] = await Promise.allSettled([
+        influencerApi.getDashboardSummary(),
+        chatApi.listConversations(),
+        influencerApi.listContracts(),
+      ]);
+
+      if (sumRes.status === "fulfilled" && sumRes.value.data) {
+        setSummary(sumRes.value.data);
+      }
+      if (chatRes.status === "fulfilled" && chatRes.value.data?.items) {
+        setConversations(chatRes.value.data.items);
+      }
+      if (contRes.status === "fulfilled" && contRes.value.data?.items) {
+        setContracts(contRes.value.data.items);
       }
     } catch {
       // Fallback gracefully
@@ -50,6 +64,8 @@ export function InfluencerDashboard() {
   const earnings = summary?.earnings_summary;
   const pendingInvites = summary?.pending_invites || [];
   const greetingName = summary?.greeting?.creator_name || "Creator";
+
+  const activeContracts = contracts.filter((c) => c.status.toLowerCase() === "active");
 
   const setInviteStatus = async (id: string, status: "accepted" | "rejected") => {
     try {
@@ -89,7 +105,7 @@ export function InfluencerDashboard() {
         />
         <KpiCard
           label="Active Collaborations"
-          value={String(kpis?.active_collaborations ?? 0)}
+          value={String(kpis?.active_collaborations ?? activeContracts.length)}
         />
         <KpiCard
           label="Completed Earnings"
@@ -152,7 +168,9 @@ export function InfluencerDashboard() {
         </div>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {pendingInvites.length === 0 ? (
-            <p className="text-sm text-[#CBD5E1]">No pending invites right now.</p>
+            <div className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-6 text-center text-sm text-[#CBD5E1] col-span-full">
+              No pending invites right now.
+            </div>
           ) : (
             pendingInvites.slice(0, 3).map((inv) => (
               <article
@@ -238,27 +256,33 @@ export function InfluencerDashboard() {
               </Link>
             </Button>
           </div>
-          <ul className="mt-3 space-y-3">
-            {initialCreatorConversations.slice(0, 3).map((c) => (
-              <li
-                key={c.id}
-                className="flex items-start gap-3 rounded-xl border border-white/10 bg-[#06111F] p-3"
-              >
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[color:var(--adfluence-purple)] text-sm font-bold text-white">
-                  {c.brandInitial}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-white">{c.businessName}</p>
-                  <p className="truncate text-xs text-[#CBD5E1]">{c.lastMessage}</p>
-                </div>
-                {c.unreadCount > 0 ? (
-                  <span className="shrink-0 rounded-full bg-[color:var(--adfluence-orange)] px-2 py-0.5 text-[10px] font-semibold">
-                    {c.unreadCount}
-                  </span>
-                ) : null}
-              </li>
-            ))}
-          </ul>
+          {conversations.length === 0 ? (
+            <p className="mt-4 text-xs text-[#CBD5E1]">No active messages yet.</p>
+          ) : (
+            <ul className="mt-3 space-y-3">
+              {conversations.slice(0, 3).map((c) => (
+                <li
+                  key={c.id}
+                  className="flex items-start gap-3 rounded-xl border border-white/10 bg-[#06111F] p-3"
+                >
+                  <UserAvatar
+                    src={c.other_user_avatar}
+                    name={c.other_user_name}
+                    size="sm"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-white">{c.other_user_name}</p>
+                    <p className="truncate text-xs text-[#CBD5E1]">{c.last_message_preview || "Direct message"}</p>
+                  </div>
+                  {c.unread_count > 0 ? (
+                    <span className="shrink-0 rounded-full bg-[color:var(--adfluence-orange)] px-2 py-0.5 text-[10px] font-semibold">
+                      {c.unread_count}
+                    </span>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
 
         <div className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-5">
@@ -266,19 +290,21 @@ export function InfluencerDashboard() {
             <h2 className="text-lg font-semibold text-white">Active contracts</h2>
             <MessageSquare className="size-4 text-[color:var(--adfluence-purple-accent)]" aria-hidden />
           </div>
-          <ul className="mt-3 space-y-2">
-            {initialInfluencerContracts
-              .filter((c) => c.status === "active")
-              .map((c) => (
+          {activeContracts.length === 0 ? (
+            <p className="mt-4 text-xs text-[#CBD5E1]">No active contracts currently.</p>
+          ) : (
+            <ul className="mt-3 space-y-2">
+              {activeContracts.map((c) => (
                 <li
                   key={c.id}
                   className="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-[#06111F] px-3 py-2 text-sm"
                 >
-                  <span className="truncate text-[#CBD5E1]">{c.brand}</span>
+                  <span className="truncate text-[#CBD5E1]">{c.business?.business_name || c.title}</span>
                   <span className="shrink-0 text-xs text-emerald-300">Active</span>
                 </li>
               ))}
-          </ul>
+            </ul>
+          )}
           <Button asChild className="mt-4 h-10 w-full rounded-xl bg-white/10 text-white hover:bg-white/15">
             <Link href="/influencer/contracts">View Contracts</Link>
           </Button>

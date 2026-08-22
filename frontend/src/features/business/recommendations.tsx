@@ -2,46 +2,21 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { Sparkles, Users, RefreshCw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { influencers } from "@/data/influencers";
+import {
+  businessApi,
+  type CampaignListItem,
+  type RecommendationItem,
+  type InviteResponse,
+} from "@/lib/api/business";
+import { getInitials } from "@/lib/utils";
 
-type CampaignDraft = {
-  title?: string;
-  goal?: string;
-  niche?: string;
-  platforms?: string[];
-  budgetRange?: string;
-  creatorSize?: string;
-  startDate?: string;
-  endDate?: string;
-};
-
-type RecommendedInfluencer = (typeof influencers)[number] & {
-  calculatedScore: number;
-  bio: string;
-  estimatedPriceMin: number;
-  estimatedPriceMax: number;
-  creatorSize: "Micro creator" | "Mid-tier creator" | "Large creator";
-};
-
-const invitedStorageKey = "adfluence_invited_influencers";
-const draftStorageKey = "adfluence_campaign_draft";
-
-const nicheOptions = [
-  "All niches",
-  "Beauty",
-  "Fashion",
-  "Food",
-  "Tech",
-  "Fitness",
-  "Lifestyle",
-  "Travel",
-] as const;
-
-const platformOptions = ["All platforms", "TikTok", "Instagram", "YouTube"] as const;
+const platformOptions = ["All platforms", "TikTok", "Instagram", "YouTube", "Telegram"] as const;
 const scoreOptions = ["Any score", "80+", "85+", "90+", "95+"] as const;
 const sortOptions = [
   "Best match",
@@ -50,134 +25,120 @@ const sortOptions = [
   "Price high to low",
 ] as const;
 
-const influencerBios: Record<string, string> = {
-  "inf-1": "Beauty creator with strong short-form storytelling and product demo performance.",
-  "inf-2": "Fashion and lifestyle creator known for high-retention audience engagement.",
-  "inf-3": "Style and trend creator with premium content quality and strong conversion potential.",
-  "inf-4": "Lifestyle creator with authentic local audience trust and consistent campaign delivery.",
-  "inf-5": "Tech creator focused on practical reviews and app-focused creator campaigns.",
-};
-
-function getCreatorSizeFromFollowers(followers: number) {
-  if (followers < 70000) return "Micro creator";
-  if (followers < 110000) return "Mid-tier creator";
-  return "Large creator";
-}
-
-function getBudgetBand(text?: string) {
-  if (!text) return { min: 10000, max: 30000 };
-  if (text.includes("Under 10,000")) return { min: 0, max: 10000 };
-  if (text.includes("10,000")) return { min: 10000, max: 25000 };
-  if (text.includes("25,000")) return { min: 25000, max: 50000 };
-  return { min: 50000, max: 150000 };
-}
-
-function parsePriceRange(priceRangeEtb?: string) {
-  if (!priceRangeEtb) return { min: 15000, max: 30000 };
-  const cleaned = priceRangeEtb.replaceAll("ETB", "").replaceAll(",", "");
-  const [minRaw, maxRaw] = cleaned.split("-").map((v) => Number(v.trim().replace("K", "000")));
-  return {
-    min: Number.isFinite(minRaw) ? minRaw : 15000,
-    max: Number.isFinite(maxRaw) ? maxRaw : 30000,
-  };
-}
-
-function formatTimeline(startDate?: string, endDate?: string) {
-  if (!startDate || !endDate) return "Not set";
-  return `${new Date(startDate).toLocaleDateString()} - ${new Date(endDate).toLocaleDateString()}`;
-}
-
-function scoreInfluencer(
-  influencer: (typeof influencers)[number],
-  draft: CampaignDraft | null,
-): RecommendedInfluencer {
-  const price = parsePriceRange(influencer.priceRangeEtb);
-  const creatorSize = getCreatorSizeFromFollowers(influencer.followers);
-
-  if (!draft) {
-    return {
-      ...influencer,
-      calculatedScore: influencer.matchScore ?? 84,
-      bio: influencerBios[influencer.id] ?? "Adfluence creator profile with strong campaign fit.",
-      estimatedPriceMin: price.min,
-      estimatedPriceMax: price.max,
-      creatorSize,
-    };
-  }
-
-  let score = 0;
-  const draftNiche = draft.niche?.toLowerCase();
-  const nicheMatch = draftNiche && influencer.niche.toLowerCase() === draftNiche;
-  if (nicheMatch) score += 40;
-
-  const platformMatch =
-    draft.platforms?.some((platform) => influencer.platforms.includes(platform as "TikTok")) ??
-    false;
-  if (platformMatch) score += 25;
-
-  const budgetBand = getBudgetBand(draft.budgetRange);
-  const withinBudget = price.min <= budgetBand.max && price.max >= budgetBand.min;
-  if (withinBudget) score += 20;
-
-  const creatorSizeFit = draft.creatorSize
-    ? creatorSize.toLowerCase() === draft.creatorSize.toLowerCase()
-    : false;
-  if (creatorSizeFit) score += 10;
-
-  if (influencer.status === "approved") score += 5;
-
-  if (score < 78) {
-    const fallback = influencer.matchScore ?? 82;
-    score = Math.min(96, Math.max(78, fallback));
-  }
-
-  return {
-    ...influencer,
-    calculatedScore: score,
-    bio: influencerBios[influencer.id] ?? "Adfluence creator profile with strong campaign fit.",
-    estimatedPriceMin: price.min,
-    estimatedPriceMax: price.max,
-    creatorSize,
-  };
-}
-
 export function Recommendations() {
-  const [draft, setDraft] = useState<CampaignDraft | null>(null);
-  const [invitedIds, setInvitedIds] = useState<string[]>([]);
+  const searchParams = useSearchParams();
+  const initialCampaignId = searchParams.get("campaign_id");
+
+  const [campaigns, setCampaigns] = useState<CampaignListItem[]>([]);
+  const [categories, setCategories] = useState<Array<{ id: string; name: string; slug: string }>>([]);
+  const [selectedCampaignId, setSelectedCampaignId] = useState<string>(initialCampaignId || "");
+  const [recommendations, setRecommendations] = useState<RecommendationItem[]>([]);
+  const [invites, setInvites] = useState<InviteResponse[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [invitingId, setInvitingId] = useState<string | null>(null);
   const [inviteMessage, setInviteMessage] = useState("");
+
   const [search, setSearch] = useState("");
   const [nicheFilter, setNicheFilter] = useState("All niches");
   const [platformFilter, setPlatformFilter] = useState("All platforms");
   const [scoreFilter, setScoreFilter] = useState("Any score");
   const [sortBy, setSortBy] = useState("Best match");
 
+  // 1. Fetch campaigns and active categories on mount
   useEffect(() => {
-    const rawDraft = localStorage.getItem(draftStorageKey);
-    if (rawDraft) {
+    async function loadInitialData() {
       try {
-        const parsed = JSON.parse(rawDraft) as CampaignDraft;
-        setDraft(parsed);
-      } catch {
-        setDraft(null);
-      }
-    }
+        const [campRes, catRes] = await Promise.allSettled([
+          businessApi.listCampaigns({ page: 1, limit: 50 }),
+          businessApi.listCategories(),
+        ]);
 
-    const rawInvited = localStorage.getItem(invitedStorageKey);
-    if (rawInvited) {
-      try {
-        setInvitedIds(JSON.parse(rawInvited) as string[]);
+        if (catRes.status === "fulfilled" && catRes.value.data?.items) {
+          setCategories(catRes.value.data.items);
+        }
+
+        if (campRes.status === "fulfilled" && campRes.value.data?.items) {
+          const items = campRes.value.data.items;
+          setCampaigns(items);
+          if (!selectedCampaignId && items.length > 0) {
+            setSelectedCampaignId(items[0].id);
+          }
+        }
       } catch {
-        setInvitedIds([]);
+        // Fallback
+      } finally {
+        setIsLoading(false);
       }
     }
+    loadInitialData();
   }, []);
 
-  const rankedInfluencers = useMemo(
-    () =>
-      influencers
-        .map((influencer) => scoreInfluencer(influencer, draft))
-        .sort((a, b) => b.calculatedScore - a.calculatedScore),
-    [draft],
+  // 2. Fetch recommendations & invites for selected campaign
+  useEffect(() => {
+    if (!selectedCampaignId) return;
+
+    async function loadData() {
+      setIsLoading(true);
+      try {
+        const [recRes, invRes] = await Promise.allSettled([
+          businessApi.listRecommendations(selectedCampaignId),
+          businessApi.listInvites(selectedCampaignId),
+        ]);
+
+        if (recRes.status === "fulfilled" && recRes.value.data?.items) {
+          let items = recRes.value.data.items;
+          // If no recommendations exist yet, try to auto-generate
+          if (items.length === 0) {
+            await businessApi.generateRecommendations(selectedCampaignId);
+            const genRec = await businessApi.listRecommendations(selectedCampaignId);
+            items = genRec.data?.items || [];
+          }
+          setRecommendations(items);
+        } else {
+          setRecommendations([]);
+        }
+
+        if (invRes.status === "fulfilled" && invRes.value.data?.items) {
+          setInvites(invRes.value.data.items);
+        } else {
+          setInvites([]);
+        }
+      } catch {
+        setRecommendations([]);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    loadData();
+  }, [selectedCampaignId]);
+
+  const handleGenerateRecommendations = async () => {
+    if (!selectedCampaignId) return;
+    setIsGenerating(true);
+    try {
+      await businessApi.generateRecommendations(selectedCampaignId);
+      const recRes = await businessApi.listRecommendations(selectedCampaignId);
+      setRecommendations(recRes.data?.items || []);
+      setInviteMessage("AI recommendations refreshed successfully!");
+      setTimeout(() => setInviteMessage(""), 3000);
+    } catch {
+      setInviteMessage("Could not generate recommendations for this campaign.");
+      setTimeout(() => setInviteMessage(""), 3000);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const selectedCampaign = useMemo(
+    () => campaigns.find((c) => c.id === selectedCampaignId) ?? campaigns[0],
+    [campaigns, selectedCampaignId],
+  );
+
+  const invitedInfluencerIds = useMemo(
+    () => new Set(invites.map((inv) => inv.influencer_user_id)),
+    [invites],
   );
 
   const filteredInfluencers = useMemo(() => {
@@ -192,43 +153,58 @@ export function Recommendations() {
               ? 95
               : 0;
 
-    const searched = rankedInfluencers.filter((influencer) => {
-      const bySearch = influencer.name.toLowerCase().includes(search.toLowerCase().trim());
+    const searched = recommendations.filter((influencer) => {
+      const bySearch = (influencer.creator_name || "")
+        .toLowerCase()
+        .includes(search.toLowerCase().trim());
       const byNiche =
         nicheFilter === "All niches" ||
-        influencer.niche.toLowerCase() === nicheFilter.toLowerCase();
+        (influencer.primary_niche &&
+          influencer.primary_niche.toLowerCase() === nicheFilter.toLowerCase());
       const byPlatform =
-        platformFilter === "All platforms" || influencer.platforms.includes(platformFilter as never);
-      const byScore = influencer.calculatedScore >= minScore;
+        platformFilter === "All platforms" ||
+        (influencer.platforms &&
+          influencer.platforms.some(
+            (p) => p.toLowerCase() === platformFilter.toLowerCase(),
+          ));
+      const byScore = influencer.match_score >= minScore;
       return bySearch && byNiche && byPlatform && byScore;
     });
 
     const sorted = [...searched];
     if (sortBy === "Followers") {
-      sorted.sort((a, b) => b.followers - a.followers);
+      sorted.sort((a, b) => (b.total_followers || 0) - (a.total_followers || 0));
     } else if (sortBy === "Price low to high") {
-      sorted.sort((a, b) => a.estimatedPriceMin - b.estimatedPriceMin);
+      sorted.sort((a, b) => (a.min_price_etb || 0) - (b.min_price_etb || 0));
     } else if (sortBy === "Price high to low") {
-      sorted.sort((a, b) => b.estimatedPriceMax - a.estimatedPriceMax);
+      sorted.sort((a, b) => (b.max_price_etb || 0) - (a.max_price_etb || 0));
     } else {
-      sorted.sort((a, b) => b.calculatedScore - a.calculatedScore);
+      sorted.sort((a, b) => b.match_score - a.match_score);
     }
 
     return sorted;
-  }, [rankedInfluencers, search, nicheFilter, platformFilter, scoreFilter, sortBy]);
+  }, [recommendations, search, nicheFilter, platformFilter, scoreFilter, sortBy]);
 
-  const invitedCreators = useMemo(
-    () => rankedInfluencers.filter((influencer) => invitedIds.includes(influencer.id)),
-    [rankedInfluencers, invitedIds],
-  );
-
-  const onInvite = (id: string, name: string) => {
-    if (invitedIds.includes(id)) return;
-    const next = [...invitedIds, id];
-    setInvitedIds(next);
-    localStorage.setItem(invitedStorageKey, JSON.stringify(next));
-    setInviteMessage(`Invite sent to ${name}`);
-    setTimeout(() => setInviteMessage(""), 2500);
+  const onInvite = async (influencerId: string, name: string) => {
+    if (!selectedCampaignId || invitedInfluencerIds.has(influencerId)) return;
+    setInvitingId(influencerId);
+    try {
+      const res = await businessApi.createInvite(selectedCampaignId, {
+        influencer_user_id: influencerId,
+        message: `Hello ${name}, we'd love to collaborate with you on our campaign "${selectedCampaign?.title || "our campaign"}".`,
+      });
+      const newInvite = res.data;
+      if (newInvite) {
+        setInvites((prev) => [newInvite, ...prev]);
+        setInviteMessage(`Invitation sent to ${name}!`);
+        setTimeout(() => setInviteMessage(""), 3000);
+      }
+    } catch {
+      setInviteMessage(`Failed to send invitation to ${name}.`);
+      setTimeout(() => setInviteMessage(""), 3000);
+    } finally {
+      setInvitingId(null);
+    }
   };
 
   return (
@@ -240,54 +216,93 @@ export function Recommendations() {
             Creators ranked for your campaign based on niche, platform, budget, and audience fit.
           </p>
         </div>
-        <Button
-          asChild
-          className="h-11 rounded-xl bg-[color:var(--adfluence-orange)] px-5 text-white hover:bg-[color:var(--adfluence-orange-hover)]"
-        >
-          <Link href="/business/campaigns/create">Create New Campaign</Link>
-        </Button>
-      </section>
-
-      <section className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-4 md:p-5">
-        <h2 className="text-lg font-semibold text-white">Campaign Context</h2>
-        <div className="mt-4 grid gap-3 text-sm text-[#CBD5E1] md:grid-cols-2 xl:grid-cols-4">
-          <p>
-            Campaign title: <span className="text-white">{draft?.title || "Not set"}</span>
-          </p>
-          <p>
-            Goal: <span className="text-white">{draft?.goal || "Not set"}</span>
-          </p>
-          <p>
-            Niche: <span className="text-white">{draft?.niche || "Not set"}</span>
-          </p>
-          <p>
-            Platforms:{" "}
-            <span className="text-white">
-              {draft?.platforms?.length ? draft.platforms.join(", ") : "Not set"}
-            </span>
-          </p>
-          <p>
-            Budget: <span className="text-white">{draft?.budgetRange || "Not set"}</span>
-          </p>
-          <p>
-            Creator size: <span className="text-white">{draft?.creatorSize || "Not set"}</span>
-          </p>
-          <p className="md:col-span-2 xl:col-span-2">
-            Timeline:{" "}
-            <span className="text-white">{formatTimeline(draft?.startDate, draft?.endDate)}</span>
-          </p>
+        <div className="flex flex-wrap items-center gap-2">
+          {selectedCampaignId ? (
+            <Button
+              onClick={handleGenerateRecommendations}
+              disabled={isGenerating}
+              variant="outline"
+              className="h-11 rounded-xl border-white/15 bg-transparent px-4 text-white hover:bg-white/10"
+            >
+              <RefreshCw className={`mr-2 size-4 ${isGenerating ? "animate-spin" : ""}`} />
+              Refresh AI Matches
+            </Button>
+          ) : null}
+          <Button
+            asChild
+            className="h-11 rounded-xl bg-[color:var(--adfluence-orange)] px-5 text-white hover:bg-[color:var(--adfluence-orange-hover)]"
+          >
+            <Link href="/business/campaigns/create">Create New Campaign</Link>
+          </Button>
         </div>
-        <p className="mt-3 text-xs text-[#CBD5E1]">
-          Recommendations are generated from your campaign brief.
-        </p>
       </section>
 
+      {/* Campaign Selector / Context */}
+      <section className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-4 md:p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold text-white">Select Campaign Context</h2>
+          {campaigns.length > 0 ? (
+            <select
+              value={selectedCampaignId}
+              onChange={(e) => setSelectedCampaignId(e.target.value)}
+              className="h-10 rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)] px-3 text-sm font-medium text-white outline-none focus:border-[color:var(--adfluence-orange)] focus:ring-2 focus:ring-[color:var(--adfluence-orange)]/25"
+            >
+              {campaigns.map((c) => (
+                <option key={c.id} value={c.id} className="bg-[color:var(--adfluence-surface)]">
+                  {c.title} ({c.status})
+                </option>
+              ))}
+            </select>
+          ) : null}
+        </div>
+
+        {selectedCampaign ? (
+          <div className="mt-4 grid gap-3 text-sm text-[#CBD5E1] md:grid-cols-2 xl:grid-cols-4">
+            <p>
+              Campaign title: <span className="text-white font-medium">{selectedCampaign.title}</span>
+            </p>
+            <p>
+              Status: <span className="text-white capitalize">{selectedCampaign.status}</span>
+            </p>
+            <p>
+              Primary Platform:{" "}
+              <span className="text-white">{selectedCampaign.primary_platform || "All"}</span>
+            </p>
+            <p>
+              Budget:{" "}
+              <span className="text-white">{selectedCampaign.budget_summary || "Standard"}</span>
+            </p>
+            <p>
+              Creators Needed:{" "}
+              <span className="text-white">{selectedCampaign.creators_needed}</span>
+            </p>
+            <p>
+              Invites Sent:{" "}
+              <span className="text-white">{selectedCampaign.invites_sent}</span>
+            </p>
+            <p className="md:col-span-2 xl:col-span-2">
+              Timeline:{" "}
+              <span className="text-white">
+                {selectedCampaign.start_date
+                  ? `${new Date(selectedCampaign.start_date).toLocaleDateString()} - ${new Date(selectedCampaign.end_date || "").toLocaleDateString()}`
+                  : "Flexible"}
+              </span>
+            </p>
+          </div>
+        ) : (
+          <div className="mt-3 text-sm text-[#CBD5E1]">
+            <p>No campaigns created yet. Create a campaign first to get tailored creator recommendations.</p>
+          </div>
+        )}
+      </section>
+
+      {/* Filter Toolbar */}
       <section className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-4 md:p-5">
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search influencer"
+            placeholder="Search creator name"
             className="h-11 rounded-xl border-white/10 bg-[color:var(--adfluence-surface)] text-white placeholder:text-[#94A3B8] focus-visible:border-[color:var(--adfluence-orange)] focus-visible:ring-[color:var(--adfluence-orange)]/25"
           />
 
@@ -296,9 +311,12 @@ export function Recommendations() {
             onChange={(e) => setNicheFilter(e.target.value)}
             className="h-11 w-full rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)] px-3 text-sm text-white outline-none focus:border-[color:var(--adfluence-orange)] focus:ring-2 focus:ring-[color:var(--adfluence-orange)]/25"
           >
-            {nicheOptions.map((option) => (
-              <option key={option} value={option} className="bg-[color:var(--adfluence-surface)]">
-                {option}
+            <option value="All niches" className="bg-[color:var(--adfluence-surface)]">
+              All niches
+            </option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.name} className="bg-[color:var(--adfluence-surface)]">
+                {c.name}
               </option>
             ))}
           </select>
@@ -348,72 +366,129 @@ export function Recommendations() {
       ) : null}
 
       <section className="flex flex-col gap-6 2xl:grid 2xl:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="order-2 grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:order-1">
-          {filteredInfluencers.map((influencer) => (
-            <article
-              key={influencer.id}
-              className="group rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-4 shadow-[0_8px_24px_rgba(2,6,23,0.24)] transition-transform duration-200 hover:-translate-y-1"
-            >
-              <div className="relative h-44 overflow-hidden rounded-xl">
-                <Image
-                  src={influencer.imageUrl || "/images/influencers/influencer-1.jpg"}
-                  alt={influencer.name}
-                  fill
-                  className="object-cover"
-                />
-                <span className="absolute right-2 top-2 rounded-full bg-[#0B1A2B]/90 px-2 py-1 text-xs font-medium text-emerald-300">
-                  Verified
-                </span>
-              </div>
+        <div className="order-2 2xl:order-1">
+          {filteredInfluencers.length > 0 ? (
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              {filteredInfluencers.map((influencer) => {
+                const isInvited = invitedInfluencerIds.has(influencer.influencer_user_id);
+                const isInvitingThis = invitingId === influencer.influencer_user_id;
 
-              <div className="mt-4 space-y-2">
-                <h3 className="text-lg font-semibold text-white">{influencer.name}</h3>
-                <p className="text-sm capitalize text-[#CBD5E1]">
-                  {influencer.niche} • {influencer.platforms.join(", ")}
-                </p>
-                <p className="text-sm text-[#CBD5E1]">
-                  {influencer.followers.toLocaleString()} followers • {influencer.engagementRate}%
-                  engagement
-                </p>
-                <p className="text-sm text-[#CBD5E1]">
-                  Price: ETB {influencer.estimatedPriceMin.toLocaleString()} -{" "}
-                  {influencer.estimatedPriceMax.toLocaleString()}
-                </p>
-                <p className="text-sm text-[#CBD5E1]">{influencer.bio}</p>
-              </div>
+                return (
+                  <article
+                    key={influencer.influencer_user_id}
+                    className="group rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-4 shadow-[0_8px_24px_rgba(2,6,23,0.24)] transition-transform duration-200 hover:-translate-y-1"
+                  >
+                    <div className="relative flex h-44 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-[#0B1A2B] via-white/5 to-[color:var(--adfluence-orange)]/20 border border-white/10">
+                      {influencer.profile_image_url ? (
+                        <Image
+                          src={influencer.profile_image_url}
+                          alt={influencer.creator_name}
+                          fill
+                          className="object-cover"
+                        />
+                      ) : (
+                        <div className="flex flex-col items-center justify-center gap-1">
+                          <span className="text-3xl font-extrabold text-white uppercase tracking-wider">
+                            {getInitials(influencer.creator_name, "CR")}
+                          </span>
+                          <span className="text-xs text-[#94A3B8]">
+                            {influencer.primary_niche || "Creator"}
+                          </span>
+                        </div>
+                      )}
+                      {influencer.is_verified ? (
+                        <span className="absolute right-2 top-2 rounded-full bg-[#0B1A2B]/90 px-2 py-1 text-xs font-medium text-emerald-300">
+                          Verified
+                        </span>
+                      ) : null}
+                    </div>
 
-              <div className="mt-4">
-                <div className="mb-1 flex items-center justify-between text-xs">
-                  <span className="text-[#CBD5E1]">Match score</span>
-                  <span className="font-semibold text-white">{influencer.calculatedScore}%</span>
-                </div>
-                <div className="h-2 rounded-full bg-white/10">
-                  <div
-                    className="h-2 rounded-full bg-[color:var(--adfluence-orange)]"
-                    style={{ width: `${influencer.calculatedScore}%` }}
-                  />
-                </div>
-              </div>
+                    <div className="mt-4 space-y-2">
+                      <h3 className="text-lg font-semibold text-white truncate">{influencer.creator_name}</h3>
+                      <p className="text-sm capitalize text-[#CBD5E1] truncate">
+                        {influencer.primary_niche || "Creator"} •{" "}
+                        {influencer.platforms?.length ? influencer.platforms.join(", ") : "Social"}
+                      </p>
+                      <p className="text-sm text-[#CBD5E1]">
+                        {influencer.total_followers.toLocaleString()} followers
+                        {influencer.engagement_rate
+                          ? ` • ${influencer.engagement_rate}% engagement`
+                          : ""}
+                      </p>
+                      <p className="text-sm text-[#CBD5E1]">
+                        Price: ETB {(influencer.min_price_etb || 10000).toLocaleString()} -{" "}
+                        {(influencer.max_price_etb || 30000).toLocaleString()}
+                      </p>
+                    </div>
 
-              <div className="mt-4 grid grid-cols-2 gap-2">
+                    <div className="mt-4">
+                      <div className="mb-1 flex items-center justify-between text-xs">
+                        <span className="text-[#CBD5E1]">Match score</span>
+                        <span className="font-semibold text-white">{influencer.match_score}%</span>
+                      </div>
+                      <div className="h-2 rounded-full bg-white/10">
+                        <div
+                          className="h-2 rounded-full bg-[color:var(--adfluence-orange)]"
+                          style={{ width: `${influencer.match_score}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="mt-4 grid grid-cols-2 gap-2">
+                      <Button
+                        asChild
+                        className="h-10 rounded-xl bg-white/10 text-white hover:bg-white/15"
+                      >
+                        <Link
+                          href={`/business/influencers/${influencer.influencer_user_id}${
+                            selectedCampaignId ? `?campaign_id=${selectedCampaignId}` : ""
+                          }`}
+                        >
+                          View Profile
+                        </Link>
+                      </Button>
+                      <Button
+                        onClick={() =>
+                          onInvite(influencer.influencer_user_id, influencer.creator_name)
+                        }
+                        disabled={isInvited || isInvitingThis || !selectedCampaignId}
+                        className="h-10 rounded-xl bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)] disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {isInvitingThis
+                          ? "Sending..."
+                          : isInvited
+                            ? "Invited"
+                            : "Invite"}
+                      </Button>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-12 text-center">
+              <Users className="mx-auto size-12 text-[#CBD5E1]/40" />
+              <p className="mt-3 text-lg font-medium text-white">No creator matches found</p>
+              <p className="mt-1 text-sm text-[#CBD5E1]">
+                {campaigns.length === 0
+                  ? "Create a campaign first to generate AI creator matches."
+                  : "Try adjusting your filters or click Refresh AI Matches to generate recommendations."}
+              </p>
+              {selectedCampaignId ? (
                 <Button
-                  asChild
-                  className="h-10 rounded-xl bg-white/10 text-white hover:bg-white/15"
+                  onClick={handleGenerateRecommendations}
+                  disabled={isGenerating}
+                  className="mt-4 h-11 rounded-xl bg-[color:var(--adfluence-orange)] px-5 text-white hover:bg-[color:var(--adfluence-orange-hover)]"
                 >
-                  <Link href={`/business/influencers/${influencer.id}`}>View Profile</Link>
+                  <Sparkles className="mr-2 size-4" />
+                  Generate Matches for This Campaign
                 </Button>
-                <Button
-                  onClick={() => onInvite(influencer.id, influencer.name)}
-                  disabled={invitedIds.includes(influencer.id)}
-                  className="h-10 rounded-xl bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)] disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {invitedIds.includes(influencer.id) ? "Invited" : "Invite"}
-                </Button>
-              </div>
-            </article>
-          ))}
+              ) : null}
+            </div>
+          )}
         </div>
 
+        {/* Right Sidebar: Matching details & Live Sent Invites */}
         <aside className="order-1 space-y-4 2xl:order-2">
           <div className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-5">
             <h3 className="text-lg font-semibold text-white">How matching works</h3>
@@ -429,16 +504,20 @@ export function Recommendations() {
           <div className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-5">
             <h3 className="text-lg font-semibold text-white">Selected / Invited Creators</h3>
             <div className="mt-3 space-y-3">
-              {invitedCreators.length === 0 ? (
+              {invites.length === 0 ? (
                 <p className="text-sm text-[#CBD5E1]">No creators invited yet.</p>
               ) : (
-                invitedCreators.map((creator) => (
+                invites.map((invite) => (
                   <div
-                    key={creator.id}
+                    key={invite.id}
                     className="rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)] p-3"
                   >
-                    <p className="text-sm font-medium text-white">{creator.name}</p>
-                    <p className="mt-1 text-xs text-emerald-300">Status: Invited</p>
+                    <p className="text-sm font-medium text-white">
+                      {invite.creator_name || "Creator"}
+                    </p>
+                    <p className="mt-1 text-xs text-emerald-300 capitalize">
+                      Status: {invite.status}
+                    </p>
                     <Button
                       asChild
                       className="mt-3 h-9 w-full rounded-xl bg-white/10 text-white hover:bg-white/15"

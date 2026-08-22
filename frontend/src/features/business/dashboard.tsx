@@ -18,8 +18,7 @@ import { BusinessKpiCard } from "@/components/dashboard/business-kpi-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { businessApi, type DashboardSummaryResponse } from "@/lib/api/business";
-import { influencers } from "@/data/influencers";
-import { messages } from "@/data/messages";
+import { chatApi, type ChatConversationItem } from "@/lib/api/chat";
 
 function campaignStatusClass(status: string) {
   const lower = status.toLowerCase();
@@ -31,14 +30,22 @@ function campaignStatusClass(status: string) {
 
 export function BusinessDashboard() {
   const [summary, setSummary] = useState<DashboardSummaryResponse | null>(null);
+  const [conversations, setConversations] = useState<ChatConversationItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     async function loadDashboard() {
       try {
-        const res = await businessApi.getDashboardSummary();
-        if (res.data) {
-          setSummary(res.data);
+        const [sumRes, chatRes] = await Promise.allSettled([
+          businessApi.getDashboardSummary(),
+          chatApi.listConversations(),
+        ]);
+
+        if (sumRes.status === "fulfilled" && sumRes.value.data) {
+          setSummary(sumRes.value.data);
+        }
+        if (chatRes.status === "fulfilled" && chatRes.value.data?.items) {
+          setConversations(chatRes.value.data.items);
         }
       } catch {
         // Fallback gracefully to empty state
@@ -246,38 +253,89 @@ export function BusinessDashboard() {
             <Link href="/business/recommendations">See all recommendations</Link>
           </Button>
         </div>
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-          {influencers.slice(0, 5).map((influencer) => (
-            <RecommendedInfluencerCard key={influencer.id} influencer={influencer} />
-          ))}
-        </div>
+        {summary?.top_recommendations && summary.top_recommendations.length > 0 ? (
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+            {summary.top_recommendations.slice(0, 5).map((rec) => (
+              <RecommendedInfluencerCard
+                key={rec.influencer_user_id}
+                influencer={{
+                  id: rec.influencer_user_id,
+                  name: rec.creator_name,
+                  imageUrl: rec.profile_image_url || "/images/adfluence-hero.jpg",
+                  matchScore: rec.match_score,
+                  niche: rec.campaign_title || "Top Match",
+                  platform: "Creator",
+                  followers: undefined,
+                  priceRangeEtb: "Matched Rate",
+                }}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-8 text-center">
+            <Users className="mx-auto size-10 text-[#CBD5E1]/40" />
+            <p className="mt-3 font-medium text-white">No creator recommendations yet</p>
+            <p className="mt-1 text-sm text-[#CBD5E1]">
+              Create an active marketing campaign to receive AI creator matching recommendations tailored to your niche and budget.
+            </p>
+            <Button
+              asChild
+              className="mt-4 h-10 rounded-xl bg-[color:var(--adfluence-orange)] px-5 text-white hover:bg-[color:var(--adfluence-orange-hover)]"
+            >
+              <Link href="/business/campaigns/create">Create Campaign</Link>
+            </Button>
+          </div>
+        )}
       </section>
 
       <section className="grid gap-4 lg:grid-cols-2">
         <Card className="adfluence-glass border-white/10 text-white">
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
             <CardTitle>Recent Messages</CardTitle>
+            <Button
+              asChild
+              variant="ghost"
+              size="sm"
+              className="h-8 text-xs text-[#CBD5E1] hover:text-white"
+            >
+              <Link href="/business/messages">View all</Link>
+            </Button>
           </CardHeader>
           <CardContent className="space-y-3">
-            {messages.slice(0, 3).map((message) => (
-              <div
-                key={message.id}
-                className="flex items-start justify-between gap-3 rounded-xl border border-white/10 bg-white/5 p-3"
-              >
-                <div>
-                  <p className="text-sm font-medium">{message.from}</p>
-                  <p className="text-xs text-[#CBD5E1]">{message.preview}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-xs text-[#CBD5E1]">
-                    {new Date(message.timestamp).toLocaleDateString()}
-                  </p>
-                  {message.unread ? (
-                    <span className="mt-1 inline-block h-2 w-2 rounded-full bg-[color:var(--adfluence-orange)]" />
-                  ) : null}
-                </div>
+            {conversations.length > 0 ? (
+              conversations.slice(0, 3).map((conv) => (
+                <Link
+                  key={conv.id}
+                  href="/business/messages"
+                  className="flex items-start justify-between gap-3 rounded-xl border border-white/10 bg-white/5 p-3 transition hover:bg-white/10"
+                >
+                  <div className="min-w-0">
+                    <p className="font-medium text-sm text-white truncate">{conv.other_user_name}</p>
+                    <p className="mt-0.5 text-xs text-[#CBD5E1] truncate">
+                      {conv.last_message_preview || "Started a conversation"}
+                    </p>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <p className="text-xs text-[#CBD5E1]">
+                      {conv.last_message_at
+                        ? new Date(conv.last_message_at).toLocaleDateString()
+                        : "New"}
+                    </p>
+                    {conv.unread_count > 0 ? (
+                      <span className="mt-1 inline-flex items-center justify-center rounded-full bg-[color:var(--adfluence-orange)] px-1.5 py-0.5 text-[10px] font-bold text-white">
+                        {conv.unread_count}
+                      </span>
+                    ) : null}
+                  </div>
+                </Link>
+              ))
+            ) : (
+              <div className="rounded-xl border border-white/10 bg-white/5 p-6 text-center text-xs text-[#CBD5E1]">
+                <MessageSquare className="mx-auto size-6 text-[#CBD5E1]/40" />
+                <p className="mt-2 font-medium text-white">No active messages</p>
+                <p className="mt-1">Connect with creators directly through campaigns and invites.</p>
               </div>
-            ))}
+            )}
           </CardContent>
         </Card>
 

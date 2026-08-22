@@ -53,6 +53,14 @@ func BusinessRoutes(router chi.Router, rest handler.BusinessHandler, authMiddlew
 				},
 			},
 			{
+				Method:  http.MethodGet,
+				Path:    "/categories",
+				Handler: rest.ListCategories,
+				Middlewares: []func(next http.Handler) http.Handler{
+					authMiddleware.AuthenticateToken,
+				},
+			},
+			{
 				Method:  http.MethodPost,
 				Path:    "/campaigns",
 				Handler: rest.CreateCampaign,

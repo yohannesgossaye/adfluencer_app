@@ -13,6 +13,7 @@ import {
 } from "@/lib/api/chat";
 import { useAuth } from "@/components/providers/auth-provider";
 import { cn } from "@/lib/utils";
+import { UserAvatar } from "@/components/common/user-avatar";
 
 function formatTime(iso: string) {
   try {
@@ -255,19 +256,11 @@ export function InfluencerMessages() {
                         : "hover:border-white/10 hover:bg-white/5",
                     )}
                   >
-                    <div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-[color:var(--adfluence-purple)] text-sm font-bold text-white">
-                      {c.other_user_avatar ? (
-                        <Image
-                          src={c.other_user_avatar}
-                          alt={c.other_user_name}
-                          fill
-                          className="object-cover"
-                          sizes="48px"
-                        />
-                      ) : (
-                        c.other_user_name.charAt(0).toUpperCase()
-                      )}
-                    </div>
+                    <UserAvatar
+                      src={c.other_user_avatar}
+                      name={c.other_user_name}
+                      size="md"
+                    />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start justify-between gap-2">
                         <p className="truncate text-sm font-medium text-white">{c.other_user_name}</p>
@@ -309,19 +302,11 @@ export function InfluencerMessages() {
                 >
                   <ArrowLeft className="size-5" />
                 </Button>
-                <div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-[color:var(--adfluence-purple)] text-lg font-bold text-white">
-                  {selected.other_user_avatar ? (
-                    <Image
-                      src={selected.other_user_avatar}
-                      alt={selected.other_user_name}
-                      fill
-                      className="object-cover"
-                      sizes="48px"
-                    />
-                  ) : (
-                    selected.other_user_name.charAt(0).toUpperCase()
-                  )}
-                </div>
+                <UserAvatar
+                  src={selected.other_user_avatar}
+                  name={selected.other_user_name}
+                  size="md"
+                />
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold text-white">{selected.other_user_name}</p>
                   <p className="text-xs text-[#CBD5E1]">{selected.campaign_title || "Direct Message"}</p>

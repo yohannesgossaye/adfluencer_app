@@ -36,4 +36,5 @@ type BusinessPersistence interface {
 	GetDashboardKPIs(ctx context.Context, businessUserID string) (*businessDto.DashboardKPIRow, error)
 	ListDashboardRecentCampaigns(ctx context.Context, businessUserID string) ([]businessDto.DashboardCampaignRow, error)
 	ListDashboardTopRecommendations(ctx context.Context, businessUserID string) ([]businessDto.DashboardRecommendationRow, error)
+	ListActiveCategories(ctx context.Context) ([]businessDto.CampaignCategoryResponse, error)
 }

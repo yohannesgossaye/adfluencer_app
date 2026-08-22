@@ -2,6 +2,8 @@ import { apiClient } from "@/lib/api/api-client";
 import type { ApiResponse } from "@/lib/api/auth";
 import type { ContractDetail } from "@/lib/api/business";
 
+export type { ContractDetail };
+
 // --- Dashboard Types ---
 export type InfluencerGreeting = {
   creator_name: string;
@@ -224,7 +226,7 @@ export const influencerApi = {
 
   uploadAvatar: async (file: File): Promise<ApiResponse<{ profile_image_url: string }>> => {
     const formData = new FormData();
-    formData.append("avatar", file);
+    formData.append("file", file);
     const res = await apiClient.post<ApiResponse<{ profile_image_url: string }>>(
       "/api/v1/influencer/profile/avatar",
       formData,
@@ -233,11 +235,18 @@ export const influencerApi = {
     return res.data;
   },
 
+  deleteAvatar: async (): Promise<ApiResponse<null>> => {
+    const res = await apiClient.delete<ApiResponse<null>>(
+      "/api/v1/influencer/profile/avatar"
+    );
+    return res.data;
+  },
+
   uploadPortfolio: async (
     file: File
   ): Promise<ApiResponse<{ item: InfluencerPortfolioItem; portfolio_items: InfluencerPortfolioItem[]; portfolio_count: number }>> => {
     const formData = new FormData();
-    formData.append("media", file);
+    formData.append("file", file);
     const res = await apiClient.post<ApiResponse<{ item: InfluencerPortfolioItem; portfolio_items: InfluencerPortfolioItem[]; portfolio_count: number }>>(
       "/api/v1/influencer/profile/portfolio",
       formData,
@@ -352,6 +361,14 @@ export const influencerApi = {
   getSupportTicket: async (ticketId: string): Promise<ApiResponse<InfluencerSupportTicket>> => {
     const res = await apiClient.get<ApiResponse<InfluencerSupportTicket>>(
       `/api/v1/influencer/support/tickets/${ticketId}`
+    );
+    return res.data;
+  },
+
+  // 6. Categories / Niches
+  listCategories: async (): Promise<ApiResponse<{ items: Array<{ id: string; name: string; slug: string }> }>> => {
+    const res = await apiClient.get<ApiResponse<{ items: Array<{ id: string; name: string; slug: string }> }>>(
+      "/api/v1/influencer/categories"
     );
     return res.data;
   },

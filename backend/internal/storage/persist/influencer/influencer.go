@@ -277,7 +277,28 @@ func (p *influencer) ResolveCategoryIDs(ctx context.Context, namesOrSlugs []stri
 	return out, nil
 }
 
-func (p *influencer) UpdateProfileImageURL(ctx context.Context, userID, imageURL string) error {
+func (p *influencer) ListActiveCategories(ctx context.Context) ([]influencerDto.CategoryResponse, error) {
+	rows, err := p.db.QueryContext(ctx, "SELECT id, name, slug FROM categories WHERE is_active = TRUE ORDER BY name ASC")
+	if err != nil {
+		return nil, fmt.Errorf("list active categories: %w", err)
+	}
+	defer rows.Close()
+
+	items := make([]influencerDto.CategoryResponse, 0)
+	for rows.Next() {
+		var c influencerDto.CategoryResponse
+		if err := rows.Scan(&c.ID, &c.Name, &c.Slug); err != nil {
+			return nil, fmt.Errorf("scan category: %w", err)
+		}
+		items = append(items, c)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+func (p *influencer) UpdateProfileImageURL(ctx context.Context, userID string, imageURL *string) error {
 	res, err := p.db.ExecContext(ctx, updateProfileImageURL, userID, imageURL)
 	if err != nil {
 		return fmt.Errorf("update profile image url: %w", err)

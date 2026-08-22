@@ -122,6 +122,27 @@ func (p *business) CreateAuditLog(ctx context.Context, input authDto.CreateAudit
 	return nil
 }
 
+func (p *business) ListActiveCategories(ctx context.Context) ([]businessDto.CampaignCategoryResponse, error) {
+	rows, err := p.db.QueryContext(ctx, "SELECT id, name, slug FROM categories WHERE is_active = TRUE ORDER BY name ASC")
+	if err != nil {
+		return nil, fmt.Errorf("list active categories: %w", err)
+	}
+	defer rows.Close()
+
+	items := make([]businessDto.CampaignCategoryResponse, 0)
+	for rows.Next() {
+		var c businessDto.CampaignCategoryResponse
+		if err := rows.Scan(&c.ID, &c.Name, &c.Slug); err != nil {
+			return nil, fmt.Errorf("scan category: %w", err)
+		}
+		items = append(items, c)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 func parseTextArray(raw []byte) []string {
 	s := strings.TrimSpace(string(raw))
 	if s == "" || s == "{}" {

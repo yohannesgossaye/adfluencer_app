@@ -229,6 +229,7 @@ export type InfluencerViewDetail = {
   profile_image_url?: string;
   city?: string;
   region?: string;
+  audience_description?: string;
   languages: string[];
   niches: Array<{ id: string; name: string; slug: string }>;
   platforms: string[];
@@ -286,8 +287,8 @@ export type ContractDetail = {
   fees: FeeBreakdown;
   deliverables: CampaignDeliverable[];
   campaign: { id: string; title: string };
-  business: { user_id: string; business_name?: string };
-  influencer: { user_id: string; creator_name?: string };
+  business: { user_id: string; business_name?: string; profile_image_url?: string };
+  influencer: { user_id: string; creator_name?: string; profile_image_url?: string };
   start_date?: string;
   end_date?: string;
   payment?: {
@@ -372,7 +373,7 @@ export const businessApi = {
 
   uploadLogo: async (file: File): Promise<ApiResponse<{ logo_url: string }>> => {
     const formData = new FormData();
-    formData.append("logo", file);
+    formData.append("file", file);
     const res = await apiClient.post<ApiResponse<{ logo_url: string }>>(
       "/api/v1/business/profile/logo",
       formData,
@@ -588,6 +589,13 @@ export const businessApi = {
   getSupportTicket: async (ticketId: string): Promise<ApiResponse<SupportTicket>> => {
     const res = await apiClient.get<ApiResponse<SupportTicket>>(
       `/api/v1/business/support/tickets/${ticketId}`
+    );
+    return res.data;
+  },
+
+  listCategories: async (): Promise<ApiResponse<{ items: Array<{ id: string; name: string; slug: string }> }>> => {
+    const res = await apiClient.get<ApiResponse<{ items: Array<{ id: string; name: string; slug: string }> }>>(
+      "/api/v1/business/categories"
     );
     return res.data;
   },

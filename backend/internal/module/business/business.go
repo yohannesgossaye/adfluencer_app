@@ -325,3 +325,7 @@ func optionalString(v string) *string {
 	return &v
 }
 
+func (m *businessModule) ListActiveCategories(ctx context.Context) ([]businessDto.CampaignCategoryResponse, error) {
+	return m.business.ListActiveCategories(ctx)
+}
+

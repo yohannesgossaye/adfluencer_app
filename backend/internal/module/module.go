@@ -29,6 +29,7 @@ type InfluencerService interface {
 	UpdateProfile(ctx context.Context, userID string, req influencerDto.UpdateProfileRequest, meta authDto.SessionMeta) (*influencerDto.GetProfileResponse, error)
 	SubmitProfile(ctx context.Context, userID string, meta authDto.SessionMeta) (*influencerDto.SubmitProfileResponse, error)
 	UploadAvatar(ctx context.Context, userID string, filename, contentType string, data []byte, meta authDto.SessionMeta) (*influencerDto.UploadAvatarResponse, error)
+	DeleteAvatar(ctx context.Context, userID string, meta authDto.SessionMeta) error
 	UploadPortfolio(ctx context.Context, userID string, filename, contentType string, data []byte, meta authDto.SessionMeta) (*influencerDto.UploadPortfolioResponse, error)
 	DeletePortfolio(ctx context.Context, userID, itemID string, meta authDto.SessionMeta) (*influencerDto.DeletePortfolioResponse, error)
 	ListInvites(ctx context.Context, userID string, query influencerDto.ListInvitesQuery) (*influencerDto.ListInvitesResponse, error)
@@ -44,6 +45,7 @@ type InfluencerService interface {
 	CreateSupportTicket(ctx context.Context, userID string, req influencerDto.CreateSupportTicketRequest, meta authDto.SessionMeta) (*commonDto.CreatedIDResponse, error)
 	ListSupportTickets(ctx context.Context, userID string) (*influencerDto.ListSupportTicketsResponse, error)
 	GetSupportTicket(ctx context.Context, userID, ticketID string) (*influencerDto.SupportTicketDetailResponse, error)
+	ListActiveCategories(ctx context.Context) ([]influencerDto.CategoryResponse, error)
 }
 
 type AdminService interface {
@@ -107,6 +109,7 @@ type BusinessService interface {
 	CancelContract(ctx context.Context, userID, contractID string, meta authDto.SessionMeta) (*businessDto.ContractMutationResponse, error)
 	GetDashboardSummary(ctx context.Context, userID string) (*businessDto.DashboardSummaryResponse, error)
 	ListSupportCampaignOptions(ctx context.Context, userID string) (*businessDto.ListSupportCampaignOptionsResponse, error)
+	ListActiveCategories(ctx context.Context) ([]businessDto.CampaignCategoryResponse, error)
 	CreateSupportTicket(ctx context.Context, userID string, req businessDto.CreateSupportTicketRequest, meta authDto.SessionMeta) (*commonDto.CreatedIDResponse, error)
 	ListSupportTickets(ctx context.Context, userID string) (*businessDto.ListSupportTicketsResponse, error)
 	GetSupportTicket(ctx context.Context, userID, ticketID string) (*businessDto.SupportTicketDetailResponse, error)

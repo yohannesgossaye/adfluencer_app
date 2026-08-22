@@ -196,33 +196,41 @@ export function AdminUsers() {
                   Blocked users cannot log in.
                 </p>
               ) : null}
+              {u.status === "removed" ? (
+                <p className="mt-2 text-xs text-amber-300">
+                  Removed account. Click &quot;Restore &amp; Activate&quot; to reverse removal and allow login.
+                </p>
+              ) : null}
               <div className="mt-3 flex flex-wrap gap-2">
-                <Button
-                  size="sm"
-                  className="h-11 sm:h-8 bg-rose-500/20 text-rose-100 hover:bg-rose-500/30"
-                  disabled={u.status === "blocked" || u.status === "removed"}
-                  onClick={() => block(u)}
-                >
-                  Block
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-11 sm:h-8 border-white/15 text-white hover:bg-white/10"
-                  disabled={u.status !== "blocked"}
-                  onClick={() => unblock(u)}
-                >
-                  Unblock
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-11 sm:h-8 border-white/15 text-white hover:bg-white/10"
-                  disabled={u.status === "removed"}
-                  onClick={() => remove(u)}
-                >
-                  Remove
-                </Button>
+                {u.status === "removed" || u.status === "blocked" || u.status === "suspended" ? (
+                  <Button
+                    size="sm"
+                    className="h-11 sm:h-8 bg-emerald-500/25 border border-emerald-500/40 text-emerald-100 hover:bg-emerald-500/35"
+                    onClick={() => unblock(u)}
+                  >
+                    {u.status === "removed" ? "Restore & Activate" : "Unblock & Activate"}
+                  </Button>
+                ) : null}
+                {u.status !== "blocked" ? (
+                  <Button
+                    size="sm"
+                    className="h-11 sm:h-8 bg-rose-500/20 text-rose-100 hover:bg-rose-500/30"
+                    disabled={u.status === "removed"}
+                    onClick={() => block(u)}
+                  >
+                    Block
+                  </Button>
+                ) : null}
+                {u.status !== "removed" ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-11 sm:h-8 border-white/15 text-white hover:bg-white/10"
+                    onClick={() => remove(u)}
+                  >
+                    Remove
+                  </Button>
+                ) : null}
               </div>
             </article>
           ))

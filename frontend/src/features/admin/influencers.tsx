@@ -12,6 +12,7 @@ import {
   type InfluencerApplicationDetail,
 } from "@/lib/api/admin";
 import { cn } from "@/lib/utils";
+import { UserAvatar } from "@/components/common/user-avatar";
 
 const tabs: Array<{ id: "all" | "pending" | "approved" | "rejected"; label: string }> = [
   { id: "all", label: "All" },
@@ -93,7 +94,7 @@ export function AdminInfluencers() {
         social_links: {},
         total_followers: item.total_followers,
         engagement_rate: item.engagement_rate,
-        languages: ["Amharic", "English"],
+        languages: [],
         portfolio_items: [],
       },
       completeness_percent: item.completeness_percent,
@@ -192,15 +193,12 @@ export function AdminInfluencers() {
                     : "border-white/10 bg-[rgba(255,255,255,0.08)] hover:border-white/20",
                 )}
               >
-                <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-full border border-white/10">
-                  <Image
-                    src={r.profile_image_url || "/images/influencers/influencer-1.jpg"}
-                    alt={r.creator_name}
-                    fill
-                    className="object-cover"
-                    sizes="64px"
-                  />
-                </div>
+                <UserAvatar
+                  src={r.profile_image_url}
+                  name={r.creator_name}
+                  size="xl"
+                  fallback="CR"
+                />
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="font-semibold text-white">{r.creator_name}</p>
@@ -228,20 +226,20 @@ export function AdminInfluencers() {
                       type="button"
                       size="sm"
                       className="h-11 bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)] sm:h-8"
-                      disabled={r.status !== "pending"}
+                      disabled={r.status === "approved" || r.status === "active"}
                       onClick={(e) => {
                         e.stopPropagation();
                         setStatus(r.user_id, "approved");
                       }}
                     >
-                      Approve
+                      {r.status === "removed" || r.status === "rejected" ? "Re-approve" : "Approve"}
                     </Button>
                     <Button
                       type="button"
                       size="sm"
                       variant="outline"
                       className="h-11 border-white/15 text-white hover:bg-white/10 sm:h-8"
-                      disabled={r.status !== "pending"}
+                      disabled={r.status === "rejected"}
                       onClick={(e) => {
                         e.stopPropagation();
                         setStatus(r.user_id, "rejected");

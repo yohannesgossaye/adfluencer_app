@@ -130,6 +130,14 @@ func validateDeliverables(value interface{}) error {
 	return nil
 }
 
+func parseAnyDate(raw string) (time.Time, error) {
+	raw = strings.TrimSpace(raw)
+	if t, err := time.Parse("2006-01-02", raw); err == nil {
+		return t, nil
+	}
+	return time.Parse(time.RFC3339, raw)
+}
+
 func validateDateField(field string) validation.RuleFunc {
 	return func(value interface{}) error {
 		raw, _ := value.(string)
@@ -137,7 +145,7 @@ func validateDateField(field string) validation.RuleFunc {
 		if raw == "" {
 			return validation.NewError(field+"_required", field+" is required")
 		}
-		if _, err := time.Parse("2006-01-02", raw); err != nil {
+		if _, err := parseAnyDate(raw); err != nil {
 			return validation.NewError("invalid_date", field+" must be YYYY-MM-DD")
 		}
 		return nil
@@ -149,8 +157,8 @@ func validateCampaignDateRange(value interface{}) error {
 	if !ok {
 		return nil
 	}
-	start, err1 := time.Parse("2006-01-02", strings.TrimSpace(req.StartDate))
-	end, err2 := time.Parse("2006-01-02", strings.TrimSpace(req.EndDate))
+	start, err1 := parseAnyDate(req.StartDate)
+	end, err2 := parseAnyDate(req.EndDate)
 	if err1 != nil || err2 != nil {
 		return nil
 	}
@@ -162,11 +170,17 @@ func validateCampaignDateRange(value interface{}) error {
 
 func validateBudgetRange(req *CreateCampaignRequest) validation.RuleFunc {
 	return func(value interface{}) error {
-		if req.BudgetMinETB == nil || req.BudgetMaxETB == nil {
+		if req.BudgetMinETB == nil && req.BudgetMaxETB == nil {
 			return nil
 		}
+		if req.BudgetMinETB == nil || req.BudgetMaxETB == nil {
+			return validation.NewError("invalid_budget", "both min and max budget must be specified together")
+		}
+		if *req.BudgetMinETB < 0 || *req.BudgetMaxETB < 0 {
+			return validation.NewError("invalid_budget", "budget cannot be negative")
+		}
 		if *req.BudgetMaxETB < *req.BudgetMinETB {
-			return validation.NewError("invalid_budget_range", "max budget must be greater than or equal to min budget")
+			return validation.NewError("invalid_budget", "max budget cannot be less than min budget")
 		}
 		return nil
 	}
@@ -205,7 +219,7 @@ func ParseCampaignDate(raw string) (*time.Time, error) {
 	if raw == "" {
 		return nil, fmt.Errorf("%w: date is required", customErr.ErrBadRequest)
 	}
-	t, err := time.Parse("2006-01-02", raw)
+	t, err := parseAnyDate(raw)
 	if err != nil {
 		return nil, fmt.Errorf("%w: invalid date format", customErr.ErrBadRequest)
 	}

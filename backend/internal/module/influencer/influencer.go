@@ -285,7 +285,7 @@ func (m *influencerModule) UploadAvatar(ctx context.Context, userID string, file
 		return nil, err
 	}
 
-	if err := m.influencer.UpdateProfileImageURL(ctx, userID, publicURL); err != nil {
+	if err := m.influencer.UpdateProfileImageURL(ctx, userID, &publicURL); err != nil {
 		_ = m.files.Delete(ctx, objectKey)
 		m.logger.Error(ctx, "failed to persist avatar URL in database", zap.String("user_id", userID), zap.String("reason", err.Error()))
 		return nil, err
@@ -314,6 +314,37 @@ func (m *influencerModule) UploadAvatar(ctx context.Context, userID string, file
 	m.logger.Info(ctx, "influencer avatar uploaded successfully", zap.String("user_id", userID), zap.String("url", publicURL))
 
 	return &influencerDto.UploadAvatarResponse{ProfileImageURL: publicURL}, nil
+}
+
+func (m *influencerModule) DeleteAvatar(ctx context.Context, userID string, meta authDto.SessionMeta) error {
+	rec, err := m.influencer.GetProfileByUserID(ctx, userID)
+	if err != nil {
+		return err
+	}
+	if rec.ProfileImageURL != nil && strings.TrimSpace(*rec.ProfileImageURL) != "" {
+		oldKey := platformStorage.ObjectKeyFromURL(*rec.ProfileImageURL, m.files.PublicURLBase())
+		if oldKey != "" {
+			if delErr := m.files.Delete(ctx, oldKey); delErr != nil {
+				m.logger.Warn(ctx, "failed to delete avatar from storage", zap.String("object_key", oldKey), zap.String("reason", delErr.Error()))
+			}
+		}
+	}
+	if err := m.influencer.UpdateProfileImageURL(ctx, userID, nil); err != nil {
+		m.logger.Error(ctx, "failed to clear avatar in database", zap.String("user_id", userID), zap.String("reason", err.Error()))
+		return err
+	}
+	m.writeAuditAsync(authDto.CreateAuditLogInput{
+		ActorUserID:  &userID,
+		TargetUserID: &userID,
+		Action:       string(model.ProfileUpdateAction),
+		EntityType:   "influencer_profile",
+		EntityID:     &userID,
+		Description:  "influencer avatar deleted",
+		IPAddress:    meta.IPAddress,
+		UserAgent:    meta.UserAgent,
+	})
+	m.logger.Info(ctx, "influencer avatar deleted successfully", zap.String("user_id", userID))
+	return nil
 }
 
 func (m *influencerModule) UploadPortfolio(ctx context.Context, userID string, filename, contentType string, data []byte, meta authDto.SessionMeta) (*influencerDto.UploadPortfolioResponse, error) {
@@ -502,6 +533,10 @@ func (m *influencerModule) buildResponse(user *authDto.UserResponse, rec *influe
 		Profile:      detail,
 		Completeness: completeness,
 	}
+}
+
+func (m *influencerModule) ListActiveCategories(ctx context.Context) ([]influencerDto.CategoryResponse, error) {
+	return m.influencer.ListActiveCategories(ctx)
 }
 
 func ensureEditableStatus(status string) error {

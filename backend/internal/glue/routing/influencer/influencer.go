@@ -53,6 +53,14 @@ func InfluencerRoutes(router chi.Router, rest handler.InfluencerHandler, authMid
 				},
 			},
 			{
+				Method:  http.MethodDelete,
+				Path:    "/profile/avatar",
+				Handler: rest.DeleteAvatar,
+				Middlewares: []func(next http.Handler) http.Handler{
+					authMiddleware.AuthenticateToken,
+				},
+			},
+			{
 				Method:  http.MethodPost,
 				Path:    "/profile/portfolio",
 				Handler: rest.UploadPortfolio,
@@ -64,6 +72,14 @@ func InfluencerRoutes(router chi.Router, rest handler.InfluencerHandler, authMid
 				Method:  http.MethodDelete,
 				Path:    "/profile/portfolio/{item_id}",
 				Handler: rest.DeletePortfolio,
+				Middlewares: []func(next http.Handler) http.Handler{
+					authMiddleware.AuthenticateToken,
+				},
+			},
+			{
+				Method:  http.MethodGet,
+				Path:    "/categories",
+				Handler: rest.ListCategories,
 				Middlewares: []func(next http.Handler) http.Handler{
 					authMiddleware.AuthenticateToken,
 				},

@@ -11,6 +11,7 @@ import (
 	"adinfluence_service_app/platform/utils"
 	"encoding/json"
 	"io"
+	"mime/multipart"
 	"net/http"
 )
 
@@ -118,8 +119,19 @@ func parseMultipartFile(w http.ResponseWriter, r *http.Request, maxSize int64) (
 		return "", "", nil, false
 	}
 
-	file, header, err := r.FormFile("file")
-	if err != nil {
+	keys := []string{"file", "logo", "avatar", "media", "image"}
+	var file multipart.File
+	var header *multipart.FileHeader
+	var err error
+
+	for _, k := range keys {
+		file, header, err = r.FormFile(k)
+		if err == nil {
+			break
+		}
+	}
+
+	if file == nil || err != nil {
 		response.SendErrorResponse(w, http.StatusBadRequest, "invalid_file", customErr.ErrInvalidFile, "file field is required")
 		return "", "", nil, false
 	}
@@ -136,6 +148,16 @@ func parseMultipartFile(w http.ResponseWriter, r *http.Request, maxSize int64) (
 		contentType = header.Header.Get("Content-Type")
 	}
 	return filename, contentType, data, true
+}
+
+func (h *businessHandler) ListCategories(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	items, err := h.service.ListActiveCategories(ctx)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	response.SendSuccessResponse(w, r, http.StatusOK, "categories listed successfully", map[string]interface{}{"items": items}, nil)
 }
 
 func (h *businessHandler) requireBusiness(w http.ResponseWriter, r *http.Request) (*middleware.UserPayload, bool) {

@@ -65,19 +65,19 @@ const (
 	blockUser = `
 	UPDATE users
 	SET status = 'blocked', status_reason = $2, updated_at = NOW()
-	WHERE id = $1 AND role <> 'admin' AND status <> 'removed'
+	WHERE id = $1 AND role <> 'admin'
 	`
 
 	unblockUser = `
 	UPDATE users
 	SET status = 'active', status_reason = NULL, updated_at = NOW()
-	WHERE id = $1 AND role <> 'admin' AND status = 'blocked'
+	WHERE id = $1 AND role <> 'admin' AND status <> 'active'
 	`
 
 	removeUser = `
 	UPDATE users
 	SET status = 'removed', status_reason = $2, updated_at = NOW()
-	WHERE id = $1 AND role <> 'admin' AND status <> 'removed'
+	WHERE id = $1 AND role <> 'admin'
 	`
 
 	getUserRole = `

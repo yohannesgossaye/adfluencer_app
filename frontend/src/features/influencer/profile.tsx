@@ -11,19 +11,19 @@ import {
   type InfluencerPortfolioItem,
   type InfluencerProfileResponse,
 } from "@/lib/api/influencer";
+import { getInitials } from "@/lib/utils";
 
-const CREATOR_IMAGE = "/images/influencers/influencer-2.jpg";
-
-const nicheOptions = ["Beauty", "Fashion", "Food", "Tech", "Fitness", "Lifestyle", "Travel"] as const;
 const platformOptions = ["TikTok", "Instagram", "YouTube"] as const;
 
 export function InfluencerProfile() {
   const [profileData, setProfileData] = useState<InfluencerProfileResponse | null>(null);
+  const [availableNiches, setAvailableNiches] = useState<Array<{ id: string; name: string; slug: string }>>([]);
   const [saved, setSaved] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [portfolioItems, setPortfolioItems] = useState<InfluencerPortfolioItem[]>([]);
 
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
@@ -47,26 +47,37 @@ export function InfluencerProfile() {
 
   const loadProfile = async () => {
     try {
-      const res = await influencerApi.getProfile();
-      if (res.data) {
-        setProfileData(res.data);
-        const p = res.data.profile;
-        setPortfolioItems(p.portfolio_items || []);
-        setForm({
-          name: p.creator_name || p.full_name || "Creator",
-          bio: p.bio || "",
-          niches: p.niches?.map((n) => n.name) || ["Tech"],
-          platforms: p.platforms || ["YouTube"],
-          tiktok: p.social_links?.tiktok || "",
-          instagram: p.social_links?.instagram || "",
-          youtube: p.social_links?.youtube || "",
-          followers: String(p.total_followers || 84000),
-          engagement: String(p.engagement_rate || 7.2),
-          priceMin: String(p.min_price_etb || 15000),
-          priceMax: String(p.max_price_etb || 35000),
-          languages: p.languages?.join(", ") || "Amharic, English",
-          location: p.city || "Addis Ababa",
-        });
+      const [profRes, catRes] = await Promise.allSettled([
+        influencerApi.getProfile(),
+        influencerApi.listCategories(),
+      ]);
+
+      if (catRes.status === "fulfilled" && catRes.value.data?.items) {
+        setAvailableNiches(catRes.value.data.items);
+      }
+
+      if (profRes.status === "fulfilled" && profRes.value.data) {
+        const data = profRes.value.data;
+        setProfileData(data);
+        const p = data.profile;
+        setPortfolioItems(p?.portfolio_items || []);
+        if (p) {
+          setForm({
+            name: p.creator_name || p.full_name || "Creator",
+            bio: p.bio || "",
+            niches: p.niches?.map((n) => n.name) || ["Tech"],
+            platforms: p.platforms || ["YouTube"],
+            tiktok: p.social_links?.tiktok || "",
+            instagram: p.social_links?.instagram || "",
+            youtube: p.social_links?.youtube || "",
+            followers: String(p.total_followers || 84000),
+            engagement: String(p.engagement_rate || 7.2),
+            priceMin: String(p.min_price_etb || 15000),
+            priceMax: String(p.max_price_etb || 35000),
+            languages: p.languages?.join(", ") || "Amharic, English",
+            location: p.city || "Addis Ababa",
+          });
+        }
       }
     } catch {
       // fallback
@@ -89,6 +100,7 @@ export function InfluencerProfile() {
     setError("");
     setMessage("");
     setIsSaving(true);
+    setError("");
     try {
       await influencerApi.updateProfile({
         creator_name: form.name.trim(),
@@ -112,7 +124,8 @@ export function InfluencerProfile() {
       await loadProfile();
       setTimeout(() => setSaved(false), 4000);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to update profile.");
+      const apiMsg = (err as { response?: { data?: { message?: string; error?: string } } })?.response?.data?.message;
+      setError(apiMsg || (err instanceof Error ? err.message : "Failed to update profile."));
     } finally {
       setIsSaving(false);
     }
@@ -131,7 +144,27 @@ export function InfluencerProfile() {
         setTimeout(() => setMessage(""), 4000);
       }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to upload avatar.");
+      const apiMsg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setError(apiMsg || (err instanceof Error ? err.message : "Failed to upload avatar."));
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const avatarUrl = profileData?.profile?.profile_image_url;
+
+  const onDeleteAvatar = async () => {
+    if (!avatarUrl) return;
+    setIsUploading(true);
+    setError("");
+    try {
+      await influencerApi.deleteAvatar();
+      await loadProfile();
+      setMessage("Profile avatar removed successfully.");
+      setTimeout(() => setMessage(""), 4000);
+    } catch (err: unknown) {
+      const apiMsg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setError(apiMsg || (err instanceof Error ? err.message : "Failed to remove avatar."));
     } finally {
       setIsUploading(false);
     }
@@ -150,37 +183,47 @@ export function InfluencerProfile() {
         setTimeout(() => setMessage(""), 4000);
       }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to upload portfolio item.");
+      const apiMsg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setError(apiMsg || (err instanceof Error ? err.message : "Failed to upload portfolio item."));
     } finally {
       setIsUploading(false);
     }
   };
 
   const onDeletePortfolio = async (id: string) => {
+    setError("");
     try {
       const res = await influencerApi.deletePortfolio(id);
       if (res.data?.portfolio_items) {
         setPortfolioItems(res.data.portfolio_items);
+        setMessage("Portfolio item removed.");
+        setTimeout(() => setMessage(""), 4000);
       }
-    } catch {
-      // fallback
+    } catch (err: unknown) {
+      const apiMsg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setError(apiMsg || (err instanceof Error ? err.message : "Failed to delete item."));
     }
   };
 
   const onSubmitForReview = async () => {
+    setIsSubmitting(true);
     setError("");
     try {
       const res = await influencerApi.submitProfile();
-      setMessage(res.data?.message || "Profile submitted for review!");
-      await loadProfile();
-      setTimeout(() => setMessage(""), 4000);
+      if (res.data) {
+        setMessage(res.data.message || "Profile submitted for admin verification!");
+        await loadProfile();
+        setTimeout(() => setMessage(""), 5000);
+      }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to submit profile for review.");
+      const apiMsg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setError(apiMsg || (err instanceof Error ? err.message : "Failed to submit profile for review."));
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const completenessPercent = profileData?.completeness?.percent ?? 86;
-  const avatarUrl = profileData?.profile?.profile_image_url || CREATOR_IMAGE;
+  const completeness = profileData?.completeness?.percent ?? 0;
   const isVerified = profileData?.profile?.is_verified ?? false;
   const canSubmit = profileData?.completeness?.can_submit ?? false;
 
@@ -201,20 +244,27 @@ export function InfluencerProfile() {
         onChange={onPortfolioSelected}
       />
 
-      <section className="flex flex-col gap-4 rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-5 md:flex-row md:items-center">
+      <section className="flex flex-col gap-5 rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-5 md:flex-row md:items-center">
         <div
           onClick={() => avatarInputRef.current?.click()}
-          className="group relative mx-auto h-24 w-24 cursor-pointer shrink-0 overflow-hidden rounded-full border-2 border-[color:var(--adfluence-orange)]/40 md:mx-0"
-          title="Click to upload profile avatar"
+          className="group relative mx-auto flex h-24 w-24 cursor-pointer shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-[color:var(--adfluence-orange)]/40 bg-gradient-to-br from-[color:var(--adfluence-orange)]/30 to-white/10 md:mx-0"
+          title="Click to change profile avatar"
         >
-          <Image
-            src={avatarUrl}
-            alt={form.name}
-            fill
-            className="object-cover transition-opacity group-hover:opacity-75"
-            sizes="96px"
-          />
-          <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
+          {avatarUrl ? (
+            <Image
+              src={avatarUrl}
+              alt={form.name}
+              fill
+              unoptimized
+              className="object-cover transition-opacity group-hover:opacity-75"
+              sizes="96px"
+            />
+          ) : (
+            <span className="text-2xl font-bold text-white uppercase tracking-wider">
+              {getInitials(form.name, "CR")}
+            </span>
+          )}
+          <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 transition-opacity group-hover:opacity-100">
             <UploadCloud className="size-6 text-white" />
           </div>
         </div>
@@ -233,9 +283,36 @@ export function InfluencerProfile() {
                 Pending Verification
               </span>
             )}
-            <span className="rounded-full border border-white/15 bg-white/5 px-2 py-0.5 text-xs text-[#CBD5E1]">
-              Profile {completenessPercent}% complete
+            <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-xs text-[#CBD5E1]">
+              Profile {completeness}% complete
             </span>
+          </div>
+
+          <div className="mt-3 flex flex-wrap items-center justify-center gap-2 md:justify-start">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={isUploading}
+              onClick={() => avatarInputRef.current?.click()}
+              className="h-8 rounded-lg border-white/15 bg-transparent text-xs text-white hover:bg-white/10"
+            >
+              <UploadCloud className="mr-1.5 size-3.5" />
+              {avatarUrl ? "Change Photo" : "Upload Photo"}
+            </Button>
+            {avatarUrl ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={isUploading}
+                onClick={onDeleteAvatar}
+                className="h-8 rounded-lg border-white/15 text-xs text-rose-200 hover:bg-rose-500/10"
+              >
+                <Trash2 className="mr-1.5 size-3.5" />
+                Remove Photo
+              </Button>
+            ) : null}
           </div>
         </div>
 
@@ -243,6 +320,7 @@ export function InfluencerProfile() {
           <Button
             type="button"
             onClick={onSubmitForReview}
+            disabled={isSubmitting}
             className="h-11 rounded-xl bg-emerald-600 px-5 text-white hover:bg-emerald-500"
           >
             Submit for Verification
@@ -285,18 +363,18 @@ export function InfluencerProfile() {
           <div className="md:col-span-2">
             <p className="text-sm text-[#CBD5E1]">Niche (multi-select)</p>
             <div className="mt-2 flex flex-wrap gap-2">
-              {nicheOptions.map((n) => (
+              {availableNiches.map((n) => (
                 <button
-                  key={n}
+                  key={n.id}
                   type="button"
-                  onClick={() => toggleMulti("niches", n)}
+                  onClick={() => toggleMulti("niches", n.name)}
                   className={`rounded-xl border px-3 py-2 text-sm transition-colors ${
-                    form.niches.includes(n)
+                    form.niches.includes(n.name) || form.niches.includes(n.slug)
                       ? "border-[color:var(--adfluence-orange)]/50 bg-[color:var(--adfluence-orange)]/15 text-white"
                       : "border-white/10 bg-[#06111F] text-[#CBD5E1] hover:border-white/20"
                   }`}
                 >
-                  {n}
+                  {n.name}
                 </button>
               ))}
             </div>
@@ -440,6 +518,7 @@ export function InfluencerProfile() {
                       src={item.file_url}
                       alt="Portfolio item"
                       fill
+                      unoptimized
                       className="object-cover"
                       sizes="(max-width:768px) 100vw, 33vw"
                     />

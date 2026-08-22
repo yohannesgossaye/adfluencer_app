@@ -31,7 +31,9 @@ const (
 	INNER JOIN business_profiles bp ON bp.user_id = c.business_user_id
 	LEFT JOIN categories cat ON cat.id = c.category_id
 	LEFT JOIN LATERAL (
-		SELECT COUNT(*)::int AS total
+		SELECT
+			COUNT(*)::int AS total,
+			COUNT(*) FILTER (WHERE ci.status = 'accepted')::int AS accepted
 		FROM campaign_invites ci
 		WHERE ci.campaign_id = c.id
 	) inv ON true
@@ -84,7 +86,9 @@ const (
 	INNER JOIN business_profiles bp ON bp.user_id = c.business_user_id
 	LEFT JOIN categories cat ON cat.id = c.category_id
 	LEFT JOIN LATERAL (
-		SELECT COUNT(*)::int AS total
+		SELECT
+			COUNT(*)::int AS total,
+			COUNT(*) FILTER (WHERE ci.status = 'accepted')::int AS accepted
 		FROM campaign_invites ci
 		WHERE ci.campaign_id = c.id
 	) inv ON true

@@ -83,14 +83,21 @@ apiClient.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const refreshRes = await axios.post<{ data: { access_token: string; refresh_token: string } }>(
+        const refreshRes = await axios.post<{
+          data?: {
+            tokens?: { access_token: string; refresh_token?: string };
+            access_token?: string;
+            refresh_token?: string;
+          };
+        }>(
           `${apiBaseUrl || "http://localhost:8080"}/api/v1/auth/refresh`,
           { refresh_token: refreshToken },
           { headers: { "Content-Type": "application/json" } }
         );
 
-        const newAccessToken = refreshRes.data?.data?.access_token;
-        const newRefreshToken = refreshRes.data?.data?.refresh_token;
+        const resData = refreshRes.data?.data;
+        const newAccessToken = resData?.tokens?.access_token || resData?.access_token;
+        const newRefreshToken = resData?.tokens?.refresh_token || resData?.refresh_token;
 
         if (newAccessToken) {
           window.localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, newAccessToken);
@@ -100,6 +107,8 @@ apiClient.interceptors.response.use(
           originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
           processQueue(null, newAccessToken);
           return apiClient(originalRequest);
+        } else {
+          throw new Error("No access token returned from refresh");
         }
       } catch (refreshErr) {
         processQueue(refreshErr as Error, null);
@@ -113,6 +122,16 @@ apiClient.interceptors.response.use(
         return Promise.reject(refreshErr);
       } finally {
         isRefreshing = false;
+      }
+    }
+
+    if (error.response?.status === 401 && typeof window !== "undefined") {
+      window.localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
+      window.localStorage.removeItem(REFRESH_TOKEN_STORAGE_KEY);
+      window.localStorage.removeItem(AUTH_USER_STORAGE_KEY);
+      const path = `${window.location.pathname}${window.location.search}`;
+      if (!path.startsWith("/auth")) {
+        window.location.assign(`/auth/login?next=${encodeURIComponent(path)}`);
       }
     }
 

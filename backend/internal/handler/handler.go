@@ -44,6 +44,7 @@ type BusinessHandler interface {
 	CreateSupportTicket(w http.ResponseWriter, r *http.Request)
 	ListSupportTickets(w http.ResponseWriter, r *http.Request)
 	GetSupportTicket(w http.ResponseWriter, r *http.Request)
+	ListCategories(w http.ResponseWriter, r *http.Request)
 }
 
 type InfluencerHandler interface {
@@ -51,6 +52,7 @@ type InfluencerHandler interface {
 	UpdateProfile(w http.ResponseWriter, r *http.Request)
 	SubmitProfile(w http.ResponseWriter, r *http.Request)
 	UploadAvatar(w http.ResponseWriter, r *http.Request)
+	DeleteAvatar(w http.ResponseWriter, r *http.Request)
 	UploadPortfolio(w http.ResponseWriter, r *http.Request)
 	DeletePortfolio(w http.ResponseWriter, r *http.Request)
 	ListInvites(w http.ResponseWriter, r *http.Request)
@@ -66,6 +68,7 @@ type InfluencerHandler interface {
 	CreateSupportTicket(w http.ResponseWriter, r *http.Request)
 	ListSupportTickets(w http.ResponseWriter, r *http.Request)
 	GetSupportTicket(w http.ResponseWriter, r *http.Request)
+	ListCategories(w http.ResponseWriter, r *http.Request)
 }
 
 type MarketplaceHandler interface {
