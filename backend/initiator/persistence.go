@@ -2,11 +2,12 @@ package initiator
 
 import (
 	"adinfluence_service_app/internal/storage"
-	auth "adinfluence_service_app/internal/storage/persist/auth"
 	adminPersist "adinfluence_service_app/internal/storage/persist/admin"
+	auth "adinfluence_service_app/internal/storage/persist/auth"
 	businessPersist "adinfluence_service_app/internal/storage/persist/business"
 	contractPersist "adinfluence_service_app/internal/storage/persist/contract"
 	influencerPersist "adinfluence_service_app/internal/storage/persist/influencer"
+	chatPersist "adinfluence_service_app/internal/storage/persist/marketplace/chat"
 	supportPersist "adinfluence_service_app/internal/storage/persist/support"
 	"adinfluence_service_app/platform/utils"
 	"database/sql"
@@ -19,6 +20,7 @@ type persistence struct {
 	contract   storage.ContractPersistence
 	admin      storage.AdminPersistence
 	support    storage.SupportPersistence
+	chat       storage.ChatPersistence
 }
 
 func InitPersistence(db *sql.DB, log utils.Logger) persistence {
@@ -29,5 +31,7 @@ func InitPersistence(db *sql.DB, log utils.Logger) persistence {
 		contract:   contractPersist.InitContractPersistence(db, log),
 		admin:      adminPersist.InitAdminPersistence(db, log),
 		support:    supportPersist.InitSupportPersistence(db),
+		chat:       chatPersist.InitChatPersistence(db, log),
 	}
 }
+

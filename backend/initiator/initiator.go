@@ -76,7 +76,7 @@ func Initiator(ctx context.Context) {
 		RememberMeRefreshTokenTTL: cfg.JWT.RememberMeRefreshTokenTTL,
 	})
 	service := InitModules(postgresRepo, tokens, emailClient, smsClient, fileStorage, cfg.FrontendURL, logger)
-	handler := InitHandler(service, logger)
+	handler := InitHandler(service, tokens, logger)
 	authMW := middleware.InitAuthMiddleware(tokens)
 	InirRoute(r, handler, authMW)
 

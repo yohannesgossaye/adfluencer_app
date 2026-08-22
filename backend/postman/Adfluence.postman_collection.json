@@ -6,18 +6,62 @@
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"variable": [
-		{ "key": "baseUrl", "value": "http://localhost:8080" },
-		{ "key": "accessToken", "value": "" },
-		{ "key": "refreshToken", "value": "" },
-		{ "key": "resetToken", "value": "" },
-		{ "key": "verifyOtp", "value": "" },
-		{ "key": "applicationUserId", "value": "" },
-		{ "key": "campaignId", "value": "" },
-		{ "key": "influencerUserId", "value": "" },
-		{ "key": "inviteId", "value": "" },
-		{ "key": "contractId", "value": "" },
-		{ "key": "businessUserId", "value": "" },
-		{ "key": "ticketId", "value": "" }
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8080"
+		},
+		{
+			"key": "accessToken",
+			"value": ""
+		},
+		{
+			"key": "refreshToken",
+			"value": ""
+		},
+		{
+			"key": "resetToken",
+			"value": ""
+		},
+		{
+			"key": "verifyOtp",
+			"value": ""
+		},
+		{
+			"key": "applicationUserId",
+			"value": ""
+		},
+		{
+			"key": "campaignId",
+			"value": ""
+		},
+		{
+			"key": "influencerUserId",
+			"value": ""
+		},
+		{
+			"key": "inviteId",
+			"value": ""
+		},
+		{
+			"key": "contractId",
+			"value": ""
+		},
+		{
+			"key": "businessUserId",
+			"value": ""
+		},
+		{
+			"key": "ticketId",
+			"value": ""
+		},
+		{
+			"key": "conversationId",
+			"value": ""
+		},
+		{
+			"key": "messageId",
+			"value": ""
+		}
 	],
 	"item": [
 		{
@@ -31,7 +75,12 @@
 							"name": "Signup — Business",
 							"request": {
 								"method": "POST",
-								"header": [{ "key": "Content-Type", "value": "application/json" }],
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
 								"body": {
 									"mode": "raw",
 									"raw": "{\n  \"role\": \"business\",\n  \"name\": \"Acme Coffee\",\n  \"email\": \"owner@acmecoffee.et\",\n  \"phone_number\": \"911223344\",\n  \"password\": \"SecurePass1\",\n  \"confirm_password\": \"SecurePass1\"\n}"
@@ -61,7 +110,12 @@
 							"name": "Signup — Influencer",
 							"request": {
 								"method": "POST",
-								"header": [{ "key": "Content-Type", "value": "application/json" }],
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
 								"body": {
 									"mode": "raw",
 									"raw": "{\n  \"role\": \"influencer\",\n  \"name\": \"Yohannes Gossaye\",\n  \"email\": \"yohannesgossaye@gmail.com\",\n  \"phone_number\": \"953422606\",\n  \"password\": \"yoya1111\",\n  \"confirm_password\": \"yoya1111\"\n}"
@@ -90,7 +144,12 @@
 							"name": "Login",
 							"request": {
 								"method": "POST",
-								"header": [{ "key": "Content-Type", "value": "application/json" }],
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
 								"body": {
 									"mode": "raw",
 									"raw": "{\n  \"email\": \"yohannesgossaye@gmail.com\",\n  \"password\": \"yoya1111\",\n  \"remember_me\": true,\n  \"next\": \"\"\n}"
@@ -120,7 +179,12 @@
 							"name": "Refresh Token",
 							"request": {
 								"method": "POST",
-								"header": [{ "key": "Content-Type", "value": "application/json" }],
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
 								"body": {
 									"mode": "raw",
 									"raw": "{\n  \"refresh_token\": \"{{refreshToken}}\"\n}"
@@ -149,7 +213,12 @@
 							"name": "Forgot Password",
 							"request": {
 								"method": "POST",
-								"header": [{ "key": "Content-Type", "value": "application/json" }],
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
 								"body": {
 									"mode": "raw",
 									"raw": "{\n  \"email\": \"yohannesgossaye@gmail.com\"\n}"
@@ -162,7 +231,12 @@
 							"name": "Reset Password",
 							"request": {
 								"method": "POST",
-								"header": [{ "key": "Content-Type", "value": "application/json" }],
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
 								"body": {
 									"mode": "raw",
 									"raw": "{\n  \"token\": \"{{resetToken}}\",\n  \"password\": \"NewSecurePass1\",\n  \"confirm_password\": \"NewSecurePass1\"\n}"
@@ -182,7 +256,10 @@
 							"request": {
 								"method": "GET",
 								"header": [
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"url": "{{baseUrl}}/api/v1/auth/me"
 							}
@@ -192,8 +269,14 @@
 							"request": {
 								"method": "POST",
 								"header": [
-									{ "key": "Content-Type", "value": "application/json" },
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"body": {
 									"mode": "raw",
@@ -207,7 +290,10 @@
 							"request": {
 								"method": "POST",
 								"header": [
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"url": "{{baseUrl}}/api/v1/auth/send-verify-email",
 								"description": "Sends 6-digit OTP to user email. Max 3/hour."
@@ -218,8 +304,14 @@
 							"request": {
 								"method": "POST",
 								"header": [
-									{ "key": "Content-Type", "value": "application/json" },
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"body": {
 									"mode": "raw",
@@ -234,7 +326,10 @@
 							"request": {
 								"method": "POST",
 								"header": [
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"url": "{{baseUrl}}/api/v1/auth/send-verify-phone",
 								"description": "Sends 6-digit OTP via SMS (or logs to server console in dev). Max 3/hour."
@@ -245,8 +340,14 @@
 							"request": {
 								"method": "POST",
 								"header": [
-									{ "key": "Content-Type", "value": "application/json" },
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"body": {
 									"mode": "raw",
@@ -268,7 +369,12 @@
 					"name": "Login — Admin",
 					"request": {
 						"method": "POST",
-						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
 						"body": {
 							"mode": "raw",
 							"raw": "{\n  \"email\": \"admin@adfluence.com\",\n  \"password\": \"admin1111\",\n  \"portal\": \"admin\",\n  \"remember_me\": false\n}"
@@ -299,7 +405,10 @@
 					"request": {
 						"method": "GET",
 						"header": [
-							{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
 						],
 						"url": "{{baseUrl}}/api/v1/auth/me"
 					}
@@ -312,7 +421,10 @@
 							"request": {
 								"method": "GET",
 								"header": [
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"url": "{{baseUrl}}/api/v1/admin/dashboard/summary",
 								"description": "Platform KPIs, pending approvals preview, audit activity, revenue trend (real completed-contract fees only), and alerts from open disputes/support tickets."
@@ -328,17 +440,41 @@
 							"request": {
 								"method": "GET",
 								"header": [
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"url": {
 									"raw": "{{baseUrl}}/api/v1/admin/influencers/applications?status=pending_approval&page=1&limit=20",
-									"host": ["{{baseUrl}}"],
-									"path": ["api", "v1", "admin", "influencers", "applications"],
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"admin",
+										"influencers",
+										"applications"
+									],
 									"query": [
-										{ "key": "status", "value": "pending_approval" },
-										{ "key": "search", "value": "", "disabled": true },
-										{ "key": "page", "value": "1" },
-										{ "key": "limit", "value": "20" }
+										{
+											"key": "status",
+											"value": "pending_approval"
+										},
+										{
+											"key": "search",
+											"value": "",
+											"disabled": true
+										},
+										{
+											"key": "page",
+											"value": "1"
+										},
+										{
+											"key": "limit",
+											"value": "20"
+										}
 									]
 								}
 							},
@@ -364,7 +500,10 @@
 							"request": {
 								"method": "GET",
 								"header": [
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"url": "{{baseUrl}}/api/v1/admin/influencers/applications/{{applicationUserId}}"
 							}
@@ -374,8 +513,14 @@
 							"request": {
 								"method": "POST",
 								"header": [
-									{ "key": "Content-Type", "value": "application/json" },
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"body": {
 									"mode": "raw",
@@ -389,8 +534,14 @@
 							"request": {
 								"method": "POST",
 								"header": [
-									{ "key": "Content-Type", "value": "application/json" },
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"body": {
 									"mode": "raw",
@@ -404,8 +555,14 @@
 							"request": {
 								"method": "PATCH",
 								"header": [
-									{ "key": "Content-Type", "value": "application/json" },
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"body": {
 									"mode": "raw",
@@ -424,17 +581,41 @@
 							"request": {
 								"method": "GET",
 								"header": [
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"url": {
 									"raw": "{{baseUrl}}/api/v1/admin/businesses/verifications?status=pending&page=1&limit=20",
-									"host": ["{{baseUrl}}"],
-									"path": ["api", "v1", "admin", "businesses", "verifications"],
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"admin",
+										"businesses",
+										"verifications"
+									],
 									"query": [
-										{ "key": "status", "value": "pending" },
-										{ "key": "search", "value": "", "disabled": true },
-										{ "key": "page", "value": "1" },
-										{ "key": "limit", "value": "20" }
+										{
+											"key": "status",
+											"value": "pending"
+										},
+										{
+											"key": "search",
+											"value": "",
+											"disabled": true
+										},
+										{
+											"key": "page",
+											"value": "1"
+										},
+										{
+											"key": "limit",
+											"value": "20"
+										}
 									]
 								}
 							},
@@ -460,7 +641,10 @@
 							"request": {
 								"method": "GET",
 								"header": [
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"url": "{{baseUrl}}/api/v1/admin/businesses/verifications/{{businessUserId}}"
 							}
@@ -470,8 +654,14 @@
 							"request": {
 								"method": "POST",
 								"header": [
-									{ "key": "Content-Type", "value": "application/json" },
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"body": {
 									"mode": "raw",
@@ -485,8 +675,14 @@
 							"request": {
 								"method": "POST",
 								"header": [
-									{ "key": "Content-Type", "value": "application/json" },
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"body": {
 									"mode": "raw",
@@ -505,19 +701,50 @@
 							"request": {
 								"method": "GET",
 								"header": [
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"url": {
 									"raw": "{{baseUrl}}/api/v1/admin/support/tickets?role=business&status=open&page=1&limit=20",
-									"host": ["{{baseUrl}}"],
-									"path": ["api", "v1", "admin", "support", "tickets"],
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"admin",
+										"support",
+										"tickets"
+									],
 									"query": [
-										{ "key": "role", "value": "business" },
-										{ "key": "status", "value": "open" },
-										{ "key": "priority", "value": "", "disabled": true },
-										{ "key": "search", "value": "", "disabled": true },
-										{ "key": "page", "value": "1" },
-										{ "key": "limit", "value": "20" }
+										{
+											"key": "role",
+											"value": "business"
+										},
+										{
+											"key": "status",
+											"value": "open"
+										},
+										{
+											"key": "priority",
+											"value": "",
+											"disabled": true
+										},
+										{
+											"key": "search",
+											"value": "",
+											"disabled": true
+										},
+										{
+											"key": "page",
+											"value": "1"
+										},
+										{
+											"key": "limit",
+											"value": "20"
+										}
 									]
 								}
 							},
@@ -543,7 +770,10 @@
 							"request": {
 								"method": "GET",
 								"header": [
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"url": "{{baseUrl}}/api/v1/admin/support/tickets/{{ticketId}}"
 							}
@@ -553,8 +783,14 @@
 							"request": {
 								"method": "PATCH",
 								"header": [
-									{ "key": "Content-Type", "value": "application/json" },
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"body": {
 									"mode": "raw",
@@ -568,8 +804,14 @@
 							"request": {
 								"method": "POST",
 								"header": [
-									{ "key": "Content-Type", "value": "application/json" },
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"body": {
 									"mode": "raw",
@@ -589,7 +831,10 @@
 							"request": {
 								"method": "GET",
 								"header": [
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"url": "{{baseUrl}}/api/v1/admin/categories"
 							},
@@ -615,8 +860,14 @@
 							"request": {
 								"method": "POST",
 								"header": [
-									{ "key": "Content-Type", "value": "application/json" },
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"body": {
 									"mode": "raw",
@@ -646,8 +897,14 @@
 							"request": {
 								"method": "PATCH",
 								"header": [
-									{ "key": "Content-Type", "value": "application/json" },
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"body": {
 									"mode": "raw",
@@ -661,7 +918,10 @@
 							"request": {
 								"method": "POST",
 								"header": [
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"url": "{{baseUrl}}/api/v1/admin/categories/{{categoryId}}/disable"
 							}
@@ -671,7 +931,10 @@
 							"request": {
 								"method": "POST",
 								"header": [
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"url": "{{baseUrl}}/api/v1/admin/categories/{{categoryId}}/enable"
 							}
@@ -687,18 +950,45 @@
 							"request": {
 								"method": "GET",
 								"header": [
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"url": {
 									"raw": "{{baseUrl}}/api/v1/admin/users?role=&status=&search=&page=1&limit=20",
-									"host": ["{{baseUrl}}"],
-									"path": ["api", "v1", "admin", "users"],
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"admin",
+										"users"
+									],
 									"query": [
-										{ "key": "role", "value": "", "description": "business | influencer | admin" },
-										{ "key": "status", "value": "", "description": "active | pending | blocked | removed" },
-										{ "key": "search", "value": "" },
-										{ "key": "page", "value": "1" },
-										{ "key": "limit", "value": "20" }
+										{
+											"key": "role",
+											"value": "",
+											"description": "business | influencer | admin"
+										},
+										{
+											"key": "status",
+											"value": "",
+											"description": "active | pending | blocked | removed"
+										},
+										{
+											"key": "search",
+											"value": ""
+										},
+										{
+											"key": "page",
+											"value": "1"
+										},
+										{
+											"key": "limit",
+											"value": "20"
+										}
 									]
 								}
 							},
@@ -724,7 +1014,10 @@
 							"request": {
 								"method": "GET",
 								"header": [
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"url": "{{baseUrl}}/api/v1/admin/users/{{adminTargetUserId}}"
 							}
@@ -734,8 +1027,14 @@
 							"request": {
 								"method": "POST",
 								"header": [
-									{ "key": "Content-Type", "value": "application/json" },
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"body": {
 									"mode": "raw",
@@ -749,7 +1048,10 @@
 							"request": {
 								"method": "POST",
 								"header": [
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"url": "{{baseUrl}}/api/v1/admin/users/{{adminTargetUserId}}/unblock"
 							}
@@ -759,8 +1061,14 @@
 							"request": {
 								"method": "POST",
 								"header": [
-									{ "key": "Content-Type", "value": "application/json" },
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"body": {
 									"mode": "raw",
@@ -780,18 +1088,44 @@
 							"request": {
 								"method": "GET",
 								"header": [
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"url": {
 									"raw": "{{baseUrl}}/api/v1/admin/campaigns?status=&niche=&business=&page=1&limit=20",
-									"host": ["{{baseUrl}}"],
-									"path": ["api", "v1", "admin", "campaigns"],
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"admin",
+										"campaigns"
+									],
 									"query": [
-										{ "key": "status", "value": "", "description": "draft | pending | active | completed | flagged" },
-										{ "key": "niche", "value": "" },
-										{ "key": "business", "value": "" },
-										{ "key": "page", "value": "1" },
-										{ "key": "limit", "value": "20" }
+										{
+											"key": "status",
+											"value": "",
+											"description": "draft | pending | active | completed | flagged"
+										},
+										{
+											"key": "niche",
+											"value": ""
+										},
+										{
+											"key": "business",
+											"value": ""
+										},
+										{
+											"key": "page",
+											"value": "1"
+										},
+										{
+											"key": "limit",
+											"value": "20"
+										}
 									]
 								}
 							},
@@ -817,7 +1151,10 @@
 							"request": {
 								"method": "GET",
 								"header": [
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"url": "{{baseUrl}}/api/v1/admin/campaigns/{{adminCampaignId}}"
 							}
@@ -827,7 +1164,10 @@
 							"request": {
 								"method": "POST",
 								"header": [
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"url": "{{baseUrl}}/api/v1/admin/campaigns/{{adminCampaignId}}/pause"
 							}
@@ -837,7 +1177,10 @@
 							"request": {
 								"method": "POST",
 								"header": [
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"url": "{{baseUrl}}/api/v1/admin/campaigns/{{adminCampaignId}}/complete"
 							}
@@ -847,7 +1190,10 @@
 							"request": {
 								"method": "POST",
 								"header": [
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"url": "{{baseUrl}}/api/v1/admin/campaigns/{{adminCampaignId}}/flag"
 							}
@@ -863,17 +1209,39 @@
 							"request": {
 								"method": "GET",
 								"header": [
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"url": {
 									"raw": "{{baseUrl}}/api/v1/admin/disputes?tab=open&search=&page=1&limit=20",
-									"host": ["{{baseUrl}}"],
-									"path": ["api", "v1", "admin", "disputes"],
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"admin",
+										"disputes"
+									],
 									"query": [
-										{ "key": "tab", "value": "open" },
-										{ "key": "search", "value": "" },
-										{ "key": "page", "value": "1" },
-										{ "key": "limit", "value": "20" }
+										{
+											"key": "tab",
+											"value": "open"
+										},
+										{
+											"key": "search",
+											"value": ""
+										},
+										{
+											"key": "page",
+											"value": "1"
+										},
+										{
+											"key": "limit",
+											"value": "20"
+										}
 									]
 								}
 							},
@@ -899,7 +1267,10 @@
 							"request": {
 								"method": "GET",
 								"header": [
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"url": "{{baseUrl}}/api/v1/admin/disputes/{{disputeId}}"
 							}
@@ -909,8 +1280,14 @@
 							"request": {
 								"method": "PATCH",
 								"header": [
-									{ "key": "Content-Type", "value": "application/json" },
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"body": {
 									"mode": "raw",
@@ -924,8 +1301,14 @@
 							"request": {
 								"method": "PATCH",
 								"header": [
-									{ "key": "Content-Type", "value": "application/json" },
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"body": {
 									"mode": "raw",
@@ -939,8 +1322,14 @@
 							"request": {
 								"method": "PATCH",
 								"header": [
-									{ "key": "Content-Type", "value": "application/json" },
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"body": {
 									"mode": "raw",
@@ -965,7 +1354,10 @@
 							"request": {
 								"method": "GET",
 								"header": [
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"url": "{{baseUrl}}/api/v1/business/dashboard/summary",
 								"description": "Real KPIs from campaigns, recommendations, contracts & invites. No reach/engagement metrics (frontend mock only)."
@@ -981,7 +1373,10 @@
 							"request": {
 								"method": "GET",
 								"header": [
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"url": "{{baseUrl}}/api/v1/business/profile"
 							}
@@ -991,8 +1386,14 @@
 							"request": {
 								"method": "PUT",
 								"header": [
-									{ "key": "Content-Type", "value": "application/json" },
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"body": {
 									"mode": "raw",
@@ -1006,7 +1407,10 @@
 							"request": {
 								"method": "POST",
 								"header": [
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"body": {
 									"mode": "formdata",
@@ -1027,7 +1431,10 @@
 							"request": {
 								"method": "POST",
 								"header": [
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"url": "{{baseUrl}}/api/v1/business/profile/complete",
 								"description": "Sets status active. is_verified stays false until admin verifies."
@@ -1044,8 +1451,14 @@
 							"request": {
 								"method": "POST",
 								"header": [
-									{ "key": "Content-Type", "value": "application/json" },
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"body": {
 									"mode": "raw",
@@ -1076,16 +1489,35 @@
 							"request": {
 								"method": "GET",
 								"header": [
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"url": {
 									"raw": "{{baseUrl}}/api/v1/business/campaigns?status=&page=1&limit=20",
-									"host": ["{{baseUrl}}"],
-									"path": ["api", "v1", "business", "campaigns"],
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"business",
+										"campaigns"
+									],
 									"query": [
-										{ "key": "status", "value": "" },
-										{ "key": "page", "value": "1" },
-										{ "key": "limit", "value": "20" }
+										{
+											"key": "status",
+											"value": ""
+										},
+										{
+											"key": "page",
+											"value": "1"
+										},
+										{
+											"key": "limit",
+											"value": "20"
+										}
 									]
 								}
 							}
@@ -1095,7 +1527,10 @@
 							"request": {
 								"method": "GET",
 								"header": [
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"url": "{{baseUrl}}/api/v1/business/campaigns/{{campaignId}}"
 							}
@@ -1105,8 +1540,14 @@
 							"request": {
 								"method": "PUT",
 								"header": [
-									{ "key": "Content-Type", "value": "application/json" },
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"body": {
 									"mode": "raw",
@@ -1120,7 +1561,10 @@
 							"request": {
 								"method": "POST",
 								"header": [
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"url": "{{baseUrl}}/api/v1/business/campaigns/{{campaignId}}/publish",
 								"description": "Draft → active. Requires complete campaign fields."
@@ -1131,7 +1575,10 @@
 							"request": {
 								"method": "POST",
 								"header": [
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"url": "{{baseUrl}}/api/v1/business/campaigns/{{campaignId}}/cancel",
 								"description": "Cancels campaign and pending invites."
@@ -1148,7 +1595,10 @@
 							"request": {
 								"method": "POST",
 								"header": [
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"url": "{{baseUrl}}/api/v1/business/campaigns/{{campaignId}}/recommendations/generate",
 								"description": "Scores eligible influencers and stores top matches in campaign_recommendations."
@@ -1159,20 +1609,53 @@
 							"request": {
 								"method": "GET",
 								"header": [
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"url": {
 									"raw": "{{baseUrl}}/api/v1/business/campaigns/{{campaignId}}/recommendations?search=&niche=&platform=&min_score=78&sort=match&page=1&limit=20",
-									"host": ["{{baseUrl}}"],
-									"path": ["api", "v1", "business", "campaigns", "{{campaignId}}", "recommendations"],
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"business",
+										"campaigns",
+										"{{campaignId}}",
+										"recommendations"
+									],
 									"query": [
-										{ "key": "search", "value": "" },
-										{ "key": "niche", "value": "" },
-										{ "key": "platform", "value": "" },
-										{ "key": "min_score", "value": "78" },
-										{ "key": "sort", "value": "match" },
-										{ "key": "page", "value": "1" },
-										{ "key": "limit", "value": "20" }
+										{
+											"key": "search",
+											"value": ""
+										},
+										{
+											"key": "niche",
+											"value": ""
+										},
+										{
+											"key": "platform",
+											"value": ""
+										},
+										{
+											"key": "min_score",
+											"value": "78"
+										},
+										{
+											"key": "sort",
+											"value": "match"
+										},
+										{
+											"key": "page",
+											"value": "1"
+										},
+										{
+											"key": "limit",
+											"value": "20"
+										}
 									]
 								}
 							},
@@ -1198,14 +1681,28 @@
 							"request": {
 								"method": "GET",
 								"header": [
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"url": {
 									"raw": "{{baseUrl}}/api/v1/business/influencers/{{influencerUserId}}?campaign_id={{campaignId}}",
-									"host": ["{{baseUrl}}"],
-									"path": ["api", "v1", "business", "influencers", "{{influencerUserId}}"],
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"business",
+										"influencers",
+										"{{influencerUserId}}"
+									],
 									"query": [
-										{ "key": "campaign_id", "value": "{{campaignId}}" }
+										{
+											"key": "campaign_id",
+											"value": "{{campaignId}}"
+										}
 									]
 								}
 							}
@@ -1215,8 +1712,14 @@
 							"request": {
 								"method": "POST",
 								"header": [
-									{ "key": "Content-Type", "value": "application/json" },
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"body": {
 									"mode": "raw",
@@ -1246,7 +1749,10 @@
 							"request": {
 								"method": "GET",
 								"header": [
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"url": "{{baseUrl}}/api/v1/business/campaigns/{{campaignId}}/invites"
 							}
@@ -1256,7 +1762,10 @@
 							"request": {
 								"method": "DELETE",
 								"header": [
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"url": "{{baseUrl}}/api/v1/business/campaigns/{{campaignId}}/invites/{{inviteId}}",
 								"description": "Only pending invites can be cancelled."
@@ -1273,8 +1782,14 @@
 							"request": {
 								"method": "POST",
 								"header": [
-									{ "key": "Content-Type", "value": "application/json" },
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"body": {
 									"mode": "raw",
@@ -1304,16 +1819,35 @@
 							"request": {
 								"method": "GET",
 								"header": [
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"url": {
 									"raw": "{{baseUrl}}/api/v1/business/contracts?status=&page=1&limit=20",
-									"host": ["{{baseUrl}}"],
-									"path": ["api", "v1", "business", "contracts"],
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"business",
+										"contracts"
+									],
 									"query": [
-										{ "key": "status", "value": "" },
-										{ "key": "page", "value": "1" },
-										{ "key": "limit", "value": "20" }
+										{
+											"key": "status",
+											"value": ""
+										},
+										{
+											"key": "page",
+											"value": "1"
+										},
+										{
+											"key": "limit",
+											"value": "20"
+										}
 									]
 								}
 							}
@@ -1323,7 +1857,10 @@
 							"request": {
 								"method": "GET",
 								"header": [
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"url": "{{baseUrl}}/api/v1/business/contracts/{{contractId}}"
 							}
@@ -1333,7 +1870,10 @@
 							"request": {
 								"method": "POST",
 								"header": [
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"url": "{{baseUrl}}/api/v1/business/contracts/{{contractId}}/pay",
 								"description": "After influencer accepts. Records payment as paid (escrow held). Chapa integration later."
@@ -1344,7 +1884,10 @@
 							"request": {
 								"method": "POST",
 								"header": [
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"url": "{{baseUrl}}/api/v1/business/contracts/{{contractId}}/approve-work",
 								"description": "Releases payout to influencer (amount - 5% fee). Payout status pending until bank transfer."
@@ -1355,7 +1898,10 @@
 							"request": {
 								"method": "POST",
 								"header": [
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"url": "{{baseUrl}}/api/v1/business/contracts/{{contractId}}/cancel",
 								"description": "Only before payment (pending_influencer or accepted)."
@@ -1372,7 +1918,10 @@
 							"request": {
 								"method": "GET",
 								"header": [
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"url": "{{baseUrl}}/api/v1/business/support/campaign-options",
 								"description": "Dropdown options for related campaign field."
@@ -1383,8 +1932,14 @@
 							"request": {
 								"method": "POST",
 								"header": [
-									{ "key": "Content-Type", "value": "application/json" },
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"body": {
 									"mode": "raw",
@@ -1414,7 +1969,10 @@
 							"request": {
 								"method": "GET",
 								"header": [
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"url": "{{baseUrl}}/api/v1/business/support/tickets"
 							}
@@ -1424,7 +1982,10 @@
 							"request": {
 								"method": "GET",
 								"header": [
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"url": "{{baseUrl}}/api/v1/business/support/tickets/{{ticketId}}"
 							}
@@ -1445,7 +2006,10 @@
 							"request": {
 								"method": "GET",
 								"header": [
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"url": "{{baseUrl}}/api/v1/influencer/profile"
 							}
@@ -1455,8 +2019,14 @@
 							"request": {
 								"method": "PUT",
 								"header": [
-									{ "key": "Content-Type", "value": "application/json" },
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"body": {
 									"mode": "raw",
@@ -1470,7 +2040,10 @@
 							"request": {
 								"method": "POST",
 								"header": [
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"url": "{{baseUrl}}/api/v1/influencer/profile/submit",
 								"description": "Requires complete profile. Sets status to pending_approval."
@@ -1481,7 +2054,10 @@
 							"request": {
 								"method": "POST",
 								"header": [
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"body": {
 									"mode": "formdata",
@@ -1503,7 +2079,10 @@
 							"request": {
 								"method": "POST",
 								"header": [
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"body": {
 									"mode": "formdata",
@@ -1525,7 +2104,10 @@
 							"request": {
 								"method": "DELETE",
 								"header": [
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"url": "{{baseUrl}}/api/v1/influencer/profile/portfolio/{{portfolioItemId}}",
 								"description": "Set portfolioItemId from upload response item.id"
@@ -1542,14 +2124,28 @@
 							"request": {
 								"method": "GET",
 								"header": [
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"url": {
 									"raw": "{{baseUrl}}/api/v1/influencer/invites?status=",
-									"host": ["{{baseUrl}}"],
-									"path": ["api", "v1", "influencer", "invites"],
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"influencer",
+										"invites"
+									],
 									"query": [
-										{ "key": "status", "value": "", "description": "pending | accepted | rejected | cancelled" }
+										{
+											"key": "status",
+											"value": "",
+											"description": "pending | accepted | rejected | cancelled"
+										}
 									]
 								}
 							},
@@ -1575,7 +2171,10 @@
 							"request": {
 								"method": "GET",
 								"header": [
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"url": "{{baseUrl}}/api/v1/influencer/invites/{{inviteId}}"
 							}
@@ -1585,7 +2184,10 @@
 							"request": {
 								"method": "POST",
 								"header": [
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"url": "{{baseUrl}}/api/v1/influencer/invites/{{inviteId}}/accept",
 								"description": "Requires active + verified influencer. Campaign must be active."
@@ -1596,7 +2198,10 @@
 							"request": {
 								"method": "POST",
 								"header": [
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"url": "{{baseUrl}}/api/v1/influencer/invites/{{inviteId}}/reject"
 							}
@@ -1612,16 +2217,35 @@
 							"request": {
 								"method": "GET",
 								"header": [
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"url": {
 									"raw": "{{baseUrl}}/api/v1/influencer/contracts?status=&page=1&limit=20",
-									"host": ["{{baseUrl}}"],
-									"path": ["api", "v1", "influencer", "contracts"],
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"influencer",
+										"contracts"
+									],
 									"query": [
-										{ "key": "status", "value": "" },
-										{ "key": "page", "value": "1" },
-										{ "key": "limit", "value": "20" }
+										{
+											"key": "status",
+											"value": ""
+										},
+										{
+											"key": "page",
+											"value": "1"
+										},
+										{
+											"key": "limit",
+											"value": "20"
+										}
 									]
 								}
 							},
@@ -1647,7 +2271,10 @@
 							"request": {
 								"method": "GET",
 								"header": [
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"url": "{{baseUrl}}/api/v1/influencer/contracts/{{contractId}}"
 							}
@@ -1657,7 +2284,10 @@
 							"request": {
 								"method": "POST",
 								"header": [
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"url": "{{baseUrl}}/api/v1/influencer/contracts/{{contractId}}/accept"
 							}
@@ -1667,7 +2297,10 @@
 							"request": {
 								"method": "POST",
 								"header": [
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"url": "{{baseUrl}}/api/v1/influencer/contracts/{{contractId}}/reject"
 							}
@@ -1682,7 +2315,10 @@
 							"request": {
 								"method": "GET",
 								"header": [
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"url": "{{baseUrl}}/api/v1/influencer/dashboard/summary",
 								"description": "Real KPIs: invites, contracts, profile score, earnings. No messages or earnings chart (frontend mock)."
@@ -1698,7 +2334,10 @@
 							"request": {
 								"method": "GET",
 								"header": [
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"url": "{{baseUrl}}/api/v1/influencer/support/invite-options"
 							}
@@ -1708,8 +2347,14 @@
 							"request": {
 								"method": "POST",
 								"header": [
-									{ "key": "Content-Type", "value": "application/json" },
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"body": {
 									"mode": "raw",
@@ -1739,7 +2384,10 @@
 							"request": {
 								"method": "GET",
 								"header": [
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"url": "{{baseUrl}}/api/v1/influencer/support/tickets"
 							}
@@ -1749,7 +2397,10 @@
 							"request": {
 								"method": "GET",
 								"header": [
-									{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+									{
+										"key": "Authorization",
+										"value": "Bearer {{accessToken}}"
+									}
 								],
 								"url": "{{baseUrl}}/api/v1/influencer/support/tickets/{{ticketId}}"
 							}
@@ -1759,18 +2410,235 @@
 			]
 		},
 		{
-			"name": "Marketplace",
-			"description": "Marketplace / chat APIs — routes planned; not all wired in server yet.",
+			"name": "Chat & Messaging",
+			"description": "Real-time WebSocket & PostgreSQL chat APIs — 1-on-1 messaging, read receipts, dual-mode deletion, conversation summaries.",
 			"item": [
 				{
-					"name": "Get Conversation (stub)",
+					"name": "1. Get or Create Conversation",
 					"request": {
 						"method": "POST",
 						"header": [
-							{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
 						],
-						"url": "{{baseUrl}}/api/v1/market/get_conversation",
-						"description": "Stub — wire in initiator/route.go when implemented."
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"recipient_user_id\": \"{{influencerUserId}}\",\n  \"campaign_id\": \"{{campaignId}}\"\n}"
+						},
+						"url": "{{baseUrl}}/api/v1/chat/conversations",
+						"description": "Get or create a 1-on-1 conversation with an influencer or business. Auto-saves conversationId to collection variables."
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201 || pm.response.code === 200) {",
+									"  const j = pm.response.json();",
+									"  if (j.data && j.data.id) {",
+									"    pm.collectionVariables.set('conversationId', j.data.id);",
+									"  }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "2. List My Conversations",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/chat/conversations?limit=30&offset=0",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"chat",
+								"conversations"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "30"
+								},
+								{
+									"key": "offset",
+									"value": "0"
+								}
+							]
+						},
+						"description": "List all active conversations for the authenticated user, ordered by most recent message, with counterpart profile and unread count."
+					}
+				},
+				{
+					"name": "3. Get Conversation Summary",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": "{{baseUrl}}/api/v1/chat/conversations/{{conversationId}}",
+						"description": "Fetch metadata, unread count, and counterpart info for a specific conversation."
+					}
+				},
+				{
+					"name": "4. Send Message (REST)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"conversation_id\": \"{{conversationId}}\",\n  \"body\": \"Hello! Interested in collaborating on this campaign.\",\n  \"media_url\": null,\n  \"media_type\": \"text\"\n}"
+						},
+						"url": "{{baseUrl}}/api/v1/chat/messages",
+						"description": "Send a message over REST (fallback to WebSocket). Automatically triggers real-time WebSocket event to receiver. Auto-saves messageId."
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"  const j = pm.response.json();",
+									"  if (j.data && j.data.id) {",
+									"    pm.collectionVariables.set('messageId', j.data.id);",
+									"  }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "5. Get Messages (History)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/chat/messages?conversation_id={{conversationId}}&limit=50&cursor=",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"chat",
+								"messages"
+							],
+							"query": [
+								{
+									"key": "conversation_id",
+									"value": "{{conversationId}}"
+								},
+								{
+									"key": "limit",
+									"value": "50"
+								},
+								{
+									"key": "cursor",
+									"value": "",
+									"description": "Optional message ID cursor to fetch older messages before this point (infinite scroll)"
+								}
+							]
+						},
+						"description": "Cursor-based chat history. Pass `cursor=<oldest_message_id>` to fetch older history when scrolling up. Automatically hides soft-deleted messages."
+					}
+				},
+				{
+					"name": "6. Mark Messages as Read",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"conversation_id\": \"{{conversationId}}\"\n}"
+						},
+						"url": "{{baseUrl}}/api/v1/chat/messages/read",
+						"description": "Marks all received messages in the conversation as read and broadcasts real-time read receipt to the sender."
+					}
+				},
+				{
+					"name": "7. Delete Message",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/chat/messages/{{messageId}}?delete_type=everyone",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"chat",
+								"messages",
+								"{{messageId}}"
+							],
+							"query": [
+								{
+									"key": "delete_type",
+									"value": "everyone",
+									"description": "either 'me' (delete for self) or 'everyone' (tombstone for both)"
+								}
+							]
+						},
+						"description": "Deletes message with dual modes: 'me' (private deletion) or 'everyone' (WhatsApp/Telegram style tombstone)."
+					}
+				},
+				{
+					"name": "8. WebSocket Realtime Connect (Info)",
+					"request": {
+						"method": "GET",
+						"url": "{{baseUrl}}/api/v1/chat/ws?token={{accessToken}}",
+						"description": "Connect via WebSocket client (e.g. Postman WebSocket Request, wscat, or browser):\n\nURL: `ws://localhost:8080/api/v1/chat/ws?token=<accessToken>`\n\nIncoming JSON format:\n```json\n{\n  \"type\": \"send_message\",\n  \"conversation_id\": \"{{conversationId}}\",\n  \"body\": \"Real-time message text\"\n}\n```"
 					}
 				}
 			]
