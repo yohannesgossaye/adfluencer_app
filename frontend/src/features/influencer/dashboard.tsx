@@ -42,8 +42,9 @@ export function InfluencerDashboard() {
       if (sumRes.status === "fulfilled" && sumRes.value.data) {
         setSummary(sumRes.value.data);
       }
-      if (chatRes.status === "fulfilled" && chatRes.value.data?.items) {
-        setConversations(chatRes.value.data.items);
+      if (chatRes.status === "fulfilled" && chatRes.value.data) {
+        const list = (Array.isArray(chatRes.value.data) ? chatRes.value.data : (chatRes.value.data as any)?.items) || [];
+        setConversations(list);
       }
       if (contRes.status === "fulfilled" && contRes.value.data?.items) {
         setContracts(contRes.value.data.items);

@@ -246,10 +246,11 @@ export type InfluencerViewDetail = {
   is_verified: boolean;
   portfolio_items: Array<{
     id: string;
-    title: string;
-    media_url: string;
+    file_url?: string;
+    media_url?: string;
     media_type: string;
     thumbnail_url?: string;
+    title?: string;
     caption?: string;
   }>;
   match_score?: number;

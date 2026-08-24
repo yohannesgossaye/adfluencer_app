@@ -1,3 +1,4 @@
+
 package business
 
 import (
@@ -59,30 +60,13 @@ func (m *businessModule) GetInfluencerForBusiness(ctx context.Context, userID, i
 
 	res := buildInfluencerView(rec)
 	if strings.TrimSpace(campaignID) != "" {
-		var match *businessDto.RecommendationRecord
-
-		g, ctx := errgroup.WithContext(ctx)
-
-		g.Go(func() error {
-			_, err := m.business.GetCampaignByID(ctx, userID, campaignID)
-			return mapCampaignError(err)
-		})
-
-		g.Go(func() error {
-			var err error
-			match, err = m.business.GetRecommendation(ctx, campaignID, influencerUserID)
-			return err
-		})
-
-		if err := g.Wait(); err != nil {
-			return nil, err
-		}
-
-		if match != nil {
-			score := match.MatchScore
-			breakdown := match.ScoreBreakdown
-			res.MatchScore = &score
-			res.ScoreBreakdown = &breakdown
+		if _, err := m.business.GetCampaignByID(ctx, userID, campaignID); err == nil {
+			if match, err := m.business.GetRecommendation(ctx, campaignID, influencerUserID); err == nil && match != nil {
+				score := match.MatchScore
+				breakdown := match.ScoreBreakdown
+				res.MatchScore = &score
+				res.ScoreBreakdown = &breakdown
+			}
 		}
 	}
 

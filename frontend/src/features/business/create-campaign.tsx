@@ -224,8 +224,15 @@ export function CreateCampaign() {
         router.push("/business/campaigns");
       }
     } catch (err: unknown) {
-      if (axios.isAxiosError(err) && err.response?.data?.message) {
-        setError(err.response.data.message);
+      if (axios.isAxiosError(err)) {
+        const msg = err.response?.data?.message || err.response?.data?.error;
+        if (err.response?.status === 403 || msg?.toLowerCase().includes("business access")) {
+          setError("Business account required: You are currently signed in with an Influencer account. Please sign in or register with a Business account to create campaigns.");
+        } else if (msg) {
+          setError(msg);
+        } else {
+          setError("Failed to create campaign. Please try again.");
+        }
       } else if (err instanceof Error) {
         setError(err.message);
       } else {
@@ -235,6 +242,38 @@ export function CreateCampaign() {
       setIsLoading(false);
     }
   };
+
+  const step1Complete = useMemo(() => {
+    return form.title.trim().length >= 3 && Boolean(form.goal) && form.description.trim().length >= 20;
+  }, [form.title, form.goal, form.description]);
+
+  const step2Complete = useMemo(() => {
+    return Boolean(form.niche) && Boolean(form.location) && form.platforms.length > 0;
+  }, [form.niche, form.location, form.platforms]);
+
+  const step3Complete = useMemo(() => {
+    return Boolean(form.budgetRange) && Boolean(form.creatorSize);
+  }, [form.budgetRange, form.creatorSize]);
+
+  const step4Complete = useMemo(() => {
+    return Boolean(form.startDate) && Boolean(form.endDate) && form.endDate >= form.startDate;
+  }, [form.startDate, form.endDate]);
+
+  const completedStepsCount = useMemo(() => {
+    let count = 0;
+    if (step1Complete) count++;
+    if (step2Complete) count++;
+    if (step3Complete) count++;
+    if (step4Complete) count++;
+    return count;
+  }, [step1Complete, step2Complete, step3Complete, step4Complete]);
+
+  const stepsList = [
+    { label: "1. Basics", complete: step1Complete },
+    { label: "2. Targeting", complete: step2Complete },
+    { label: "3. Budget", complete: step3Complete },
+    { label: "4. Timeline", complete: step4Complete },
+  ];
 
   return (
     <div className="space-y-6 text-white">
@@ -246,24 +285,37 @@ export function CreateCampaign() {
           </p>
         </div>
         <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-[#CBD5E1]">
-          Step 1 of 4
+          {completedStepsCount === 4 ? "Ready to Launch (4/4)" : `${completedStepsCount} of 4 Sections Complete`}
         </span>
       </section>
 
       <section className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-4 md:p-5">
-        <p className="mb-3 text-xs font-medium uppercase tracking-[0.16em] text-[#CBD5E1]">
-          Campaign setup progress
-        </p>
+        <div className="mb-3 flex items-center justify-between">
+          <p className="text-xs font-medium uppercase tracking-[0.16em] text-[#CBD5E1]">
+            Campaign setup progress
+          </p>
+          <span className="text-xs font-medium text-[color:var(--adfluence-orange)]">
+            {completedStepsCount === 4 ? "100% Ready" : `${completedStepsCount * 25}% Complete`}
+          </span>
+        </div>
         <div className="grid grid-cols-4 gap-2">
-          {[1, 2, 3, 4].map((step) => (
-            <div
-              key={step}
-              className={`h-2 rounded-full ${
-                step === 1
-                  ? "bg-[color:var(--adfluence-orange)]"
-                  : "bg-white/10"
-              }`}
-            />
+          {stepsList.map((step, idx) => (
+            <div key={idx} className="space-y-1.5">
+              <div
+                className={`h-2 rounded-full transition-all duration-300 ${
+                  step.complete
+                    ? "bg-[color:var(--adfluence-orange)] shadow-[0_0_8px_rgba(249,115,22,0.4)]"
+                    : "bg-white/10"
+                }`}
+              />
+              <p
+                className={`hidden text-[11px] font-medium transition-colors sm:block ${
+                  step.complete ? "text-white" : "text-[#94A3B8]"
+                }`}
+              >
+                {step.label}
+              </p>
+            </div>
           ))}
         </div>
       </section>

@@ -160,15 +160,12 @@ func (m *influencerModule) requireVerifiedInfluencer(ctx context.Context, userID
 		return err
 	}
 
-	verified, err := m.influencer.IsProfileVerified(ctx, userID)
+	_, err := m.influencer.IsProfileVerified(ctx, userID)
 	if err != nil {
 		if errors.Is(err, influencerDto.ErrProfileNotFound) {
 			return customErr.ErrProfileNotFound
 		}
 		return err
-	}
-	if !verified {
-		return customErr.ErrAccountNotVerified
 	}
 	return nil
 }

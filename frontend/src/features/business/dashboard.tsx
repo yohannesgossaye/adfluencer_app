@@ -44,8 +44,9 @@ export function BusinessDashboard() {
         if (sumRes.status === "fulfilled" && sumRes.value.data) {
           setSummary(sumRes.value.data);
         }
-        if (chatRes.status === "fulfilled" && chatRes.value.data?.items) {
-          setConversations(chatRes.value.data.items);
+        if (chatRes.status === "fulfilled" && chatRes.value.data) {
+          const list = (Array.isArray(chatRes.value.data) ? chatRes.value.data : (chatRes.value.data as any)?.items) || [];
+          setConversations(list);
         }
       } catch {
         // Fallback gracefully to empty state

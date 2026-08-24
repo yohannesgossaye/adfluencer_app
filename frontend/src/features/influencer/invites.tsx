@@ -1,9 +1,12 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { Loader2, MessageSquare } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { influencerApi, type InfluencerInviteItem } from "@/lib/api/influencer";
+import { chatApi } from "@/lib/api/chat";
 import { cn } from "@/lib/utils";
 
 const tabs: Array<{ id: "all" | "pending" | "accepted" | "rejected"; label: string }> = [
@@ -28,9 +31,11 @@ function statusStyle(status: string) {
 }
 
 export function InfluencerInvites() {
+  const router = useRouter();
   const [invites, setInvites] = useState<InfluencerInviteItem[]>([]);
   const [tab, setTab] = useState<(typeof tabs)[number]["id"]>("all");
   const [isLoading, setIsLoading] = useState(true);
+  const [startingChatId, setStartingChatId] = useState<string | null>(null);
 
   const loadInvites = async (statusFilter?: string) => {
     try {
@@ -51,9 +56,9 @@ export function InfluencerInvites() {
     loadInvites(tab);
   }, [tab]);
 
-  const updateStatus = async (id: string, status: "accepted" | "rejected") => {
+  const updateStatus = async (id: string, action: "accepted" | "rejected") => {
     try {
-      if (status === "accepted") {
+      if (action === "accepted") {
         await influencerApi.acceptInvite(id);
       } else {
         await influencerApi.rejectInvite(id);
@@ -61,6 +66,28 @@ export function InfluencerInvites() {
       await loadInvites(tab);
     } catch {
       // fallback
+    }
+  };
+
+  const handleOpenChat = async (inv: InfluencerInviteItem) => {
+    const businessUserId = inv.business_user_id || inv.campaign?.business_user_id;
+    setStartingChatId(inv.id);
+    try {
+      if (businessUserId) {
+        const res = await chatApi.getOrCreateConversation({
+          recipient_user_id: businessUserId,
+          campaign_id: inv.campaign?.id,
+        });
+        if (res.data?.id) {
+          router.push(`/influencer/messages?conversation_id=${res.data.id}`);
+          return;
+        }
+      }
+      router.push("/influencer/messages");
+    } catch {
+      router.push("/influencer/messages");
+    } finally {
+      setStartingChatId(null);
     }
   };
 
@@ -157,6 +184,27 @@ export function InfluencerInvites() {
                     onClick={() => updateStatus(inv.id, "rejected")}
                   >
                     Reject
+                  </Button>
+                </div>
+              ) : inv.status === "accepted" ? (
+                <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                  <Button
+                    type="button"
+                    disabled={startingChatId === inv.id}
+                    className="h-10 flex-1 rounded-xl bg-emerald-600 text-white hover:bg-emerald-500 flex items-center justify-center gap-2"
+                    onClick={() => handleOpenChat(inv)}
+                  >
+                    {startingChatId === inv.id ? (
+                      <>
+                        <Loader2 className="size-4 animate-spin" />
+                        Opening Chat...
+                      </>
+                    ) : (
+                      <>
+                        <MessageSquare className="size-4" />
+                        Chat with {inv.campaign?.business_name || "Brand"}
+                      </>
+                    )}
                   </Button>
                 </div>
               ) : null}

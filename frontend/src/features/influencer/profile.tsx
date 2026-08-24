@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
-import { Trash2, UploadCloud } from "lucide-react";
+import { AlertCircle, Trash2, UploadCloud } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -225,7 +225,8 @@ export function InfluencerProfile() {
 
   const completeness = profileData?.completeness?.percent ?? 0;
   const isVerified = profileData?.profile?.is_verified ?? false;
-  const canSubmit = profileData?.completeness?.can_submit ?? false;
+  const isRejected = profileData?.user?.status === "rejected";
+  const canSubmit = (profileData?.completeness?.can_submit ?? false) || isRejected;
 
   return (
     <div className="space-y-6 text-white">
@@ -278,6 +279,10 @@ export function InfluencerProfile() {
               <span className="rounded-full border border-emerald-400/30 bg-emerald-500/15 px-2 py-0.5 text-xs text-emerald-200">
                 Verified creator
               </span>
+            ) : isRejected ? (
+              <span className="rounded-full border border-rose-400/30 bg-rose-500/15 px-2 py-0.5 text-xs text-rose-200">
+                Changes Requested / Rejected
+              </span>
             ) : (
               <span className="rounded-full border border-amber-400/30 bg-amber-500/15 px-2 py-0.5 text-xs text-amber-200">
                 Pending Verification
@@ -323,10 +328,27 @@ export function InfluencerProfile() {
             disabled={isSubmitting}
             className="h-11 rounded-xl bg-emerald-600 px-5 text-white hover:bg-emerald-500"
           >
-            Submit for Verification
+            {isRejected ? "Re-apply for Verification" : "Submit for Verification"}
           </Button>
         ) : null}
       </section>
+
+      {isRejected ? (
+        <section className="rounded-2xl border border-rose-500/30 bg-rose-500/10 p-5">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="size-6 text-rose-400 shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <h2 className="text-base font-semibold text-rose-200">Changes Requested by Admin</h2>
+              <p className="text-sm text-rose-300">
+                Reason: {profileData?.user?.status_reason || "Your profile was reviewed and requires updates before approval."}
+              </p>
+              <p className="text-xs text-[#CBD5E1] pt-1">
+                You can make adjustments to your bio, niches, pricing, or media samples below and click <strong>&quot;Re-apply for Verification&quot;</strong> to submit your application again.
+              </p>
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       {error ? (
         <p className="rounded-xl border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
@@ -490,50 +512,52 @@ export function InfluencerProfile() {
           </Button>
         </div>
 
-        {portfolioItems.length === 0 ? (
+        {portfolioItems.filter((item) => Boolean(item.file_url)).length === 0 ? (
           <div
             onClick={() => portfolioInputRef.current?.click()}
-            className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-white/20 bg-[rgba(255,255,255,0.05)] p-8 text-center"
+            className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-white/20 bg-[rgba(255,255,255,0.05)] p-8 text-center transition-colors hover:bg-white/10"
           >
             <UploadCloud className="size-10 text-[#CBD5E1]/60" />
-            <p className="mt-2 text-sm text-white">No portfolio media uploaded yet.</p>
-            <p className="text-xs text-[#CBD5E1]">Click to upload photos or short video clips</p>
+            <p className="mt-2 text-sm font-medium text-white">No portfolio media uploaded yet.</p>
+            <p className="text-xs text-[#CBD5E1]">Click to upload photos or short video clips (MP4, WebM, PNG, JPG)</p>
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {portfolioItems.map((item) => (
-              <div
-                key={item.id}
-                className="group relative flex flex-col rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.05)] p-3"
-              >
-                <div className="relative aspect-video overflow-hidden rounded-xl border border-white/10">
-                  {item.media_type === "video" ? (
-                    <video
-                      src={item.file_url}
-                      controls
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <Image
-                      src={item.file_url}
-                      alt="Portfolio item"
-                      fill
-                      unoptimized
-                      className="object-cover"
-                      sizes="(max-width:768px) 100vw, 33vw"
-                    />
-                  )}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => onDeletePortfolio(item.id)}
-                  className="absolute right-4 top-4 rounded-lg bg-red-600/80 p-1.5 text-white opacity-0 transition-opacity hover:bg-red-600 group-hover:opacity-100"
-                  title="Delete media"
+            {portfolioItems
+              .filter((item) => Boolean(item.file_url))
+              .map((item) => (
+                <div
+                  key={item.id}
+                  className="group relative flex flex-col rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.05)] p-3"
                 >
-                  <Trash2 className="size-4" />
-                </button>
-              </div>
-            ))}
+                  <div className="relative aspect-video overflow-hidden rounded-xl border border-white/10 bg-black/40">
+                    {item.media_type === "video" ? (
+                      <video
+                        src={item.file_url}
+                        controls
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <Image
+                        src={item.file_url}
+                        alt="Portfolio item"
+                        fill
+                        unoptimized
+                        className="object-cover"
+                        sizes="(max-width:768px) 100vw, 33vw"
+                      />
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => onDeletePortfolio(item.id)}
+                    className="absolute right-4 top-4 rounded-lg bg-red-600/80 p-1.5 text-white opacity-0 transition-opacity hover:bg-red-600 group-hover:opacity-100"
+                    title="Delete media"
+                  >
+                    <Trash2 className="size-4" />
+                  </button>
+                </div>
+              ))}
           </div>
         )}
       </section>

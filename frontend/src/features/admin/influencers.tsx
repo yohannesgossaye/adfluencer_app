@@ -294,14 +294,23 @@ export function AdminInfluencers() {
             {selected.profile?.portfolio_items && selected.profile.portfolio_items.length > 0 ? (
               <>
                 <p className="mt-3 text-xs font-medium uppercase text-[#94A3B8]">Sample content</p>
-                <div className="relative mt-2 aspect-video overflow-hidden rounded-xl border border-white/10">
-                  <Image
-                    src={selected.profile.portfolio_items[0].file_url}
-                    alt={selected.profile.creator_name}
-                    fill
-                    className="object-cover"
-                    sizes="360px"
-                  />
+                <div className="relative mt-2 aspect-video overflow-hidden rounded-xl border border-white/10 bg-black/40">
+                  {selected.profile.portfolio_items[0].media_type === "video" ? (
+                    <video
+                      src={selected.profile.portfolio_items[0].file_url}
+                      controls
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <Image
+                      src={selected.profile.portfolio_items[0].file_url}
+                      alt={selected.profile.creator_name}
+                      fill
+                      unoptimized
+                      className="object-cover"
+                      sizes="360px"
+                    />
+                  )}
                 </div>
               </>
             ) : null}

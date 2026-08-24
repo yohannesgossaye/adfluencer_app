@@ -1,3 +1,5 @@
+"use client";
+
 import type { ReactNode } from "react";
 
 import { DashboardHeader } from "@/components/dashboard/dashboard-header";

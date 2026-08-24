@@ -95,7 +95,7 @@ func (m *businessModule) requireActiveCampaign(ctx context.Context, userID, camp
 	if err != nil {
 		return nil, mapCampaignError(err)
 	}
-	if rec.Status != "active" {
+	if rec.Status != "active" && rec.Status != "draft" {
 		return nil, customErr.ErrInvalidCampaignStatus
 	}
 	return rec, nil

@@ -253,7 +253,10 @@ func (m *businessModule) requireActiveBusiness(ctx context.Context, userID strin
 	if err := ensureEditableStatus(user.Status); err != nil {
 		return err
 	}
-	if model.UserStatus(user.Status) != model.ActiveStatus {
+	switch model.UserStatus(user.Status) {
+	case model.ActiveStatus, model.PendingProfileStatus, model.PendingApprovalStatus:
+		return nil
+	default:
 		return customErr.ErrAccountNotActive
 	}
 	return nil

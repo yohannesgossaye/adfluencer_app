@@ -147,6 +147,7 @@ export type UpdateInfluencerProfileRequest = {
 // --- Invite Types ---
 export type InfluencerInviteCampaign = {
   id: string;
+  business_user_id?: string;
   title: string;
   business_name: string;
   status: string;
@@ -159,6 +160,7 @@ export type InfluencerInviteCampaign = {
 
 export type InfluencerInviteItem = {
   id: string;
+  business_user_id?: string;
   status: string;
   message?: string;
   campaign: InfluencerInviteCampaign;

@@ -138,6 +138,7 @@ func scanInviteListRow(rows *sql.Rows) (influencerDto.InviteListItem, error) {
 	var item influencerDto.InviteListItem
 	var message sql.NullString
 	var respondedAt sql.NullTime
+	var businessUserID string
 	var budgetMin, budgetMax sql.NullFloat64
 	var startDate, endDate sql.NullTime
 	var campaignID string
@@ -149,6 +150,7 @@ func scanInviteListRow(rows *sql.Rows) (influencerDto.InviteListItem, error) {
 		&message,
 		&item.CreatedAt,
 		&respondedAt,
+		&businessUserID,
 		&campaignID,
 		&item.Campaign.Title,
 		&item.Campaign.Status,
@@ -162,6 +164,8 @@ func scanInviteListRow(rows *sql.Rows) (influencerDto.InviteListItem, error) {
 		return influencerDto.InviteListItem{}, fmt.Errorf("scan invite list item: %w", err)
 	}
 
+	item.BusinessUserID = businessUserID
+	item.Campaign.BusinessUserID = businessUserID
 	item.Campaign.ID = campaignID
 	item.Campaign.Platforms = parseTextArray(platformsRaw)
 	if item.Campaign.Platforms == nil {

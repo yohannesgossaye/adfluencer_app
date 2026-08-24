@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Paperclip, Send, Trash2 } from "lucide-react";
 
@@ -61,9 +62,12 @@ const quickReplies = [
 
 export function BusinessMessages() {
   const { user: authUser } = useAuth();
+  const searchParams = useSearchParams();
+  const targetConvId = searchParams.get("conversation_id");
+
   const [conversations, setConversations] = useState<ChatConversationItem[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [selectedId, setSelectedId] = useState<string>("");
+  const [selectedId, setSelectedId] = useState<string>(targetConvId || "");
   const [mobileShowChat, setMobileShowChat] = useState(false);
   const [search, setSearch] = useState("");
   const [draft, setDraft] = useState("");
@@ -73,41 +77,51 @@ export function BusinessMessages() {
 
   const currentUserId = authUser?.id || "";
 
-  const loadConversations = async () => {
+  const loadConversations = useCallback(async () => {
     try {
       const res = await chatApi.listConversations();
-      if (res.data?.items) {
-        setConversations(res.data.items);
-        if (!selectedId && res.data.items.length > 0) {
-          setSelectedId(res.data.items[0].id);
+      let list = (Array.isArray(res.data) ? res.data : (res.data as any)?.items) || [];
+      if (targetConvId && !list.some((c: ChatConversationItem) => c.id === targetConvId)) {
+        try {
+          const single = await chatApi.getConversation(targetConvId);
+          if (single.data) {
+            list = [single.data, ...list];
+          }
+        } catch {
+          // fallback
         }
+      }
+      setConversations(list);
+      if (targetConvId && list.some((c: ChatConversationItem) => c.id === targetConvId)) {
+        setSelectedId(targetConvId);
+      } else if (!selectedId && list.length > 0) {
+        setSelectedId(list[0].id);
       }
     } catch {
       // fallback
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [targetConvId, selectedId]);
 
   useEffect(() => {
     loadConversations();
-  }, []);
+  }, [loadConversations]);
 
   const selected = useMemo(
     () => conversations.find((c) => c.id === selectedId) ?? conversations[0] ?? null,
     [conversations, selectedId],
   );
 
-  const loadMessages = async (convId: string) => {
+  const loadMessages = useCallback(async (convId: string) => {
     if (!convId) return;
     try {
       const res = await chatApi.getMessages({ conversation_id: convId, limit: 50 });
-      if (res.data?.items) {
-        setMessages(res.data.items);
-        setTimeout(() => {
-          messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-        }, 100);
-      }
+      const msgList = (Array.isArray(res.data) ? res.data : (res.data as any)?.items) || [];
+      setMessages(msgList);
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      }, 100);
       await chatApi.markMessagesAsRead({ conversation_id: convId });
       setConversations((prev) =>
         prev.map((c) => (c.id === convId ? { ...c, unread_count: 0 } : c)),
@@ -115,13 +129,22 @@ export function BusinessMessages() {
     } catch {
       // fallback
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (selected?.id) {
       loadMessages(selected.id);
     }
-  }, [selected?.id]);
+  }, [selected?.id, loadMessages]);
+
+  // Polling sync fallback (every 4s) to ensure instant message sync across tabs
+  useEffect(() => {
+    if (!selected?.id) return;
+    const interval = setInterval(() => {
+      loadMessages(selected.id);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [selected?.id, loadMessages]);
 
   // Real-time WebSocket connection
   useEffect(() => {
@@ -129,42 +152,47 @@ export function BusinessMessages() {
     if (!token) return;
 
     const wsUrl = chatApi.getWebSocketUrl(token);
-    const ws = new WebSocket(wsUrl);
-    wsRef.current = ws;
+    let ws: WebSocket | null = null;
+    try {
+      ws = new WebSocket(wsUrl);
+      wsRef.current = ws;
 
-    ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.type === "message_created") {
-          const newMsg: ChatMessage = data.payload;
-          if (newMsg.conversation_id === selectedId) {
-            setMessages((prev) => [...prev, newMsg]);
-            setTimeout(() => {
-              messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-            }, 100);
-            chatApi.markMessagesAsRead({ conversation_id: selectedId });
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === "message_created") {
+            const newMsg: ChatMessage = data.payload;
+            if (newMsg.conversation_id === selectedId) {
+              setMessages((prev) => (prev.some((m) => m.id === newMsg.id) ? prev : [...prev, newMsg]));
+              setTimeout(() => {
+                messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+              }, 100);
+              chatApi.markMessagesAsRead({ conversation_id: selectedId });
+            }
+            loadConversations();
+          } else if (data.type === "messages_read") {
+            const { conversation_id, read_by_user_id } = data.payload;
+            if (conversation_id === selectedId && read_by_user_id !== currentUserId) {
+              setMessages((prev) =>
+                prev.map((m) => (m.sender_user_id === currentUserId ? { ...m, is_read: true } : m)),
+              );
+            }
+          } else if (data.type === "message_deleted") {
+            const { message_id } = data.payload;
+            setMessages((prev) => prev.filter((m) => m.id !== message_id));
           }
-          loadConversations();
-        } else if (data.type === "messages_read") {
-          const { conversation_id, read_by_user_id } = data.payload;
-          if (conversation_id === selectedId && read_by_user_id !== currentUserId) {
-            setMessages((prev) =>
-              prev.map((m) => (m.sender_user_id === currentUserId ? { ...m, is_read: true } : m)),
-            );
-          }
-        } else if (data.type === "message_deleted") {
-          const { message_id } = data.payload;
-          setMessages((prev) => prev.filter((m) => m.id !== message_id));
+        } catch {
+          // ignore malformed ws messages
         }
-      } catch {
-        // ignore malformed ws messages
-      }
-    };
+      };
+    } catch {
+      // ws fallback handled by interval
+    }
 
     return () => {
-      ws.close();
+      ws?.close();
     };
-  }, [selectedId, currentUserId]);
+  }, [selectedId, currentUserId, loadConversations]);
 
   const filteredList = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -197,7 +225,7 @@ export function BusinessMessages() {
         });
         const created = res.data;
         if (created) {
-          setMessages((prev) => [...prev, created]);
+          setMessages((prev) => (prev.some((m) => m.id === created.id) ? prev : [...prev, created]));
           setTimeout(() => {
             messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
           }, 100);
@@ -208,7 +236,7 @@ export function BusinessMessages() {
         // fallback
       }
     },
-    [selected],
+    [selected, loadConversations],
   );
 
   const deleteMessage = async (msgId: string) => {
@@ -242,10 +270,28 @@ export function BusinessMessages() {
           </div>
           <div className="min-h-0 flex-1 space-y-1 overflow-y-auto px-2 py-2 md:px-3">
             {filteredList.length === 0 && !isLoading ? (
-              <p className="p-4 text-center text-xs text-[#94A3B8]">No conversations yet.</p>
+              search.trim() ? (
+                <div className="p-4 text-center">
+                  <p className="text-xs text-[#94A3B8]">No conversations match &ldquo;{search}&rdquo;</p>
+                  <Button
+                    type="button"
+                    variant="link"
+                    size="sm"
+                    className="mt-1 h-auto p-0 text-xs text-[color:var(--adfluence-orange)]"
+                    onClick={() => setSearch("")}
+                  >
+                    Clear Search
+                  </Button>
+                </div>
+              ) : (
+                <div className="p-4 text-center">
+                  <p className="text-xs text-[#94A3B8]">No conversations yet.</p>
+                  <p className="mt-1 text-[11px] text-[#64748B]">When you invite a creator or message them, chats will appear here.</p>
+                </div>
+              )
             ) : (
               filteredList.map((c) => {
-                const active = c.id === selectedId;
+                const active = c.id === (selectedId || (selected?.id ?? ""));
                 return (
                   <button
                     key={c.id}

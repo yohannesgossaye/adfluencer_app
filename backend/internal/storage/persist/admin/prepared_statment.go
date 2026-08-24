@@ -105,7 +105,7 @@ const (
 	SET status = 'active', status_reason = NULL, updated_at = NOW()
 	WHERE id = $1
 		AND role = 'influencer'
-		AND status = 'pending_approval'
+		AND (status = 'pending_approval' OR status = 'pending_profile' OR status = 'active')
 	`
 
 	setInfluencerApproved = `
@@ -124,7 +124,7 @@ const (
 	SET status = 'rejected', status_reason = $2, updated_at = NOW()
 	WHERE id = $1
 		AND role = 'influencer'
-		AND status = 'pending_approval'
+		AND (status = 'pending_approval' OR status = 'pending_profile' OR status = 'active')
 	`
 
 	setInfluencerRejected = `

@@ -8,6 +8,7 @@ const (
 		ci.message,
 		ci.created_at,
 		ci.responded_at,
+		ci.business_user_id,
 		c.id,
 		c.title,
 		c.status::text,

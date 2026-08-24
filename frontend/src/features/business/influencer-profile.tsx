@@ -70,8 +70,10 @@ export function InfluencerProfile({ influencerId }: InfluencerProfileProps) {
         campaign_id: campaignId,
       });
       if (res.data?.id) {
-        router.push("/business/messages");
+        router.push(`/business/messages?conversation_id=${res.data.id}`);
+        return;
       }
+      router.push("/business/messages");
     } catch {
       router.push("/business/messages");
     }
@@ -215,32 +217,48 @@ export function InfluencerProfile({ influencerId }: InfluencerProfileProps) {
         <h2 className="mb-3 text-lg font-semibold text-white">Portfolio &amp; Media Showcase</h2>
         {creator.portfolio_items && creator.portfolio_items.length > 0 ? (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {creator.portfolio_items.map((item) => (
-              <article
-                key={item.id}
-                className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-3"
-              >
-                <div className="relative h-48 overflow-hidden rounded-xl bg-black/40">
-                  <Image
-                    src={item.media_url || item.thumbnail_url || "/images/adfluence-hero.jpg"}
-                    alt={item.title}
-                    fill
-                    className="object-cover"
-                  />
-                  <span className="absolute left-2 top-2 rounded-full bg-[color:var(--adfluence-surface)]/90 px-2 py-0.5 text-xs capitalize text-[#CBD5E1]">
-                    {item.media_type}
-                  </span>
-                </div>
-                <p className="mt-3 text-sm font-medium text-white truncate">{item.title}</p>
-                {item.caption ? (
-                  <p className="mt-1 text-xs text-[#CBD5E1] line-clamp-2">{item.caption}</p>
-                ) : null}
-              </article>
-            ))}
+            {creator.portfolio_items.map((item) => {
+              const mediaUrl = item.file_url || item.media_url;
+              if (!mediaUrl) return null;
+              return (
+                <article
+                  key={item.id}
+                  className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-3"
+                >
+                  <div className="relative aspect-video overflow-hidden rounded-xl bg-black/40 border border-white/10">
+                    {item.media_type === "video" ? (
+                      <video
+                        src={mediaUrl}
+                        controls
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <Image
+                        src={mediaUrl}
+                        alt={item.title || "Portfolio item"}
+                        fill
+                        unoptimized
+                        className="object-cover"
+                      />
+                    )}
+                    <span className="absolute left-2 top-2 rounded-full bg-[color:var(--adfluence-surface)]/90 px-2 py-0.5 text-xs capitalize text-[#CBD5E1]">
+                      {item.media_type}
+                    </span>
+                  </div>
+                  {item.title ? (
+                    <p className="mt-3 text-sm font-medium text-white truncate">{item.title}</p>
+                  ) : null}
+                  {item.caption ? (
+                    <p className="mt-1 text-xs text-[#CBD5E1] line-clamp-2">{item.caption}</p>
+                  ) : null}
+                </article>
+              );
+            })}
           </div>
         ) : (
-          <div className="rounded-xl border border-white/10 bg-white/5 p-6 text-center text-sm text-[#CBD5E1]">
-            No portfolio uploads provided yet by this creator.
+          <div className="rounded-2xl border border-dashed border-white/15 bg-[rgba(255,255,255,0.04)] p-8 text-center">
+            <p className="text-sm font-medium text-white">No portfolio or video samples uploaded yet</p>
+            <p className="mt-1 text-xs text-[#CBD5E1]">This creator has not added media samples to their showcase.</p>
           </div>
         )}
       </section>

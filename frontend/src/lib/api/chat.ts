@@ -102,8 +102,8 @@ export const chatApi = {
   },
 
   // 2. List my active conversations + previews + unread counts
-  listConversations: async (): Promise<ApiResponse<{ items: ChatConversationItem[] }>> => {
-    const res = await apiClient.get<ApiResponse<{ items: ChatConversationItem[] }>>(
+  listConversations: async (): Promise<ApiResponse<ChatConversationItem[]>> => {
+    const res = await apiClient.get<ApiResponse<ChatConversationItem[]>>(
       "/api/v1/chat/conversations"
     );
     return res.data;
@@ -135,8 +135,8 @@ export const chatApi = {
     conversation_id: string;
     cursor?: string;
     limit?: number;
-  }): Promise<ApiResponse<{ items: ChatMessage[]; pagination: CursorPaginationMeta }>> => {
-    const res = await apiClient.get<ApiResponse<{ items: ChatMessage[]; pagination: CursorPaginationMeta }>>(
+  }): Promise<ApiResponse<ChatMessage[]>> => {
+    const res = await apiClient.get<ApiResponse<ChatMessage[]>>(
       "/api/v1/chat/messages",
       { params }
     );
