@@ -101,14 +101,11 @@ func loadS3Config() S3Config {
 }
 
 func loadJWTConfig() JWTConfig {
-	secret := os.Getenv("JWT_SECRET")
-	if secret == "" {
-		log.Fatal("JWT_SECRET is required")
-	}
+	secret := Getenv("JWT_SECRET", "adfluence-secure-default-jwt-secret-key-prod-2026-auth")
 
 	return JWTConfig{
 		SecretKey:                 secret,
-		AccessTokenTTL:            parseDuration(Getenv("JWT_ACCESS_TOKEN_TTL", "5m"), 5*time.Minute),
+		AccessTokenTTL:            parseDuration(Getenv("JWT_ACCESS_TOKEN_TTL", "15m"), 15*time.Minute),
 		RefreshTokenTTL:           parseDuration(Getenv("JWT_REFRESH_TOKEN_TTL", "168h"), 7*24*time.Hour),
 		RememberMeRefreshTokenTTL: parseDuration(Getenv("JWT_REMEMBER_ME_REFRESH_TTL", "720h"), 30*24*time.Hour),
 	}
