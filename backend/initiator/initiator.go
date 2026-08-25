@@ -70,9 +70,18 @@ func Initiator(ctx context.Context) {
 
 	r := chi.NewRouter()
 
-	// Enable CORS for frontend integration (browser access from localhost:3000 / network IPs)
+	// Enable CORS for frontend integration (browser access from localhost, Vercel deployments, production domains)
 	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   []string{"http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:*", "http://192.168.*:*"},
+		AllowedOrigins: []string{
+			"http://localhost:3000",
+			"http://127.0.0.1:3000",
+			"https://*.vercel.app",
+			"https://*.onrender.com",
+		},
+		AllowOriginFunc: func(r *http.Request, origin string) bool {
+			// Allow all origins (including Vercel preview URLs & custom domains)
+			return true
+		},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token", "Origin"},
 		ExposedHeaders:   []string{"Link", "Content-Length"},

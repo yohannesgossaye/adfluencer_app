@@ -1,0 +1,7 @@
+main
+tmp/
+.git/
+.env
+.env.*
+node_modules/
+zdocker/
