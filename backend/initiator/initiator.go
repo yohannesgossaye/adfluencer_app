@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
@@ -66,7 +67,7 @@ func Initiator(ctx context.Context) {
 		logger.Warn(ctx, "sms not configured — phone OTP logged to console until SMS_USERNAME + SMS_API_KEY are set")
 	}
 
-	fileStorage := initFileStorage(ctx, cfg.S3, logger)
+	fileStorage := initFileStorage(ctx, cfg.S3, cfg.Port, logger)
 
 	r := chi.NewRouter()
 
@@ -93,6 +94,11 @@ func Initiator(ctx context.Context) {
 	r.Use(chimiddleware.RealIP)
 	r.Use(chimiddleware.Logger)
 	r.Use(chimiddleware.Recoverer)
+
+	// Serve uploaded files statically
+	workDir, _ := os.Getwd()
+	uploadsDir := http.Dir(filepath.Join(workDir, "uploads"))
+	r.Handle("/uploads/*", http.StripPrefix("/uploads/", http.FileServer(uploadsDir)))
 
 	postgresRepo := InitPersistence(db, logger)
 	tokens := jwt.NewTokenManager(jwt.ManagerConfig{
