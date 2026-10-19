@@ -1,9 +1,9 @@
 package admin
 
 import (
+	customErr "adinfluence_service_app/internal/constant/errors"
 	adminDto "adinfluence_service_app/internal/constant/model/dto/admin"
 	authDto "adinfluence_service_app/internal/constant/model/dto/auth"
-	customErr "adinfluence_service_app/internal/constant/errors"
 	"adinfluence_service_app/internal/constant/model/response"
 	"adinfluence_service_app/internal/handler/middleware"
 	"adinfluence_service_app/internal/handler/rest/httputil"
@@ -18,14 +18,13 @@ import (
 
 type adminHandler struct {
 	service module.AdminService
-	logger utils.Logger
+	logger  utils.Logger
 }
 
-func InitAdminHandler(s module.AdminService,log utils.Logger) *adminHandler {
+func InitAdminHandler(s module.AdminService, log utils.Logger) *adminHandler {
 	return &adminHandler{
 		service: s,
-		logger: log,
-
+		logger:  log,
 	}
 }
 
