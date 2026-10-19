@@ -29,15 +29,21 @@ func initFileStorage(ctx context.Context, cfg S3Config, port string, logger util
 		logger.Warn(ctx, "s3 init failed — falling back to local disk storage", zap.String("reason", err.Error()))
 	}
 
-	// Automatic local disk storage fallback (stores in ./uploads and serves via static route)
+	// Automatic local disk storage fallback (stores in ./uploads and serves via static route).
+	// On AWS EC2: set STORAGE_PUBLIC_URL=https://your-domain.com/uploads
+	// On Render:  set STORAGE_PUBLIC_URL or let RENDER_EXTERNAL_URL be auto-detected.
 	publicURL := os.Getenv("STORAGE_PUBLIC_URL")
 	if publicURL == "" {
 		if renderURL := os.Getenv("RENDER_EXTERNAL_URL"); renderURL != "" {
 			publicURL = strings.TrimRight(renderURL, "/") + "/uploads"
 		} else {
-			publicURL = "https://adfluencer-app.onrender.com/uploads"
+			// No public URL configured — local file URLs will be relative.
+			// Set STORAGE_PUBLIC_URL in your environment to fix this.
+			logger.Warn(ctx, "STORAGE_PUBLIC_URL not set — uploaded file URLs may not be accessible publicly; set STORAGE_PUBLIC_URL=https://your-domain.com/uploads")
+			publicURL = ""
 		}
 	}
+
 
 	localStorage, err := platformStorage.NewLocal("./uploads", publicURL)
 	if err != nil {
