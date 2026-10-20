@@ -13,7 +13,7 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func InirRoute(router chi.Router, rest handlers, authMW middleware.AuthMiddleware) {
+func InitRoute(router chi.Router, rest handlers, authMW middleware.AuthMiddleware) {
 	router.Route("/api/v1", func(r chi.Router) {
 		auth.AuthRoutes(r, rest.auth, authMW)
 		influencerRoutes.InfluencerRoutes(r, rest.influencer, authMW)

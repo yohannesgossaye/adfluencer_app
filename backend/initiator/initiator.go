@@ -110,7 +110,7 @@ func Initiator(ctx context.Context) {
 	service := InitModules(postgresRepo, tokens, emailClient, smsClient, fileStorage, cfg.FrontendURL, logger)
 	handler := InitHandler(service, tokens, logger)
 	authMW := middleware.InitAuthMiddleware(tokens)
-	InirRoute(r, handler, authMW)
+	InitRoute(r, handler, authMW)
 
 	server := &http.Server{
 		Addr:    ":" + cfg.Port,
