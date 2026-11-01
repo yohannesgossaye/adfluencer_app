@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import axios from "axios";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,87 +14,90 @@ import {
 import { cn } from "@/lib/utils";
 
 const statuses = [
-  "draft",
-  "pending",
-  "active",
-  "completed",
-  "flagged",
+  { id: "draft", label: "Draft" },
+  { id: "active", label: "Live" },
+  { id: "paused", label: "Paused" },
+  { id: "completed", label: "Completed" },
+  { id: "cancelled", label: "Cancelled" },
 ];
+
+const STATUS_LABEL: Record<string, string> = Object.fromEntries(statuses.map((s) => [s.id, s.label]));
 
 function badge(s: string) {
   switch (s.toLowerCase()) {
     case "draft":
       return "bg-white/10 text-[#CBD5E1]";
-    case "pending":
-      return "bg-amber-500/15 text-amber-200";
     case "active":
       return "bg-emerald-500/15 text-emerald-200";
     case "completed":
       return "bg-sky-500/15 text-sky-200";
-    case "flagged":
     case "paused":
       return "bg-rose-500/15 text-rose-200";
     default:
-      return "bg-white/10";
+      return "bg-white/10 text-[#CBD5E1]";
   }
 }
 
+type Action = "pause" | "flag" | "resume" | "complete";
+
+const ACTION_DONE: Record<Action, string> = {
+  pause: "Campaign paused. Creators can no longer accept its invites.",
+  flag: "Campaign flagged and paused.",
+  resume: "Campaign is live again.",
+  complete: "Campaign marked completed.",
+};
+
 export function AdminCampaigns() {
   const [rows, setRows] = useState<AdminCampaignListItem[]>([]);
-  const [stats, setStats] = useState<AdminCampaignStats>({ active: 0, pending: 0, flagged: 0 });
+  const [stats, setStats] = useState<AdminCampaignStats>({ active: 0, draft: 0, paused: 0 });
   const [status, setStatus] = useState<string>("all");
   const [niche, setNiche] = useState("");
   const [business, setBusiness] = useState("");
+  const [filters, setFilters] = useState({ niche: "", business: "" });
   const [isLoading, setIsLoading] = useState(true);
+  const [confirmComplete, setConfirmComplete] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
 
-  const loadCampaigns = async () => {
+  useEffect(() => {
+    const t = setTimeout(() => setFilters({ niche: niche.trim(), business: business.trim() }), 300);
+    return () => clearTimeout(t);
+  }, [niche, business]);
+
+  const loadCampaigns = useCallback(async () => {
     try {
       const res = await adminApi.listCampaigns({
         status: status === "all" ? undefined : status,
-        niche: niche.trim() || undefined,
-        business: business.trim() || undefined,
+        niche: filters.niche || undefined,
+        business: filters.business || undefined,
       });
-      if (res.data?.items) {
-        setRows(res.data.items);
-      }
-      if (res.data?.stats) {
-        setStats(res.data.stats);
-      }
+      setRows(res.data?.items ?? []);
+      if (res.data?.stats) setStats(res.data.stats);
     } catch {
-      // fallback
+      toast.error("Could not load campaigns.");
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [status, filters]);
 
   useEffect(() => {
-    loadCampaigns();
-  }, [status, niche, business]);
+    void Promise.resolve().then(loadCampaigns);
+  }, [loadCampaigns]);
 
-  const pauseCampaign = async (id: string) => {
+  const act = async (id: string, action: Action) => {
+    setBusyId(id);
     try {
-      await adminApi.pauseCampaign(id);
+      if (action === "pause") await adminApi.pauseCampaign(id);
+      else if (action === "flag") await adminApi.flagCampaign(id);
+      else if (action === "resume") await adminApi.resumeCampaign(id);
+      else await adminApi.completeCampaign(id);
+      toast.success(ACTION_DONE[action]);
+      setConfirmComplete(null);
       await loadCampaigns();
-    } catch {
-      // fallback
-    }
-  };
-
-  const completeCampaign = async (id: string) => {
-    try {
-      await adminApi.completeCampaign(id);
-      await loadCampaigns();
-    } catch {
-      // fallback
-    }
-  };
-
-  const flagCampaign = async (id: string) => {
-    try {
-      await adminApi.flagCampaign(id);
-      await loadCampaigns();
-    } catch {
-      // fallback
+    } catch (err) {
+      const msg = axios.isAxiosError(err) ? (err.response?.data as { message?: string } | undefined)?.message : undefined;
+      toast.error(msg || "The action could not be completed.");
+    } finally {
+      setBusyId(null);
     }
   };
 
@@ -107,9 +112,9 @@ export function AdminCampaigns() {
 
       <section className="grid gap-3 sm:grid-cols-3">
         {[
-          { label: "Active", value: stats.active },
-          { label: "Pending", value: stats.pending },
-          { label: "Flagged", value: stats.flagged },
+          { label: "Live", value: stats.active },
+          { label: "Drafts", value: stats.draft },
+          { label: "Paused", value: stats.paused },
         ].map((s) => (
           <article
             key={s.label}
@@ -136,17 +141,17 @@ export function AdminCampaigns() {
         </button>
         {statuses.map((s) => (
           <button
-            key={s}
+            key={s.id}
             type="button"
-            onClick={() => setStatus(s)}
+            onClick={() => setStatus(s.id)}
             className={cn(
               "inline-flex min-h-11 items-center rounded-full border px-4 py-2 text-sm capitalize transition-colors sm:min-h-0 sm:px-3 sm:py-1.5 sm:text-xs",
-              status === s
+              status === s.id
                 ? "border-transparent bg-[color:var(--adfluence-orange)] text-white"
                 : "border-white/10 text-[#CBD5E1]",
             )}
           >
-            {s}
+            {s.label}
           </button>
         ))}
       </div>
@@ -182,8 +187,8 @@ export function AdminCampaigns() {
                   <p className="font-semibold text-white">{r.title}</p>
                   <p className="text-sm text-[#CBD5E1]">{r.business_name}</p>
                 </div>
-                <span className={cn("rounded-full px-2 py-0.5 text-xs capitalize", badge(r.status))}>
-                  {r.status}
+                <span className={cn("rounded-full px-2 py-0.5 text-xs", badge(r.status))}>
+                  {STATUS_LABEL[r.status] ?? r.status}
                 </span>
               </div>
               <p className="mt-2 text-xs text-[#94A3B8]">
@@ -192,33 +197,37 @@ export function AdminCampaigns() {
               <p className="mt-1 text-xs text-[#CBD5E1]">
                 Contracts: {r.contract_summary} · Payment: {r.payment_summary}
               </p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-11 sm:h-8 border-white/15 text-white"
-                  disabled={r.status === "completed"}
-                  onClick={() => pauseCampaign(r.id)}
-                >
-                  Pause
-                </Button>
-                <Button
-                  size="sm"
-                  className="h-11 sm:h-8 bg-emerald-500/20 text-emerald-100"
-                  disabled={r.status === "completed"}
-                  onClick={() => completeCampaign(r.id)}
-                >
-                  Mark completed
-                </Button>
-                <Button
-                  size="sm"
-                  className="h-11 sm:h-8 bg-rose-500/20 text-rose-100"
-                  disabled={r.status === "flagged"}
-                  onClick={() => flagCampaign(r.id)}
-                >
-                  Flag
-                </Button>
-              </div>
+              {confirmComplete === r.id ? (
+                <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-white/15 bg-black/20 p-2">
+                  <span className="text-xs text-[#E2E8F0]">Mark this campaign completed? This can’t be undone.</span>
+                  <Button size="sm" disabled={busyId === r.id} className="h-11 bg-emerald-600 text-white hover:bg-emerald-700 sm:h-8" onClick={() => void act(r.id, "complete")}>
+                    Mark completed
+                  </Button>
+                  <Button size="sm" variant="ghost" className="h-11 text-white hover:bg-white/10 sm:h-8" onClick={() => setConfirmComplete(null)}>
+                    Cancel
+                  </Button>
+                </div>
+              ) : r.status === "active" || r.status === "paused" ? (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {r.status === "active" ? (
+                    <>
+                      <Button size="sm" variant="outline" disabled={busyId === r.id} className="h-11 border-white/15 bg-transparent text-white sm:h-8" onClick={() => void act(r.id, "pause")}>
+                        Pause
+                      </Button>
+                      <Button size="sm" disabled={busyId === r.id} className="h-11 bg-rose-500/20 text-rose-100 sm:h-8" onClick={() => void act(r.id, "flag")}>
+                        Flag
+                      </Button>
+                    </>
+                  ) : (
+                    <Button size="sm" disabled={busyId === r.id} className="h-11 bg-[color:var(--adfluence-orange)] text-white sm:h-8" onClick={() => void act(r.id, "resume")}>
+                      Resume
+                    </Button>
+                  )}
+                  <Button size="sm" disabled={busyId === r.id} className="h-11 bg-emerald-500/20 text-emerald-100 sm:h-8" onClick={() => setConfirmComplete(r.id)}>
+                    Mark completed
+                  </Button>
+                </div>
+              ) : null}
             </article>
           ))
         )}

@@ -1,7 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -45,16 +47,13 @@ export function AdminDashboard() {
     loadSummary();
   }, [pathname]);
 
-  const setAppStatus = async (userId: string, status: "approved" | "rejected") => {
+  const approve = async (userId: string) => {
     try {
-      if (status === "approved") {
-        await adminApi.approveInfluencerApplication(userId);
-      } else {
-        await adminApi.rejectInfluencerApplication(userId, { reason: "Application rejected by admin." });
-      }
+      await adminApi.approveInfluencerApplication(userId);
+      toast.success("Creator approved.");
       await loadSummary();
     } catch {
-      // fallback
+      toast.error("Could not approve this creator.");
     }
   };
 
@@ -121,18 +120,17 @@ export function AdminDashboard() {
                       type="button"
                       size="sm"
                       className="h-11 rounded-lg bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)] sm:h-8"
-                      onClick={() => setAppStatus(a.user_id, "approved")}
+                      onClick={() => void approve(a.user_id)}
                     >
                       Approve
                     </Button>
                     <Button
-                      type="button"
+                      asChild
                       size="sm"
                       variant="outline"
-                      className="h-11 rounded-lg border-white/15 text-white hover:bg-white/10 sm:h-8"
-                      onClick={() => setAppStatus(a.user_id, "rejected")}
+                      className="h-11 rounded-lg border-white/15 bg-transparent text-white hover:bg-white/10 sm:h-8"
                     >
-                      Reject
+                      <Link href="/admin/influencers">Review</Link>
                     </Button>
                   </div>
                 </li>

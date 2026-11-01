@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import {
   influencerApi,
   type InfluencerDashboardSummaryResponse,
-  type ContractDetail,
+  type ContractListItem,
 } from "@/lib/api/influencer";
 import { chatApi, type ChatConversationItem } from "@/lib/api/chat";
 import { UserAvatar } from "@/components/common/user-avatar";
@@ -28,7 +28,7 @@ function KpiCard({ label, value, hint }: { label: string; value: string; hint?: 
 export function InfluencerDashboard() {
   const [summary, setSummary] = useState<InfluencerDashboardSummaryResponse | null>(null);
   const [conversations, setConversations] = useState<ChatConversationItem[]>([]);
-  const [contracts, setContracts] = useState<ContractDetail[]>([]);
+  const [contracts, setContracts] = useState<ContractListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const loadDashboard = async () => {
@@ -300,7 +300,7 @@ export function InfluencerDashboard() {
                   key={c.id}
                   className="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-[#06111F] px-3 py-2 text-sm"
                 >
-                  <span className="truncate text-[#CBD5E1]">{c.business?.business_name || c.title}</span>
+                  <span className="truncate text-[#CBD5E1]">{c.counterparty_name || c.title}</span>
                   <span className="shrink-0 text-xs text-emerald-300">Active</span>
                 </li>
               ))}

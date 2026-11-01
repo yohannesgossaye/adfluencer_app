@@ -4,7 +4,7 @@ const (
 	getAdminCampaignStats = `
 	SELECT
 		(SELECT COUNT(*)::int FROM campaigns WHERE status = 'active'),
-		(SELECT COUNT(*)::int FROM campaigns WHERE status = 'pending'),
+		(SELECT COUNT(*)::int FROM campaigns WHERE status = 'draft'),
 		(SELECT COUNT(*)::int FROM campaigns WHERE status = 'paused')
 	`
 

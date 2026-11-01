@@ -19,8 +19,8 @@ func (a *admin) GetAdminCampaignStats(ctx context.Context) (*adminDto.AdminCampa
 	var stats adminDto.AdminCampaignStats
 	if err := a.db.QueryRowContext(ctx, getAdminCampaignStats).Scan(
 		&stats.Active,
-		&stats.Pending,
-		&stats.Flagged,
+		&stats.Draft,
+		&stats.Paused,
 	); err != nil {
 		return nil, fmt.Errorf("get admin campaign stats: %w", err)
 	}

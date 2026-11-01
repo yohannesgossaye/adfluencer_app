@@ -1,8 +1,8 @@
 import { apiClient } from "@/lib/api/api-client";
 import type { ApiResponse } from "@/lib/api/auth";
-import type { ContractDetail } from "@/lib/api/business";
+import type { ContractDetail, ContractListItem } from "@/lib/api/business";
 
-export type { ContractDetail };
+export type { ContractDetail, ContractListItem };
 
 // --- Dashboard Types ---
 export type InfluencerGreeting = {
@@ -303,15 +303,17 @@ export const influencerApi = {
   },
 
   // 4. Contracts
-  listContracts: async (): Promise<ApiResponse<{ items: ContractDetail[] }>> => {
-    const res = await apiClient.get<ApiResponse<{ items: ContractDetail[] }>>(
-      "/api/v1/influencer/contracts"
+  listContracts: async (params?: { status?: string; page?: number; limit?: number }): Promise<ApiResponse<{ items: ContractListItem[] }>> => {
+    const res = await apiClient.get<ApiResponse<{ items: ContractListItem[] }>>(
+      "/api/v1/influencer/contracts",
+      { params }
     );
     return res.data;
   },
 
-  getContract: async (contractId: string): Promise<ApiResponse<{ contract: ContractDetail }>> => {
-    const res = await apiClient.get<ApiResponse<{ contract: ContractDetail }>>(
+  /** Returns the contract itself (not wrapped). */
+  getContract: async (contractId: string): Promise<ApiResponse<ContractDetail>> => {
+    const res = await apiClient.get<ApiResponse<ContractDetail>>(
       `/api/v1/influencer/contracts/${contractId}`
     );
     return res.data;

@@ -1,5 +1,6 @@
 "use client";
 
+import { homeFor } from "@/lib/role-home";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
@@ -74,7 +75,7 @@ export function LoginForm({
         });
 
         onSuccess?.();
-        const targetRoute = nextParam || redirect_to || "/dashboard";
+        const targetRoute = nextParam || redirect_to || homeFor(user);
         router.push(targetRoute);
       }
     } catch (err: unknown) {

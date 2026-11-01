@@ -1,358 +1,220 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import axios from "axios";
+import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  appendSupportTicket,
-  filterTicketsForPortalUser,
-  loadSupportTickets,
-  type SupportPriority,
-  type SupportRole,
-  type SupportTicket,
-} from "@/data/support";
-import { getMockUser } from "@/lib/mock-auth";
-import { businessApi } from "@/lib/api/business";
+import { businessApi, type SupportTicket } from "@/lib/api/business";
 import { influencerApi } from "@/lib/api/influencer";
 import { cn } from "@/lib/utils";
 
-const fieldShell =
-  "w-full min-w-0 rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)]/60 px-3 py-2 text-sm text-white outline-none transition-[border,box-shadow] placeholder:text-[#94A3B8] focus:border-[color:var(--adfluence-orange)]/40 focus:ring-2 focus:ring-[color:var(--adfluence-orange)]/25";
+export type SupportRole = "business" | "influencer";
 
-function priorityBadgeClass(p: SupportPriority) {
-  if (p === "high") return "border-rose-400/35 bg-rose-500/15 text-rose-100";
-  if (p === "medium") return "border-amber-400/35 bg-amber-500/15 text-amber-100";
-  return "border-white/15 bg-white/10 text-[#CBD5E1]";
-}
-
-function statusLabel(status: SupportTicket["status"]) {
-  switch (status) {
-    case "in_review":
-      return "In review";
-    case "resolved":
-      return "Resolved";
-    case "escalated":
-      return "Escalated";
-    default:
-      return "Open";
-  }
-}
-
-type UserSupportPageProps = {
-  role: SupportRole;
-  subtitle: string;
-  issueTypeOptions: readonly string[];
-  relatedOptions: readonly string[];
+/** Issue types accepted by the backend for each role (support/types.go). */
+const ISSUE_TYPES: Record<SupportRole, Array<{ value: string; label: string }>> = {
+  business: [
+    { value: "campaign_issue", label: "Campaign issue" },
+    { value: "contract_issue", label: "Contract issue" },
+    { value: "payment_question", label: "Payment question" },
+    { value: "creator_communication", label: "Creator communication" },
+    { value: "technical_issue", label: "Technical issue" },
+    { value: "general_feedback", label: "General feedback" },
+  ],
+  influencer: [
+    { value: "profile_approval", label: "Profile approval" },
+    { value: "campaign_issue", label: "Campaign invite" },
+    { value: "contract_issue", label: "Contract issue" },
+    { value: "payment_question", label: "Payment or payout question" },
+    { value: "complaint", label: "Problem with a business" },
+    { value: "technical_issue", label: "Technical issue" },
+    { value: "general_feedback", label: "General feedback" },
+  ],
 };
 
-export function UserSupportPage({
-  role,
-  subtitle,
-  issueTypeOptions,
-  relatedOptions,
-}: UserSupportPageProps) {
-  const [issueType, setIssueType] = useState<string>(issueTypeOptions[0] ?? "");
+const PRIORITIES = [
+  { value: "low", label: "Low" },
+  { value: "normal", label: "Normal" },
+  { value: "high", label: "High" },
+  { value: "urgent", label: "Urgent" },
+];
+
+const STATUS_LABEL: Record<string, string> = {
+  open: "Open",
+  in_review: "In review",
+  resolved: "Resolved",
+  escalated: "Escalated",
+  closed: "Closed",
+};
+
+const field =
+  "w-full min-w-0 rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)] px-3 py-2 text-sm text-white outline-none placeholder:text-[#94A3B8] focus:border-[color:var(--adfluence-orange)] focus:ring-2 focus:ring-[color:var(--adfluence-orange)]/25";
+
+function apiError(err: unknown, fallback: string) {
+  if (axios.isAxiosError(err)) {
+    const data = err.response?.data as { message?: string } | undefined;
+    return data?.message || (!err.response ? "You appear to be offline. Your ticket was not sent." : fallback);
+  }
+  return fallback;
+}
+
+export function UserSupportPage({ role, subtitle }: { role: SupportRole; subtitle: string }) {
+  const issueTypes = ISSUE_TYPES[role];
+  const [issueType, setIssueType] = useState(issueTypes[0].value);
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
-  const [priority, setPriority] = useState<SupportPriority>("medium");
-  const [related, setRelated] = useState<string>(relatedOptions[0] ?? "");
-  const [success, setSuccess] = useState(false);
-  const [myTickets, setMyTickets] = useState<SupportTicket[]>([]);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [priority, setPriority] = useState("normal");
+  const [related, setRelated] = useState("");
+  const [relatedOptions, setRelatedOptions] = useState<Array<{ id: string; label: string }>>([]);
+  const [tickets, setTickets] = useState<SupportTicket[]>([]);
+  const [ticketsState, setTicketsState] = useState<"loading" | "ready" | "error">("loading");
+  const [submitting, setSubmitting] = useState(false);
 
-  const refreshMine = async () => {
-    if (role === "business") {
-      try {
-        const res = await businessApi.listSupportTickets();
-        if (res.data?.items) {
-          const mapped: SupportTicket[] = res.data.items.map((t) => ({
-            id: t.id,
-            senderName: "Business",
-            role: "business",
-            email: "",
-            subject: t.subject,
-            message: "",
-            type: t.issue_type,
-            priority: (t.priority.toLowerCase() as SupportPriority) || "medium",
-            status: (t.status.toLowerCase() as SupportTicket["status"]) || "open",
-            date: t.created_at.slice(0, 10),
-            relatedCampaign: t.related_campaign_title || undefined,
-            reply: t.admin_reply || undefined,
-            source: "user",
-          }));
-          setMyTickets(mapped);
-          return;
-        }
-      } catch {
-        // fallback
-      }
-    } else if (role === "influencer") {
-      try {
-        const res = await influencerApi.listSupportTickets();
-        if (res.data?.items) {
-          const mapped: SupportTicket[] = res.data.items.map((t) => ({
-            id: t.id,
-            senderName: "Creator",
-            role: "influencer",
-            email: "",
-            subject: t.subject,
-            message: "",
-            type: t.issue_type,
-            priority: (t.priority.toLowerCase() as SupportPriority) || "medium",
-            status: (t.status.toLowerCase() as SupportTicket["status"]) || "open",
-            date: t.created_at.slice(0, 10),
-            relatedCampaign: t.related_campaign_title || undefined,
-            reply: t.admin_reply || undefined,
-            source: "user",
-          }));
-          setMyTickets(mapped);
-          return;
-        }
-      } catch {
-        // fallback
-      }
+  const loadTickets = useCallback(async () => {
+    try {
+      const res = role === "business" ? await businessApi.listSupportTickets() : await influencerApi.listSupportTickets();
+      setTickets(res.data?.items ?? []);
+      setTicketsState("ready");
+    } catch {
+      setTicketsState("error");
     }
-    const user = getMockUser();
-    const all = loadSupportTickets();
-    setMyTickets(filterTicketsForPortalUser(all, role, user?.email ?? null));
-  };
-
-  useEffect(() => {
-    refreshMine();
   }, [role]);
 
-  const sessionUser = getMockUser();
+  useEffect(() => {
+    void Promise.resolve().then(loadTickets);
+    const options =
+      role === "business"
+        ? businessApi.listSupportCampaignOptions().then((r) => (r.data?.items ?? []).map((c) => ({ id: c.id, label: c.title })))
+        : influencerApi
+            .listSupportInviteOptions()
+            .then((r) => (r.data?.items ?? []).map((i) => ({ id: i.id, label: `${i.campaign_title} · ${i.business_name}` })));
+    options.then(setRelatedOptions).catch(() => setRelatedOptions([]));
+  }, [role, loadTickets]);
+
+  const canSubmit = subject.trim().length > 0 && message.trim().length > 0 && !submitting;
 
   const submit = async () => {
-    const trimmedSubject = subject.trim();
-    const trimmedMessage = message.trim();
-    if (!trimmedSubject || !trimmedMessage) return;
-
-    setIsSubmitting(true);
-    if (role === "business") {
-      try {
-        await businessApi.createSupportTicket({
-          issue_type: issueType.toLowerCase().replace(/\s+/g, "_"),
-          subject: trimmedSubject,
-          message: trimmedMessage,
-          priority: priority.toLowerCase(),
-        });
-        setSuccess(true);
-        setSubject("");
-        setMessage("");
-        setPriority("medium");
-        await refreshMine();
-        setTimeout(() => setSuccess(false), 4000);
-        return;
-      } catch {
-        // fallback
-      } finally {
-        setIsSubmitting(false);
+    if (!canSubmit) return;
+    setSubmitting(true);
+    try {
+      const base = { issue_type: issueType, subject: subject.trim(), message: message.trim(), priority };
+      if (role === "business") {
+        await businessApi.createSupportTicket({ ...base, related_campaign_id: related || undefined });
+      } else {
+        await influencerApi.createSupportTicket({ ...base, related_invite_id: related || undefined });
       }
-    } else if (role === "influencer") {
-      try {
-        await influencerApi.createSupportTicket({
-          issue_type: issueType.toLowerCase().replace(/\s+/g, "_"),
-          subject: trimmedSubject,
-          message: trimmedMessage,
-          priority: priority.toLowerCase(),
-        });
-        setSuccess(true);
-        setSubject("");
-        setMessage("");
-        setPriority("medium");
-        await refreshMine();
-        setTimeout(() => setSuccess(false), 4000);
-        return;
-      } catch {
-        // fallback
-      } finally {
-        setIsSubmitting(false);
-      }
+      toast.success("Your request was sent. Our team will reply here.");
+      setSubject("");
+      setMessage("");
+      setPriority("normal");
+      setRelated("");
+      await loadTickets();
+    } catch (err) {
+      toast.error(apiError(err, "Your request could not be sent. Please try again."));
+    } finally {
+      setSubmitting(false);
     }
-
-    const session = getMockUser();
-    const email = session?.email ?? "";
-    const senderName = session?.name ?? "Guest";
-    const row: SupportTicket = {
-      id: `usr-${Date.now()}`,
-      senderName,
-      role,
-      email,
-      subject: trimmedSubject,
-      message: trimmedMessage,
-      type: issueType,
-      priority,
-      status: "open",
-      date: new Date().toISOString().slice(0, 10),
-      relatedCampaign: related,
-      source: "user",
-    };
-    appendSupportTicket(row);
-    setSuccess(true);
-    setSubject("");
-    setMessage("");
-    setPriority("medium");
-    setIssueType(issueTypeOptions[0] ?? "");
-    setRelated(relatedOptions[0] ?? "");
-    refreshMine();
-    setTimeout(() => setSuccess(false), 4000);
-    setIsSubmitting(false);
   };
 
   return (
-    <div className="min-w-0 space-y-6 overflow-x-hidden text-white">
+    <div className="min-w-0 space-y-6 text-white">
       <header className="space-y-1">
-        <h1 className="text-2xl font-semibold text-white md:text-3xl">Support & Feedback</h1>
+        <h1 className="text-2xl font-semibold md:text-3xl">Support & feedback</h1>
         <p className="max-w-2xl text-sm text-[#CBD5E1] md:text-base">{subtitle}</p>
       </header>
 
-      <div className="grid min-w-0 gap-6 lg:grid-cols-2 lg:items-start">
-        <section
-          className={cn(
-            "min-w-0 space-y-4 rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.06)] p-4 shadow-[0_18px_60px_rgba(0,0,0,0.35)] backdrop-blur-md md:p-6",
-          )}
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+        <form
+          className="space-y-4 rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-5"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void submit();
+          }}
         >
-          <h2 className="text-lg font-semibold text-white">Submit a request</h2>
-          <div className="space-y-4">
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium uppercase tracking-wide text-[#94A3B8]">
-                Issue type
-              </label>
-              <select
-                className={cn(fieldShell, "h-10 appearance-none bg-[#06111F]/80")}
-                value={issueType}
-                onChange={(e) => setIssueType(e.target.value)}
-              >
-                {issueTypeOptions.map((opt) => (
-                  <option key={opt} value={opt} className="bg-[#06111F] text-white">
-                    {opt}
-                  </option>
-                ))}
-              </select>
+          <h2 className="text-lg font-semibold">New request</h2>
+          <label className="block space-y-1">
+            <span className="text-sm text-[#CBD5E1]">What do you need help with?</span>
+            <select id="support-issue" value={issueType} onChange={(e) => setIssueType(e.target.value)} className={cn(field, "h-11")}>
+              {issueTypes.map((t) => (
+                <option key={t.value} value={t.value}>{t.label}</option>
+              ))}
+            </select>
+          </label>
+          <label className="block space-y-1">
+            <span className="text-sm text-[#CBD5E1]">{role === "business" ? "Related campaign" : "Related invite"}</span>
+            <select id="support-related" value={related} onChange={(e) => setRelated(e.target.value)} className={cn(field, "h-11")}>
+              <option value="">{role === "business" ? "Not about a specific campaign" : "Not about a specific invite"}</option>
+              {relatedOptions.map((o) => (
+                <option key={o.id} value={o.id}>{o.label}</option>
+              ))}
+            </select>
+          </label>
+          <label className="block space-y-1">
+            <span className="text-sm text-[#CBD5E1]">Subject *</span>
+            <Input id="support-subject" value={subject} maxLength={200} onChange={(e) => setSubject(e.target.value)} className={cn(field, "h-11")} placeholder="Short summary" />
+          </label>
+          <label className="block space-y-1">
+            <span className="text-sm text-[#CBD5E1]">Message *</span>
+            <textarea id="support-message" value={message} rows={5} maxLength={5000} onChange={(e) => setMessage(e.target.value)} className={field} placeholder="Tell us what happened and what you expected." />
+          </label>
+          <fieldset className="space-y-1">
+            <legend className="text-sm text-[#CBD5E1]">Priority</legend>
+            <div className="flex flex-wrap gap-2">
+              {PRIORITIES.map((p) => (
+                <button
+                  key={p.value}
+                  type="button"
+                  aria-pressed={priority === p.value}
+                  onClick={() => setPriority(p.value)}
+                  className={cn(
+                    "min-h-11 rounded-full border px-4 text-sm md:min-h-9",
+                    priority === p.value ? "border-transparent bg-[color:var(--adfluence-orange)] text-white" : "border-white/10 text-[#CBD5E1] hover:text-white",
+                  )}
+                >
+                  {p.label}
+                </button>
+              ))}
             </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium uppercase tracking-wide text-[#94A3B8]">
-                Subject
-              </label>
-              <Input
-                value={subject}
-                onChange={(e) => setSubject(e.target.value)}
-                placeholder="Short summary"
-                className={cn(fieldShell, "h-10 border-white/10 bg-[#06111F]/60 text-white")}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium uppercase tracking-wide text-[#94A3B8]">
-                Message
-              </label>
-              <textarea
-                className={cn(fieldShell, "min-h-[120px] resize-y")}
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                placeholder="Describe your question or issue"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <span className="text-xs font-medium uppercase tracking-wide text-[#94A3B8]">
-                Priority
-              </span>
-              <div className="flex flex-wrap gap-2">
-                {(["low", "medium", "high"] as const).map((p) => (
-                  <button
-                    key={p}
-                    type="button"
-                    onClick={() => setPriority(p)}
-                    className={cn(
-                      "rounded-full border px-3 py-1.5 text-xs font-medium capitalize transition-colors",
-                      priority === p
-                        ? "border-transparent bg-[color:var(--adfluence-orange)] text-white"
-                        : "border-white/15 bg-white/5 text-[#CBD5E1] hover:bg-white/10",
-                    )}
-                  >
-                    {p}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium uppercase tracking-wide text-[#94A3B8]">
-                {role === "business" ? "Related campaign" : "Related campaign / invite"}
-              </label>
-              <select
-                className={cn(fieldShell, "h-10 appearance-none bg-[#06111F]/80")}
-                value={related}
-                onChange={(e) => setRelated(e.target.value)}
-              >
-                {relatedOptions.map((opt) => (
-                  <option key={opt} value={opt} className="bg-[#06111F] text-white">
-                    {opt}
-                  </option>
-                ))}
-              </select>
-            </div>
-            {success ? (
-              <p className="rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-100">
-                Support request submitted. Admin will review it.
-              </p>
-            ) : null}
-            <Button
-              type="button"
-              className="h-11 w-full rounded-xl bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)] md:h-10"
-              onClick={submit}
-            >
-              Submit Support Request
-            </Button>
-            {!sessionUser ? (
-              <p className="text-xs text-[#94A3B8]">
-                Sign in with a demo account to attach your email to new tickets and see them under My
-                Requests.
-              </p>
-            ) : null}
-          </div>
-        </section>
+          </fieldset>
+          <Button type="submit" disabled={!canSubmit} className="h-11 rounded-xl bg-[color:var(--adfluence-orange)] px-6 text-white hover:bg-[color:var(--adfluence-orange-hover)]">
+            {submitting ? <Loader2 className="mr-2 size-4 animate-spin" aria-hidden /> : null}
+            Send request
+          </Button>
+        </form>
 
-        <section
-          className={cn(
-            "min-w-0 space-y-4 rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.06)] p-4 shadow-[0_18px_60px_rgba(0,0,0,0.35)] backdrop-blur-md md:p-6",
-          )}
-        >
-          <h2 className="text-lg font-semibold text-white">My Requests</h2>
-          {myTickets.length === 0 ? (
-            <p className="text-sm text-[#94A3B8]">
-              No requests yet for this account. Submit a ticket to see it here.
+        <section className="space-y-3 rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-5">
+          <h2 className="text-lg font-semibold">My requests</h2>
+          {ticketsState === "loading" ? (
+            <p className="flex items-center gap-2 text-sm text-[#94A3B8]"><Loader2 className="size-4 animate-spin" aria-hidden /> Loading…</p>
+          ) : ticketsState === "error" ? (
+            <p role="alert" className="text-sm text-rose-200">
+              Could not load your requests.{" "}
+              <button type="button" className="underline" onClick={() => void loadTickets()}>Try again</button>
             </p>
+          ) : tickets.length === 0 ? (
+            <p className="text-sm text-[#CBD5E1]">You haven’t contacted support yet.</p>
           ) : (
-            <ul className="space-y-3">
-              {myTickets
-                .slice()
-                .sort((a, b) => (a.date < b.date ? 1 : -1))
-                .map((t) => (
-                  <li
-                    key={t.id}
-                    className="rounded-xl border border-white/10 bg-[#06111F]/50 p-3 md:p-4"
-                  >
-                    <div className="flex flex-wrap items-start justify-between gap-2">
-                      <p className="font-medium text-white">{t.subject}</p>
-                      <span
-                        className={cn(
-                          "shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
-                          priorityBadgeClass(t.priority),
-                        )}
-                      >
-                        {t.priority}
-                      </span>
-                    </div>
-                    <p className="mt-1 text-xs text-[#94A3B8]">
-                      {t.type} · {statusLabel(t.status)} · {t.date}
+            <ul className="space-y-2">
+              {tickets.map((t) => (
+                <li key={t.id} className="rounded-xl border border-white/10 bg-[rgba(255,255,255,0.04)] p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="font-medium">{t.subject}</p>
+                    <span className="rounded-full border border-white/15 px-2 py-0.5 text-[10px] text-[#CBD5E1]">{STATUS_LABEL[t.status] ?? t.status}</span>
+                  </div>
+                  <p className="mt-0.5 text-xs text-[#94A3B8]">
+                    {t.issue_type_label || t.issue_type} · {new Date(t.created_at).toLocaleDateString()}
+                    {t.related_campaign_title ? ` · ${t.related_campaign_title}` : ""}
+                  </p>
+                  {t.admin_reply ? (
+                    <p className="mt-2 rounded-lg border border-emerald-400/20 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-50">
+                      <span className="font-medium">Adfluence: </span>
+                      {t.admin_reply}
                     </p>
-                    <p className="mt-2 text-xs text-[#CBD5E1]">
-                      <span className="text-[#94A3B8]">Admin reply: </span>
-                      {t.adminReply?.trim() ? t.adminReply : "—"}
-                    </p>
-                  </li>
-                ))}
+                  ) : null}
+                </li>
+              ))}
             </ul>
           )}
         </section>

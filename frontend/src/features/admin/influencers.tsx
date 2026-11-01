@@ -2,7 +2,9 @@
 
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import axios from "axios";
 import { ArrowLeft } from "lucide-react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,6 +38,8 @@ export function AdminInfluencers() {
   const [selectedDetail, setSelectedDetail] = useState<InfluencerApplicationDetail | null>(null);
   const [mobileShowDetail, setMobileShowDetail] = useState(false);
   const [noteDraft, setNoteDraft] = useState("");
+  const [rejectFor, setRejectFor] = useState<string | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
   const [isLoading, setIsLoading] = useState(true);
 
   const loadList = async () => {
@@ -103,16 +107,37 @@ export function AdminInfluencers() {
     } as InfluencerApplicationDetail) : null;
   }, [selectedDetail, rows, selectedId]);
 
+  const errorText = (err: unknown, fallback: string) =>
+    (axios.isAxiosError(err) ? (err.response?.data as { message?: string } | undefined)?.message : undefined) || fallback;
+
   const setStatus = async (userId: string, status: "approved" | "rejected") => {
+    if (status === "rejected") {
+      // Rejection needs a reason the creator will see: open the reason box.
+      setSelectedId(userId);
+      setRejectFor(userId);
+      setRejectReason("");
+      if (window.matchMedia("(max-width: 1279px)").matches) setMobileShowDetail(true);
+      return;
+    }
     try {
-      if (status === "approved") {
-        await adminApi.approveInfluencerApplication(userId, { admin_note: noteDraft });
-      } else {
-        await adminApi.rejectInfluencerApplication(userId, { reason: "Application rejected by admin.", admin_note: noteDraft });
-      }
+      await adminApi.approveInfluencerApplication(userId, { admin_note: noteDraft });
+      toast.success("Creator approved. They can now receive invites.");
       await loadList();
-    } catch {
-      // fallback
+    } catch (err) {
+      toast.error(errorText(err, "Could not approve this creator."));
+    }
+  };
+
+  const sendRejection = async () => {
+    if (!rejectFor || rejectReason.trim().length < 5) return;
+    try {
+      await adminApi.rejectInfluencerApplication(rejectFor, { reason: rejectReason.trim(), admin_note: noteDraft });
+      toast.success("Rejection sent. The creator will see your reason.");
+      setRejectFor(null);
+      setRejectReason("");
+      await loadList();
+    } catch (err) {
+      toast.error(errorText(err, "Could not reject this application."));
     }
   };
 
@@ -226,26 +251,26 @@ export function AdminInfluencers() {
                       type="button"
                       size="sm"
                       className="h-11 bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)] sm:h-8"
-                      disabled={r.status === "approved" || r.status === "active"}
+                      disabled={!(r.status === "pending" || r.status === "pending_approval")}
                       onClick={(e) => {
                         e.stopPropagation();
                         setStatus(r.user_id, "approved");
                       }}
                     >
-                      {r.status === "removed" || r.status === "rejected" ? "Re-approve" : "Approve"}
+                      Approve
                     </Button>
                     <Button
                       type="button"
                       size="sm"
                       variant="outline"
                       className="h-11 border-white/15 text-white hover:bg-white/10 sm:h-8"
-                      disabled={r.status === "rejected"}
+                      disabled={r.status === "rejected" || r.status === "removed"}
                       onClick={(e) => {
                         e.stopPropagation();
                         setStatus(r.user_id, "rejected");
                       }}
                     >
-                      Reject
+                      {r.status === "approved" || r.status === "active" ? "Request changes" : "Reject"}
                     </Button>
                   </div>
                 </div>
@@ -313,6 +338,33 @@ export function AdminInfluencers() {
                   )}
                 </div>
               </>
+            ) : null}
+
+            {rejectFor === selected.user_id ? (
+              <div className="mt-4 space-y-2 rounded-xl border border-rose-400/30 bg-rose-500/10 p-3">
+                <label className="block text-sm">
+                  <span className="text-rose-100">Reason (shown to the creator)</span>
+                  <textarea
+                    id="reject-reason"
+                    value={rejectReason}
+                    autoFocus
+                    maxLength={1000}
+                    rows={3}
+                    onChange={(e) => setRejectReason(e.target.value)}
+                    placeholder="Tell them what to fix, e.g. add a link to your TikTok profile"
+                    className="mt-1 w-full rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)] px-3 py-2 text-sm text-white"
+                  />
+                  <span className="text-xs text-rose-100/80">{rejectReason.trim().length}/1000 · at least 5 characters</span>
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  <Button type="button" disabled={rejectReason.trim().length < 5} onClick={() => void sendRejection()} className="h-11 bg-rose-600 text-white hover:bg-rose-700 sm:h-9">
+                    Send rejection
+                  </Button>
+                  <Button type="button" variant="ghost" onClick={() => setRejectFor(null)} className="h-11 text-white hover:bg-white/10 sm:h-9">
+                    Cancel
+                  </Button>
+                </div>
+              </div>
             ) : null}
 
             <label className="mt-4 block text-sm">

@@ -1,9 +1,6 @@
 package business
 
 const (
-	// One invite row per campaign + creator. Inviting again after the creator
-	// rejected it (or the business cancelled it) reopens that row; a pending or
-	// accepted invite is left alone and nothing is returned.
 	insertCampaignInvite = `
 	INSERT INTO campaign_invites (
 		id, campaign_id, business_user_id, influencer_user_id, message, status
@@ -21,7 +18,7 @@ const (
 	listCampaignInvites = `
 	SELECT
 		ci.id,
-		ci.campaign_id,
+		camp.id,
 		ci.influencer_user_id,
 		ip.creator_name,
 		ci.status::text,

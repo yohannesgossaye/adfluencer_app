@@ -1,373 +1,214 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowLeft, FileText } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import axios from "axios";
+import { ArrowLeft, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
+import { ContractDetailView } from "@/components/contracts/contract-detail";
 import { Button } from "@/components/ui/button";
-import { influencerApi } from "@/lib/api/influencer";
+import { influencerApi, type ContractDetail, type ContractListItem } from "@/lib/api/influencer";
+import { contractStatus, formatEtb } from "@/lib/contracts";
 import { cn } from "@/lib/utils";
 
-export type InfluencerContractStatus =
-  | "draft"
-  | "pending_review"
-  | "pending"
-  | "accepted"
-  | "active"
-  | "rejected"
-  | "completed";
+const FILTERS = [
+  { id: "", label: "All" },
+  { id: "pending_influencer", label: "Needs your answer" },
+  { id: "accepted", label: "Waiting for funding" },
+  { id: "active", label: "In progress" },
+  { id: "completed", label: "Completed" },
+] as const;
 
-export type InfluencerContractRecord = {
-  id: string;
-  brand: string;
-  campaign: string;
-  deliverables: string;
-  timeline: string;
-  amountEtb: number;
-  status: InfluencerContractStatus;
-  terms: string;
-  deadline: string;
-  notes: string;
-  checklist: Array<{ id: string; label: string; done: boolean }>;
-};
-
-function formatEtb(n: number) {
-  if (n >= 1000) return `ETB ${Math.round(n / 1000)}K`;
-  return `ETB ${n.toLocaleString()}`;
-}
-
-function statusBadge(status: string) {
-  const s = status.toLowerCase();
-  switch (s) {
-    case "pending_review":
-    case "pending":
-      return "border-amber-400/30 bg-amber-500/10 text-amber-200";
-    case "accepted":
-      return "border-violet-400/30 bg-violet-500/10 text-violet-200";
-    case "active":
-      return "border-emerald-400/30 bg-emerald-500/10 text-emerald-200";
-    case "rejected":
-      return "border-rose-400/30 bg-rose-500/10 text-rose-200";
-    case "completed":
-      return "border-sky-400/30 bg-sky-500/10 text-sky-200";
-    default:
-      return "border-white/10 bg-white/5 text-[#CBD5E1]";
+function apiError(err: unknown, fallback: string) {
+  if (axios.isAxiosError(err)) {
+    const data = err.response?.data as { message?: string; error?: { type?: string } } | undefined;
+    if (data?.error?.type === "account_not_verified") return "Your profile must be approved before you can accept contracts.";
+    if (data?.error?.type === "invalid_contract_status") return "This contract can no longer be changed.";
+    return data?.message || (!err.response ? "You appear to be offline." : fallback);
   }
-}
-
-function statusLabel(status: string) {
-  return status.replace("_", " ");
+  return fallback;
 }
 
 export function InfluencerContracts() {
-  const [rows, setRows] = useState<InfluencerContractRecord[]>([]);
-  const [selectedId, setSelectedId] = useState<string>("");
+  const [filter, setFilter] = useState<string>("");
+  const [rows, setRows] = useState<ContractListItem[]>([]);
+  const [listState, setListState] = useState<"loading" | "ready" | "error">("loading");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [detail, setDetail] = useState<ContractDetail | null>(null);
+  const [detailError, setDetailError] = useState<string | null>(null);
   const [mobileShowDetail, setMobileShowDetail] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState(false);
+  const [confirm, setConfirm] = useState<"accept" | "decline" | null>(null);
+  const [busy, setBusy] = useState(false);
 
-  const loadContracts = async () => {
+  const loadList = useCallback(async () => {
     try {
-      const res = await influencerApi.listContracts();
-      if (res.data?.items) {
-        const mapped: InfluencerContractRecord[] = res.data.items.map((c) => ({
-          id: c.id,
-          brand: c.business?.business_name || "Partner Brand",
-          campaign: c.campaign?.title || "Campaign",
-          deliverables: c.deliverables?.map((d) => d.type).join(", ") || "Post",
-          timeline: c.start_date && c.end_date
-            ? `${new Date(c.start_date).toLocaleDateString()} - ${new Date(c.end_date).toLocaleDateString()}`
-            : "Ongoing",
-          amountEtb: c.fees?.influencer_receivable_etb || c.fees?.amount_etb || 0,
-          status: (c.status.toLowerCase() as InfluencerContractStatus) || "pending",
-          terms: c.description || "Platform escrow standard terms (5% fee applied).",
-          deadline: c.end_date ? new Date(c.end_date).toLocaleDateString() : "TBD",
-          notes: c.payment?.status ? `Payment status: ${c.payment.status}` : "Standard escrow contract",
-          checklist: c.deliverables?.map((d, i) => ({
-            id: d.id || `deliv-${i}`,
-            label: `${d.quantity}x ${d.type}`,
-            done: d.status === "completed",
-          })) || [],
-        }));
-        setRows(mapped);
-        if (mapped.length > 0 && (!selectedId || !mapped.some((m) => m.id === selectedId))) {
-          setSelectedId(mapped[0].id);
-        }
-      } else {
-        setRows([]);
-      }
+      const res = await influencerApi.listContracts({ status: filter || undefined, limit: 50 });
+      setRows(res.data?.items ?? []);
+      setListState("ready");
     } catch {
-      setRows([]);
-    } finally {
-      setIsLoading(false);
+      setListState("error");
     }
-  };
+  }, [filter]);
+
+  const loadDetail = useCallback(async (id: string) => {
+    try {
+      const res = await influencerApi.getContract(id);
+      setDetail(res.data ?? null);
+      setDetailError(null);
+    } catch (err) {
+      setDetailError(apiError(err, "Could not load this contract."));
+    }
+  }, []);
 
   useEffect(() => {
-    loadContracts();
-  }, []);
+    void Promise.resolve().then(loadList);
+  }, [loadList]);
 
-  const stats = useMemo(() => {
-    let pending = 0;
-    let active = 0;
-    let completed = 0;
-    let totalEarnings = 0;
-
-    for (const r of rows) {
-      if (r.status === "pending" || r.status === "pending_review") pending++;
-      else if (r.status === "active" || r.status === "accepted") active++;
-      else if (r.status === "completed") {
-        completed++;
-        totalEarnings += r.amountEtb;
-      }
-    }
-    return { pending, active, completed, totalEarnings };
-  }, [rows]);
-
-  const selected = useMemo(
-    () => rows.find((r) => r.id === selectedId) ?? rows[0],
-    [rows, selectedId],
-  );
-
-  const selectContract = useCallback((id: string) => {
+  const select = (id: string) => {
     setSelectedId(id);
-    if (typeof window !== "undefined" && window.matchMedia("(max-width: 1279px)").matches) {
-      setMobileShowDetail(true);
-    }
-  }, []);
+    setDetail(null);
+    setConfirm(null);
+    void loadDetail(id);
+    if (window.matchMedia("(max-width: 1279px)").matches) setMobileShowDetail(true);
+  };
 
-  const acceptContract = async (id: string) => {
-    setActionLoading(true);
+  const run = async () => {
+    if (!detail || !confirm) return;
+    setBusy(true);
     try {
-      await influencerApi.acceptContract(id);
-      await loadContracts();
-    } catch {
-      // Fallback
+      if (confirm === "accept") {
+        await influencerApi.acceptContract(detail.id);
+        toast.success("Contract accepted. The business will fund escrow next.");
+      } else {
+        await influencerApi.rejectContract(detail.id);
+        toast.success("Contract declined.");
+      }
+      setConfirm(null);
+      await Promise.all([loadList(), loadDetail(detail.id)]);
+    } catch (err) {
+      toast.error(apiError(err, "The action could not be completed."));
     } finally {
-      setActionLoading(false);
+      setBusy(false);
     }
   };
 
-  const rejectContract = async (id: string) => {
-    setActionLoading(true);
-    try {
-      await influencerApi.rejectContract(id);
-      await loadContracts();
-    } catch {
-      // Fallback
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  const toggleCheck = (contractId: string, itemId: string) => {
-    setRows((prev) =>
-      prev.map((r) => {
-        if (r.id !== contractId) return r;
-        return {
-          ...r,
-          checklist: r.checklist.map((c) =>
-            c.id === itemId ? { ...c, done: !c.done } : c,
-          ),
-        };
-      }),
-    );
-  };
+  const actions =
+    detail && detail.status === "pending_influencer" ? (
+      confirm ? (
+        <div className="w-full space-y-2 rounded-xl border border-white/15 bg-black/20 p-3">
+          <p className="text-sm">
+            {confirm === "accept"
+              ? `Accept this contract? You'll receive ${formatEtb(detail.fees.influencer_receivable_etb)} when the business approves your work.`
+              : "Decline this contract? The business will be told you declined."}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              disabled={busy}
+              onClick={() => void run()}
+              className={cn("h-10 rounded-xl text-white", confirm === "accept" ? "bg-emerald-600 hover:bg-emerald-700" : "bg-rose-600 hover:bg-rose-700")}
+            >
+              {busy ? <Loader2 className="mr-2 size-4 animate-spin" aria-hidden /> : null}
+              {confirm === "accept" ? "Accept contract" : "Decline contract"}
+            </Button>
+            <Button type="button" variant="ghost" disabled={busy} onClick={() => setConfirm(null)} className="h-10 rounded-xl text-white hover:bg-white/10">
+              Not now
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <>
+          <Button type="button" onClick={() => setConfirm("accept")} className="h-10 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700">
+            Accept
+          </Button>
+          <Button type="button" variant="outline" onClick={() => setConfirm("decline")} className="h-10 rounded-xl border-rose-400/40 bg-transparent text-rose-200 hover:bg-rose-500/10">
+            Decline
+          </Button>
+        </>
+      )
+    ) : null;
 
   return (
     <div className="space-y-6 text-white">
       <div>
-        <h1 className="text-2xl font-semibold text-white">Contracts</h1>
-        <p className="mt-1 max-w-xl text-sm text-[#CBD5E1]">
-          Review agreements, deliverables, and payouts from brand collaborations.
-        </p>
+        <h1 className="text-2xl font-semibold">Contracts</h1>
+        <p className="mt-1 max-w-2xl text-sm text-[#CBD5E1]">Review terms from businesses, accept the ones you want, and follow your payouts.</p>
       </div>
 
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {[
-          { label: "Pending contracts", value: String(stats.pending) },
-          { label: "Active contracts", value: String(stats.active) },
-          { label: "Completed", value: String(stats.completed) },
-          { label: "Total earnings", value: formatEtb(stats.totalEarnings) },
-        ].map((c) => (
-          <article
-            key={c.label}
-            className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-4"
+      <div className="flex flex-wrap gap-2" role="tablist" aria-label="Contract status">
+        {FILTERS.map((f) => (
+          <button
+            key={f.id || "all"}
+            type="button"
+            role="tab"
+            aria-selected={filter === f.id}
+            onClick={() => { setFilter(f.id); setListState("loading"); }}
+            className={cn(
+              "inline-flex min-h-11 items-center rounded-full border px-4 py-2 text-sm font-medium transition-colors sm:min-h-0",
+              filter === f.id ? "border-transparent bg-[color:var(--adfluence-orange)] text-white" : "border-white/10 bg-[rgba(255,255,255,0.06)] text-[#CBD5E1] hover:text-white",
+            )}
           >
-            <p className="text-xs text-[#CBD5E1]">{c.label}</p>
-            <p className="mt-2 text-2xl font-bold text-[color:var(--adfluence-orange)]">
-              {c.value}
-            </p>
-          </article>
+            {f.label}
+          </button>
         ))}
-      </section>
+      </div>
 
-      {rows.length === 0 && !isLoading ? (
-        <div className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-12 text-center text-white">
-          <FileText className="mx-auto size-10 text-[#CBD5E1]/40 mb-3" />
-          <h3 className="text-lg font-semibold">No contracts yet</h3>
-          <p className="mt-1 text-sm text-[#CBD5E1] max-w-md mx-auto">
-            When businesses accept your collaboration and issue formal escrow agreements, your contracts will appear here.
-          </p>
-        </div>
-      ) : (
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_400px]">
-          <section className={cn("space-y-3", mobileShowDetail && "hidden xl:block")}>
-            <h2 className="text-sm font-medium uppercase tracking-wide text-[#94A3B8]">Your contracts</h2>
-            <div className="space-y-3">
-              {rows.map((r) => {
-                const rowOn = r.id === selectedId;
-                return (
-                  <button
-                    key={r.id}
-                    type="button"
-                    onClick={() => selectContract(r.id)}
-                    className={cn(
-                      "w-full rounded-2xl border p-4 text-left transition-colors",
-                      rowOn
-                        ? "border-[color:var(--adfluence-orange)]/35 bg-[color:var(--adfluence-orange)]/10"
-                        : "border-white/10 bg-[rgba(255,255,255,0.08)] hover:border-white/20",
-                    )}
-                  >
-                    <div className="flex flex-wrap items-start justify-between gap-2">
-                      <div>
-                        <p className="font-semibold text-white">{r.brand}</p>
-                        <p className="text-sm text-[#CBD5E1]">{r.campaign}</p>
-                      </div>
-                      <span
-                        className={cn(
-                          "rounded-full border px-2.5 py-0.5 text-xs capitalize",
-                          statusBadge(r.status),
-                        )}
-                      >
-                        {statusLabel(r.status)}
-                      </span>
-                    </div>
-                    <p className="mt-2 text-xs text-[#94A3B8]">{r.deliverables}</p>
-                    <div className="mt-2 flex flex-wrap gap-3 text-sm text-[#CBD5E1]">
-                      <span>{formatEtb(r.amountEtb)}</span>
-                      <span>·</span>
-                      <span>{r.timeline}</span>
-                    </div>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        className="h-11 rounded-lg border-white/15 bg-transparent text-xs text-white hover:bg-white/10 sm:h-8"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          selectContract(r.id);
-                        }}
-                      >
-                        Review
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        disabled={actionLoading || r.status === "active" || r.status === "completed" || r.status === "rejected"}
-                        className="h-11 rounded-lg bg-[color:var(--adfluence-orange)] text-xs text-white hover:bg-[color:var(--adfluence-orange-hover)] disabled:opacity-40 sm:h-8"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          acceptContract(r.id);
-                        }}
-                      >
-                        Accept
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        disabled={actionLoading || r.status === "completed" || r.status === "rejected"}
-                        variant="outline"
-                        className="h-11 rounded-lg border-white/15 text-xs text-rose-200 hover:bg-rose-500/10 sm:h-8"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          rejectContract(r.id);
-                        }}
-                      >
-                        Reject
-                      </Button>
-                    </div>
-                  </button>
-                );
-              })}
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_440px]">
+        <div className={cn("min-w-0 space-y-3", mobileShowDetail && "hidden xl:block")}>
+          {listState === "loading" ? (
+            <p className="flex items-center gap-2 p-6 text-sm text-[#94A3B8]"><Loader2 className="size-4 animate-spin" aria-hidden /> Loading contracts…</p>
+          ) : listState === "error" ? (
+            <div role="alert" className="rounded-2xl border border-rose-400/30 bg-rose-500/10 p-6 text-sm text-rose-100">
+              Could not load contracts.
+              <Button type="button" variant="link" className="ml-2 h-auto p-0 text-white" onClick={() => void loadList()}>Try again</Button>
             </div>
-          </section>
-
-          {selected ? (
-            <aside
-              className={cn(
-                "xl:sticky xl:top-4 xl:self-start",
-                !mobileShowDetail && "hidden xl:block",
-              )}
-            >
-              <div className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-5">
-                <div className="mb-3 xl:hidden">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="shrink-0 text-white hover:bg-white/10"
-                    aria-label="Back to contracts"
-                    onClick={() => setMobileShowDetail(false)}
-                  >
-                    <ArrowLeft className="size-5" />
-                  </Button>
-                </div>
-                <h3 className="text-lg font-semibold text-white">Contract detail</h3>
-                <p className="mt-1 text-sm text-[#CBD5E1]">{selected.brand}</p>
-                <span
+          ) : rows.length === 0 ? (
+            <div className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-8 text-center text-sm text-[#CBD5E1]">
+              No contracts here yet. Businesses send you a contract after you accept their campaign invite.
+            </div>
+          ) : (
+            rows.map((r) => {
+              const st = contractStatus(r.status, "influencer");
+              return (
+                <button
+                  key={r.id}
+                  type="button"
+                  onClick={() => select(r.id)}
+                  aria-current={selectedId === r.id ? "true" : undefined}
                   className={cn(
-                    "mt-2 inline-flex rounded-full border px-2.5 py-0.5 text-xs capitalize",
-                    statusBadge(selected.status),
+                    "flex w-full min-w-0 items-start justify-between gap-4 rounded-2xl border p-4 text-left transition-colors focus-visible:outline-2 focus-visible:outline-[color:var(--adfluence-orange)]",
+                    selectedId === r.id ? "border-[color:var(--adfluence-orange)]/35 bg-[color:var(--adfluence-orange)]/10" : "border-white/10 bg-[rgba(255,255,255,0.08)] hover:border-white/20",
                   )}
                 >
-                  {statusLabel(selected.status)}
-                </span>
-
-                <div className="mt-4 space-y-2 text-sm text-[#CBD5E1]">
-                  <p>
-                    <span className="text-white">Campaign:</span> {selected.campaign}
-                  </p>
-                  <p>
-                    <span className="text-white">Payment:</span> {formatEtb(selected.amountEtb)}
-                  </p>
-                  <p>
-                    <span className="text-white">Timeline:</span> {selected.timeline}
-                  </p>
-                  <p>
-                    <span className="text-white">Deadline:</span> {selected.deadline}
-                  </p>
-                  <p>
-                    <span className="text-white">Terms:</span> {selected.terms}
-                  </p>
-                  <p>
-                    <span className="text-white">Notes:</span> {selected.notes}
-                  </p>
-                </div>
-
-                {selected.checklist && selected.checklist.length > 0 ? (
-                  <div className="mt-4">
-                    <p className="text-xs font-medium uppercase text-[#94A3B8]">Deliverables</p>
-                    <ul className="mt-2 space-y-2">
-                      {selected.checklist.map((item) => (
-                        <li key={item.id} className="flex items-center gap-2 text-sm text-[#E2E8F0]">
-                          <input
-                            type="checkbox"
-                            checked={item.done}
-                            onChange={() => toggleCheck(selected.id, item.id)}
-                            className="h-4 w-4 rounded border-white/20 bg-[color:var(--adfluence-surface)] accent-[color:var(--adfluence-orange)]"
-                          />
-                          {item.label}
-                        </li>
-                      ))}
-                    </ul>
+                  <div className="min-w-0">
+                    <p className="font-semibold text-white">{r.title}</p>
+                    <p className="text-xs text-[#CBD5E1]">{r.counterparty_name} · {r.campaign_title}</p>
+                    <span className={cn("mt-2 inline-block rounded-full border px-2 py-0.5 text-[10px] font-medium", st.badgeClass)}>{st.label}</span>
                   </div>
-                ) : null}
-              </div>
-            </aside>
-          ) : null}
+                  <span className="shrink-0 text-sm font-semibold tabular-nums">{formatEtb(r.influencer_receivable_etb || r.amount_etb)}</span>
+                </button>
+              );
+            })
+          )}
         </div>
-      )}
+
+        {selectedId ? (
+          <aside aria-label="Contract details" className={cn("min-w-0 rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-5 xl:sticky xl:top-4 xl:self-start", !mobileShowDetail && "hidden xl:block")}>
+            <Button type="button" variant="ghost" size="sm" onClick={() => setMobileShowDetail(false)} className="mb-3 -ml-2 text-white hover:bg-white/10 xl:hidden">
+              <ArrowLeft className="mr-1 size-4" aria-hidden /> Back to contracts
+            </Button>
+            {detailError ? (
+              <p role="alert" className="text-sm text-rose-200">{detailError}</p>
+            ) : !detail ? (
+              <p className="flex items-center gap-2 text-sm text-[#94A3B8]"><Loader2 className="size-4 animate-spin" aria-hidden /> Loading contract…</p>
+            ) : (
+              <ContractDetailView contract={detail} role="influencer" actions={actions} />
+            )}
+          </aside>
+        ) : (
+          <aside className="hidden rounded-2xl border border-dashed border-white/10 p-8 text-center text-sm text-[#94A3B8] xl:block">Select a contract to see its details.</aside>
+        )}
+      </div>
     </div>
   );
 }

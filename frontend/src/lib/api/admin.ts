@@ -228,8 +228,8 @@ export type AdminCampaignListItem = {
 
 export type AdminCampaignStats = {
   active: number;
-  pending: number;
-  flagged: number;
+  draft: number;
+  paused: number;
 };
 
 // --- Dispute Types ---
@@ -554,6 +554,14 @@ export const adminApi = {
   completeCampaign: async (campaignId: string): Promise<ApiResponse<{ id: string; status: string }>> => {
     const res = await apiClient.post<ApiResponse<{ id: string; status: string }>>(
       `/api/v1/admin/campaigns/${campaignId}/complete`
+    );
+    return res.data;
+  },
+
+  /** Puts a paused (or flagged) campaign back live. */
+  resumeCampaign: async (campaignId: string): Promise<ApiResponse<{ id: string; status: string }>> => {
+    const res = await apiClient.post<ApiResponse<{ id: string; status: string }>>(
+      `/api/v1/admin/campaigns/${campaignId}/resume`
     );
     return res.data;
   },
