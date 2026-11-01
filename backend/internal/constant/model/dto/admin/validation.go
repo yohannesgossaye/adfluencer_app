@@ -27,6 +27,15 @@ func (q ListApplicationsQuery) Normalize() ListApplicationsQuery {
 		q.Limit = 50
 	}
 	q.Status = strings.TrimSpace(strings.ToLower(q.Status))
+	// The portal's tab names differ from the users.status values.
+	switch q.Status {
+	case "pending":
+		q.Status = "pending_approval"
+	case "approved":
+		q.Status = "active"
+	case "all":
+		q.Status = ""
+	}
 	q.Search = strings.TrimSpace(q.Search)
 	return q
 }

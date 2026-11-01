@@ -15,6 +15,19 @@ import { getInitials } from "@/lib/utils";
 
 const platformOptions = ["TikTok", "Instagram", "YouTube"] as const;
 
+/** Fields the server requires before a profile can be submitted (helper/completeness.go). */
+const REQUIRED_FOR_SUBMIT: Record<string, string> = {
+  creator_name: "Creator name",
+  bio: "Bio of at least 20 characters",
+  niche: "At least one niche",
+  platform: "At least one platform",
+  social_link: "A profile link for one of your platforms",
+  followers: "Follower count",
+  engagement_rate: "Engagement rate",
+  price_range: "Minimum and maximum price",
+  city: "City",
+};
+
 export function InfluencerProfile() {
   const [profileData, setProfileData] = useState<InfluencerProfileResponse | null>(null);
   const [availableNiches, setAvailableNiches] = useState<Array<{ id: string; name: string; slug: string }>>([]);
@@ -228,7 +241,11 @@ export function InfluencerProfile() {
   const completeness = profileData?.completeness?.percent ?? 0;
   const isVerified = profileData?.profile?.is_verified ?? false;
   const isRejected = profileData?.user?.status === "rejected";
-  const canSubmit = (profileData?.completeness?.can_submit ?? false) || isRejected;
+  // The server refuses submission until every required field is filled.
+  const canSubmit = profileData?.completeness?.can_submit ?? false;
+  const userStatus = profileData?.user?.status;
+  const awaitingSubmit = userStatus === "pending_profile" || isRejected;
+  const missingRequired = (profileData?.completeness?.missing ?? []).filter((f) => f in REQUIRED_FOR_SUBMIT);
 
   return (
     <div className="space-y-6 text-white">
@@ -334,6 +351,21 @@ export function InfluencerProfile() {
           </Button>
         ) : null}
       </section>
+
+      {awaitingSubmit && !canSubmit && missingRequired.length > 0 ? (
+        <section role="status" className="rounded-2xl border border-amber-400/30 bg-amber-500/10 p-5">
+          <h2 className="text-base font-semibold text-amber-100">Complete these to submit for verification</h2>
+          <p className="mt-1 text-sm text-amber-100/80">An admin can only review your profile after you submit it.</p>
+          <ul className="mt-3 grid gap-1.5 text-sm text-amber-50 sm:grid-cols-2">
+            {missingRequired.map((f) => (
+              <li key={f} className="flex items-start gap-2">
+                <AlertCircle className="mt-0.5 size-4 shrink-0 text-amber-300" aria-hidden />
+                {REQUIRED_FOR_SUBMIT[f]}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       {isRejected ? (
         <section className="rounded-2xl border border-rose-500/30 bg-rose-500/10 p-5">

@@ -38,7 +38,9 @@ const (
 	FROM users u
 	JOIN influencer_profiles ip ON ip.user_id = u.id
 	WHERE u.role = 'influencer'
-		AND ($1 = '' OR u.status::text = $1)
+		-- "All" covers creators who submitted at least once; an unsubmitted
+		-- profile has nothing for an admin to review.
+		AND (($1 = '' AND u.status::text <> 'pending_profile') OR u.status::text = $1)
 		AND (
 			$2 = ''
 			OR ip.creator_name ILIKE '%' || $2 || '%'
