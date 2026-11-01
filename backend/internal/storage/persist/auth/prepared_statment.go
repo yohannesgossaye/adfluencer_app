@@ -48,8 +48,23 @@ const (
 		ip_address,
 		user_agent,
 		expires_at,
-		created_at
-	) VALUES ($1, $2, $3, $4, $5, $6, $7)
+		created_at,
+		refresh_ttl_seconds
+	) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+	`
+
+	// rotateSession consumes a refresh token in one atomic statement. A token
+	// already rotated is accepted again only inside the grace window ($2
+	// seconds) so concurrent refreshes from several tabs all succeed; after
+	// that it is dead. Logged-out (revoked) and expired sessions never match.
+	rotateSession = `
+	UPDATE user_sessions
+	SET rotated_at = COALESCE(rotated_at, NOW())
+	WHERE refresh_token_hash = $1
+		AND revoked_at IS NULL
+		AND expires_at > NOW()
+		AND (rotated_at IS NULL OR rotated_at > NOW() - make_interval(secs => $2))
+	RETURNING id, user_id, expires_at, refresh_ttl_seconds
 	`
 
 	getSessionByRefreshHash = `

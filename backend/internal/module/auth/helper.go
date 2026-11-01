@@ -27,6 +27,11 @@ const (
 	verifyPhoneAttemptScope = "verify_phone_attempt"
 	maxOTPFailures          = 5
 	otpFailureWindow        = 15 * time.Minute
+
+	// refreshRotationGrace is how long a just-rotated refresh token is still
+	// accepted. It lets several tabs refresh at the same moment without the
+	// losers being logged out, while keeping a stolen old token useless.
+	refreshRotationGrace = 30 * time.Second
 )
 
 // checkOTPAttempts rejects verification once a user has made too many wrong

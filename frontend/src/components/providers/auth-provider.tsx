@@ -7,6 +7,7 @@ import {
   REFRESH_TOKEN_STORAGE_KEY,
   AUTH_USER_STORAGE_KEY,
 } from "@/lib/constants";
+import { clearMockUser } from "@/lib/mock-auth";
 import {
   authApi,
   type AuthUser,
@@ -137,10 +138,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = React.useCallback(async () => {
     const refreshToken = window.localStorage.getItem(REFRESH_TOKEN_STORAGE_KEY) || undefined;
     try {
+      // Revoke the session on the server so the refresh token cannot be reused.
       await authApi.logout(refreshToken);
     } catch {
       // Continue client cleanup even if network fails
     } finally {
+      clearMockUser();
       setAccessTokenState(null);
       setUser(null);
       setProfile(null);
