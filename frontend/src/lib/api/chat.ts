@@ -1,5 +1,9 @@
 import { apiClient } from "@/lib/api/api-client";
 import type { ApiResponse } from "@/lib/api/auth";
+import { getPublicEnv } from "@/lib/env";
+
+/** Subprotocol offered with the access token when opening the chat socket. */
+export const CHAT_WS_SUBPROTOCOL = "adfluence.v1";
 
 export type ChatMessage = {
   id: string;
@@ -14,6 +18,7 @@ export type ChatMessage = {
   deleted_for_sender: boolean;
   deleted_for_receiver: boolean;
   is_deleted_for_everyone: boolean;
+  client_message_id?: string;
   created_at: string;
   updated_at: string;
 };
@@ -46,11 +51,15 @@ export type CreateConversationRequest = {
 
 export type SendMessageRequest = {
   conversation_id: string;
-  receiver_user_id: string;
   body: string;
   media_url?: string;
   media_type?: string;
+  /** Client-generated UUID; resending it never creates a duplicate. */
+  client_message_id?: string;
 };
+
+/** Response envelope of GET /chat/messages: cursor info lives in `meta`. */
+export type MessagesPage = ApiResponse<ChatMessage[]> & { meta?: CursorPaginationMeta };
 
 export type MarkReadRequest = {
   conversation_id: string;
@@ -62,8 +71,8 @@ export type DeleteMessageRequest = {
 
 export type WSIncomingMessage = {
   type: "send_message" | "mark_read" | "delete_message";
-  conversation_id: string;
-  receiver_user_id?: string;
+  conversation_id?: string;
+  client_message_id?: string;
   body?: string;
   media_url?: string;
   media_type?: string;
@@ -71,14 +80,10 @@ export type WSIncomingMessage = {
   delete_type?: "me" | "everyone";
 };
 
-export type WSOutgoingMessage = {
-  type: "message_created" | "messages_read" | "message_deleted" | "error";
-  payload: any;
-};
-
 export type WSReadEvent = {
   conversation_id: string;
   read_by_user_id: string;
+  read_count: number;
   read_at: string;
 };
 
@@ -88,6 +93,18 @@ export type WSDeleteEvent = {
   delete_type: string;
   tombstone?: string;
 };
+
+export type WSErrorEvent = {
+  code: string;
+  message: string;
+  client_message_id?: string;
+};
+
+export type WSOutgoingMessage =
+  | { type: "message_created"; payload: ChatMessage }
+  | { type: "messages_read"; payload: WSReadEvent }
+  | { type: "message_deleted"; payload: WSDeleteEvent }
+  | { type: "error"; payload: WSErrorEvent };
 
 export const chatApi = {
   // 1. Start or get direct conversation
@@ -135,11 +152,8 @@ export const chatApi = {
     conversation_id: string;
     cursor?: string;
     limit?: number;
-  }): Promise<ApiResponse<ChatMessage[]>> => {
-    const res = await apiClient.get<ApiResponse<ChatMessage[]>>(
-      "/api/v1/chat/messages",
-      { params }
-    );
+  }): Promise<MessagesPage> => {
+    const res = await apiClient.get<MessagesPage>("/api/v1/chat/messages", { params });
     return res.data;
   },
 
@@ -158,19 +172,20 @@ export const chatApi = {
   deleteMessage: async (
     messageId: string,
     data: DeleteMessageRequest
-  ): Promise<ApiResponse<{ message_id: string; delete_type: string; tombstone?: string }>> => {
-    const res = await apiClient.delete<ApiResponse<{ message_id: string; delete_type: string; tombstone?: string }>>(
+  ): Promise<ApiResponse<ChatMessage>> => {
+    const res = await apiClient.delete<ApiResponse<ChatMessage>>(
       `/api/v1/chat/messages/${messageId}`,
-      { data }
+      { params: data }
     );
     return res.data;
   },
 
-  // 8. WebSocket connection helper
-  getWebSocketUrl: (token: string): string => {
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
-    const wsProto = baseUrl.startsWith("https") ? "wss:" : "ws:";
-    const host = baseUrl.replace(/^https?:\/\//, "");
-    return `${wsProto}//${host}/api/v1/chat/ws?token=${encodeURIComponent(token)}`;
+  // 8. WebSocket URL. The token is NOT put in the URL (it would end up in
+  // server logs); it is sent as a subprotocol — see CHAT_WS_SUBPROTOCOL.
+  getWebSocketUrl: (): string => {
+    const baseUrl = getPublicEnv().apiBaseUrl || "http://localhost:8080";
+    const url = new URL("/api/v1/chat/ws", baseUrl);
+    url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+    return url.toString();
   },
 };
