@@ -23,17 +23,12 @@ var versions embed.FS
 
 const baselineVersion = 1
 
-// legacySchemaChecks are objects created by the last hand-run migrations
-// (session_rotation, chat_integrity, business_logic, performance_indexes).
-// A database created before goose must have all of them before it can be
-// marked as being at the baseline.
-var legacySchemaChecks = []struct{ name, query string }{
-	{"user_sessions.refresh_ttl_seconds (session_rotation.sql)", `SELECT 1 FROM information_schema.columns WHERE table_name = 'user_sessions' AND column_name = 'refresh_ttl_seconds'`},
-	{"messages.client_message_id (chat_integrity.sql)", `SELECT 1 FROM information_schema.columns WHERE table_name = 'messages' AND column_name = 'client_message_id'`},
-	{"business_profiles.verification_status (business_logic.sql)", `SELECT 1 FROM information_schema.columns WHERE table_name = 'business_profiles' AND column_name = 'verification_status'`},
-	{"users.previous_status (business_logic.sql)", `SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'previous_status'`},
-	{"idx_contracts_business_status (performance_indexes.sql)", `SELECT 1 FROM pg_indexes WHERE indexname = 'idx_contracts_business_status'`},
-}
+// checkSchemaSQL lists every column, index, constraint and enum value from
+// the baseline that the current database lacks (empty result = complete).
+// Regenerate it whenever 00001_baseline.sql changes.
+//
+//go:embed check_schema.sql
+var checkSchemaSQL string
 
 // Up brings the database to the latest version and returns that version.
 func Up(ctx context.Context, db *sql.DB) (int64, error) {
@@ -55,6 +50,24 @@ func Up(ctx context.Context, db *sql.DB) (int64, error) {
 // adoptLegacyDatabase marks a database that was set up with the old
 // hand-run scripts as being at the baseline, so the baseline (which would
 // fail on existing tables) is not run against it.
+// MissingSchema returns "kind name" for each baseline object the database lacks.
+func MissingSchema(ctx context.Context, db *sql.DB) ([]string, error) {
+	rows, err := db.QueryContext(ctx, checkSchemaSQL)
+	if err != nil {
+		return nil, fmt.Errorf("check schema: %w", err)
+	}
+	defer rows.Close()
+	var missing []string
+	for rows.Next() {
+		var problem, kind, name string
+		if err := rows.Scan(&problem, &kind, &name); err != nil {
+			return nil, fmt.Errorf("check schema: %w", err)
+		}
+		missing = append(missing, kind+" "+name)
+	}
+	return missing, rows.Err()
+}
+
 func adoptLegacyDatabase(ctx context.Context, db *sql.DB) error {
 	var tracked, hasSchema bool
 	if err := db.QueryRowContext(ctx, `SELECT to_regclass('goose_db_version') IS NOT NULL, to_regclass('users') IS NOT NULL`).Scan(&tracked, &hasSchema); err != nil {
@@ -64,20 +77,16 @@ func adoptLegacyDatabase(ctx context.Context, db *sql.DB) error {
 		return nil // already managed by goose, or empty and ready for the baseline
 	}
 
-	var missing []string
-	for _, c := range legacySchemaChecks {
-		var one int
-		err := db.QueryRowContext(ctx, c.query).Scan(&one)
-		if err == sql.ErrNoRows {
-			missing = append(missing, c.name)
-			continue
-		}
-		if err != nil {
-			return fmt.Errorf("inspect database: %w", err)
-		}
+	missing, err := MissingSchema(ctx, db)
+	if err != nil {
+		return err
 	}
 	if len(missing) > 0 {
-		return fmt.Errorf("existing database is missing earlier migrations, apply them before starting: %s", strings.Join(missing, ", "))
+		shown := missing
+		if len(shown) > 20 {
+			shown = append(shown[:20:20], fmt.Sprintf("... and %d more", len(missing)-20))
+		}
+		return fmt.Errorf("existing database is missing %d schema objects from earlier migrations; apply them before starting: %s", len(missing), strings.Join(shown, ", "))
 	}
 
 	if _, err := goose.EnsureDBVersionContext(ctx, db); err != nil {

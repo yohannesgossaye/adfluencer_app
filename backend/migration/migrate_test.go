@@ -63,11 +63,8 @@ func TestFreshDatabaseGetsFullSchema(t *testing.T) {
 	if v != latest(t) {
 		t.Fatalf("version = %d, want %d", v, latest(t))
 	}
-	for _, c := range legacySchemaChecks {
-		var one int
-		if err := db.QueryRow(c.query).Scan(&one); err != nil {
-			t.Errorf("fresh schema lacks %s", c.name)
-		}
+	if missing, err := MissingSchema(ctx, db); err != nil || len(missing) > 0 {
+		t.Fatalf("fresh schema: missing %v, err %v", missing, err)
 	}
 	// Running again is a no-op.
 	if v2, err := Up(ctx, db); err != nil || v2 != v {
@@ -95,13 +92,32 @@ func TestLegacyDatabaseIsAdoptedWithoutRerunningBaseline(t *testing.T) {
 	}
 }
 
+func TestLegacyDatabaseWithOneMissingColumnIsRefused(t *testing.T) {
+	db := scratchDB(t)
+	raw, err := versions.ReadFile("versions/00001_baseline.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(string(raw)); err != nil {
+		t.Fatal(err)
+	}
+	// The exact gap production had: chat_integrity.sql never applied.
+	if _, err := db.Exec(`ALTER TABLE messages DROP COLUMN client_message_id CASCADE`); err != nil {
+		t.Fatal(err)
+	}
+	_, err = Up(context.Background(), db)
+	if err == nil || !strings.Contains(err.Error(), "column messages.client_message_id") || !strings.Contains(err.Error(), "index uq_messages_sender_client_message_id") {
+		t.Fatalf("err = %v, want both missing objects named", err)
+	}
+}
+
 func TestLegacyDatabaseMissingMigrationIsRefused(t *testing.T) {
 	db := scratchDB(t)
 	if _, err := db.Exec(`CREATE TABLE users (id int)`); err != nil {
 		t.Fatal(err)
 	}
 	_, err := Up(context.Background(), db)
-	if err == nil || !strings.Contains(err.Error(), "missing earlier migrations") {
+	if err == nil || !strings.Contains(err.Error(), "is missing") || !strings.Contains(err.Error(), "more") {
 		t.Fatalf("err = %v, want a missing-migrations error", err)
 	}
 	var tracked bool

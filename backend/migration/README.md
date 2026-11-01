@@ -30,3 +30,12 @@ default `true`). A deploy is: pull, rebuild, restart.
 
 `MIGRATION_TEST_DSN=postgres://user:pass@host:port/db go test ./migration/`
 runs the migrations against throwaway databases on that server.
+
+## Schema check
+
+`check_schema.sql` (read-only) lists every column, index, constraint and enum
+value from the baseline that a database lacks; an empty result means the
+database is complete. The backend runs it before adopting a database that
+predates goose. Run it by hand on the server with:
+
+    docker exec -i adfluence_postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tA' < migration/check_schema.sql
