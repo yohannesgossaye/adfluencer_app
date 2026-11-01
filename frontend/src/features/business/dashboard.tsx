@@ -12,6 +12,7 @@ import {
   Users,
 } from "lucide-react";
 
+import { VerificationStatusCard } from "@/components/business/verification-status-card";
 import { RecommendedInfluencerCard } from "@/components/cards/recommended-influencer-card";
 import { GradientButton } from "@/components/common/gradient-button";
 import { BusinessKpiCard } from "@/components/dashboard/business-kpi-card";
@@ -45,8 +46,7 @@ export function BusinessDashboard() {
           setSummary(sumRes.value.data);
         }
         if (chatRes.status === "fulfilled" && chatRes.value.data) {
-          const list = (Array.isArray(chatRes.value.data) ? chatRes.value.data : (chatRes.value.data as any)?.items) || [];
-          setConversations(list);
+          setConversations(Array.isArray(chatRes.value.data) ? chatRes.value.data : []);
         }
       } catch {
         // Fallback gracefully to empty state
@@ -82,14 +82,17 @@ export function BusinessDashboard() {
         </GradientButton>
       </section>
 
-      {summary?.marketplace_access && !summary.marketplace_access.visible_in_marketplace ? (
-        <section className="rounded-xl border border-amber-400/30 bg-amber-500/10 p-4 text-sm text-amber-200">
-          <p className="font-semibold">Account Status: Pending Verification</p>
-          <p className="mt-1 text-xs text-amber-200/80">
-            {summary.marketplace_access.message ||
-              "Your account profile is complete. Once verified by admin, your campaigns will be fully visible to creators."}
-          </p>
-        </section>
+      {summary?.marketplace_access && summary.marketplace_access.verification_status !== "verified" ? (
+        <VerificationStatusCard
+          status={summary.marketplace_access.verification_status ?? "unsubmitted"}
+          action={
+            <Button asChild className="h-11 rounded-xl bg-white/10 text-white hover:bg-white/15">
+              <Link href="/business/profile">
+                {summary.marketplace_access.verification_status === "pending" ? "View profile" : "Go to business profile"}
+              </Link>
+            </Button>
+          }
+        />
       ) : null}
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

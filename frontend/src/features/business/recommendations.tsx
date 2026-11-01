@@ -1,5 +1,6 @@
 "use client";
 
+import axios from "axios";
 import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -38,6 +39,7 @@ export function Recommendations() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [invitingId, setInvitingId] = useState<string | null>(null);
   const [inviteMessage, setInviteMessage] = useState("");
+  const [accessError, setAccessError] = useState("");
 
   const [search, setSearch] = useState("");
   const [nicheFilter, setNicheFilter] = useState("All niches");
@@ -59,7 +61,8 @@ export function Recommendations() {
         }
 
         if (campRes.status === "fulfilled" && campRes.value.data?.items) {
-          const items = campRes.value.data.items;
+          // Only drafts (preview) and live campaigns can have recommendations.
+          const items = campRes.value.data.items.filter((c) => c.status === "draft" || c.status === "active");
           setCampaigns(items);
           if (!selectedCampaignId && items.length > 0) {
             setSelectedCampaignId(items[0].id);
@@ -95,8 +98,17 @@ export function Recommendations() {
             items = genRec.data?.items || [];
           }
           setRecommendations(items);
+          setAccessError("");
         } else {
           setRecommendations([]);
+          const reason = recRes.status === "rejected" && axios.isAxiosError(recRes.reason)
+            ? (recRes.reason.response?.data as { error?: { type?: string } } | undefined)?.error?.type
+            : undefined;
+          setAccessError(
+            reason === "account_not_verified"
+              ? "Recommended creators appear once your business is verified. Check your business profile for the status."
+              : "Could not load recommendations. Please try again.",
+          );
         }
 
         if (invRes.status === "fulfilled" && invRes.value.data?.items) {
@@ -193,15 +205,24 @@ export function Recommendations() {
         influencer_user_id: influencerId,
         message: `Hello ${name}, we'd love to collaborate with you on our campaign "${selectedCampaign?.title || "our campaign"}".`,
       });
-      const newInvite = res.data;
-      if (newInvite) {
-        setInvites((prev) => [newInvite, ...prev]);
+      if (res.data?.id) {
+        const inv = await businessApi.listInvites(selectedCampaignId);
+        setInvites(inv.data?.items ?? []);
         setInviteMessage(`Invitation sent to ${name}!`);
         setTimeout(() => setInviteMessage(""), 3000);
       }
-    } catch {
-      setInviteMessage(`Failed to send invitation to ${name}.`);
-      setTimeout(() => setInviteMessage(""), 3000);
+    } catch (err) {
+      const data = axios.isAxiosError(err) ? (err.response?.data as { error?: { type?: string }; message?: string } | undefined) : undefined;
+      const reason =
+        data?.error?.type === "invalid_campaign_status"
+          ? "Publish this campaign before inviting creators."
+          : data?.error?.type === "account_not_verified"
+            ? "Your business must be verified before inviting creators."
+            : data?.error?.type === "invite_already_exists"
+              ? `${name} already has an open invite for this campaign.`
+              : data?.message || `Could not send the invitation to ${name}.`;
+      setInviteMessage(reason);
+      setTimeout(() => setInviteMessage(""), 5000);
     } finally {
       setInvitingId(null);
     }
@@ -359,8 +380,14 @@ export function Recommendations() {
         </div>
       </section>
 
+      {accessError ? (
+        <p role="alert" className="rounded-xl border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-100">
+          {accessError}{" "}
+          <Link href="/business/profile" className="underline">Business profile</Link>
+        </p>
+      ) : null}
       {inviteMessage ? (
-        <p className="rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">
+        <p role="status" className="rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm text-white">
           {inviteMessage}
         </p>
       ) : null}

@@ -123,14 +123,24 @@ func (s *chatService) GetOrCreateConversation(ctx context.Context, currentUserID
 		return nil, false, dto.ErrRecipientUnavailable
 	}
 
+	// New conversations need a verified business on one side, so unverified
+	// businesses cannot reach creators. Existing conversations keep working.
+	businessID := me.ID
+	if other.Role == string(model.BusinessRole) {
+		businessID = other.ID
+	}
+	verified, err := s.chatRepo.IsBusinessVerified(ctx, businessID)
+	if err != nil {
+		return nil, false, err
+	}
+	if !verified {
+		return nil, false, dto.ErrBusinessNotVerified
+	}
+
 	if req.CampaignID != nil {
 		ownerID, err := s.chatRepo.GetCampaignOwner(ctx, *req.CampaignID)
 		if err != nil {
 			return nil, false, err
-		}
-		businessID := me.ID
-		if other.Role == string(model.BusinessRole) {
-			businessID = other.ID
 		}
 		if ownerID != businessID {
 			return nil, false, dto.ErrCampaignNotOwned

@@ -45,10 +45,22 @@ export type DashboardRecommendationRow = {
   campaign_title: string;
 };
 
+export type VerificationStatus = "unsubmitted" | "pending" | "verified" | "rejected";
+
 export type MarketplaceAccessResponse = {
   visible_in_marketplace: boolean;
   can_create_contracts: boolean;
+  can_publish_campaigns: boolean;
+  verification_status: VerificationStatus;
   message?: string;
+};
+
+export type BusinessVerificationInfo = {
+  status: VerificationStatus;
+  /** Reason from the Adfluence team when rejected or re-review is needed. */
+  note?: string;
+  submitted_at?: string;
+  verified_at?: string;
 };
 
 export type DashboardSummaryResponse = {
@@ -87,6 +99,7 @@ export type BusinessProfileDetail = {
   preferred_platforms: string[];
   monthly_marketing_budget?: number;
   is_verified: boolean;
+  verification: BusinessVerificationInfo;
 };
 
 export type BusinessCompleteness = {
@@ -101,6 +114,7 @@ export type BusinessProfileResponse = {
     email: string;
     phone_number?: string;
     status: string;
+    status_reason?: string;
     email_verified: boolean;
     phone_verified: boolean;
   };
@@ -280,13 +294,34 @@ export type FeeBreakdown = {
   platform_total_fee_etb: number;
 };
 
+/** Row of GET /contracts (both roles). */
+export type ContractListItem = {
+  id: string;
+  title: string;
+  status: string;
+  amount_etb: number;
+  campaign_title: string;
+  counterparty_name: string;
+  total_business_payable_etb?: number;
+  influencer_receivable_etb?: number;
+  created_at: string;
+};
+
+export type ContractDeliverable = {
+  id: string;
+  type: string;
+  quantity: number;
+  description?: string;
+  status: string;
+};
+
 export type ContractDetail = {
   id: string;
   title: string;
   description?: string;
   status: string;
   fees: FeeBreakdown;
-  deliverables: CampaignDeliverable[];
+  deliverables: ContractDeliverable[];
   campaign: { id: string; title: string };
   business: { user_id: string; business_name?: string; profile_image_url?: string };
   influencer: { user_id: string; creator_name?: string; profile_image_url?: string };
@@ -383,16 +418,17 @@ export const businessApi = {
     return res.data;
   },
 
-  completeProfile: async (): Promise<ApiResponse<{ status: string; message: string; is_verified: boolean }>> => {
-    const res = await apiClient.post<ApiResponse<{ status: string; message: string; is_verified: boolean }>>(
+  /** Submits (or re-submits after a rejection) the profile for admin verification. */
+  completeProfile: async (): Promise<ApiResponse<{ status: string; message: string; is_verified: boolean; completed_at: string }>> => {
+    const res = await apiClient.post<ApiResponse<{ status: string; message: string; is_verified: boolean; completed_at: string }>>(
       "/api/v1/business/profile/complete"
     );
     return res.data;
   },
 
   // 3. Campaigns
-  createCampaign: async (data: CreateCampaignRequest): Promise<ApiResponse<{ campaign: CampaignDetail }>> => {
-    const res = await apiClient.post<ApiResponse<{ campaign: CampaignDetail }>>(
+  createCampaign: async (data: CreateCampaignRequest): Promise<ApiResponse<{ id: string }>> => {
+    const res = await apiClient.post<ApiResponse<{ id: string }>>(
       "/api/v1/business/campaigns",
       data
     );
@@ -411,8 +447,9 @@ export const businessApi = {
     return res.data;
   },
 
-  getCampaign: async (campaignId: string): Promise<ApiResponse<{ campaign: CampaignDetail }>> => {
-    const res = await apiClient.get<ApiResponse<{ campaign: CampaignDetail }>>(
+  /** Returns the campaign itself (not wrapped). */
+  getCampaign: async (campaignId: string): Promise<ApiResponse<CampaignDetail>> => {
+    const res = await apiClient.get<ApiResponse<CampaignDetail>>(
       `/api/v1/business/campaigns/${campaignId}`
     );
     return res.data;
@@ -487,8 +524,8 @@ export const businessApi = {
   createInvite: async (
     campaignId: string,
     data: { influencer_user_id: string; message?: string }
-  ): Promise<ApiResponse<InviteResponse>> => {
-    const res = await apiClient.post<ApiResponse<InviteResponse>>(
+  ): Promise<ApiResponse<{ id: string }>> => {
+    const res = await apiClient.post<ApiResponse<{ id: string }>>(
       `/api/v1/business/campaigns/${campaignId}/invites`,
       data
     );
@@ -515,23 +552,25 @@ export const businessApi = {
   // 6. Contracts
   createContract: async (
     data: CreateContractRequest
-  ): Promise<ApiResponse<{ contract: ContractDetail }>> => {
-    const res = await apiClient.post<ApiResponse<{ contract: ContractDetail }>>(
+  ): Promise<ApiResponse<{ id: string }>> => {
+    const res = await apiClient.post<ApiResponse<{ id: string }>>(
       "/api/v1/business/contracts",
       data
     );
     return res.data;
   },
 
-  listContracts: async (): Promise<ApiResponse<{ items: ContractDetail[] }>> => {
-    const res = await apiClient.get<ApiResponse<{ items: ContractDetail[] }>>(
-      "/api/v1/business/contracts"
+  listContracts: async (params?: { status?: string; page?: number; limit?: number }): Promise<ApiResponse<{ items: ContractListItem[] }>> => {
+    const res = await apiClient.get<ApiResponse<{ items: ContractListItem[] }>>(
+      "/api/v1/business/contracts",
+      { params }
     );
     return res.data;
   },
 
-  getContract: async (contractId: string): Promise<ApiResponse<{ contract: ContractDetail }>> => {
-    const res = await apiClient.get<ApiResponse<{ contract: ContractDetail }>>(
+  /** Returns the contract itself (not wrapped). */
+  getContract: async (contractId: string): Promise<ApiResponse<ContractDetail>> => {
+    const res = await apiClient.get<ApiResponse<ContractDetail>>(
       `/api/v1/business/contracts/${contractId}`
     );
     return res.data;

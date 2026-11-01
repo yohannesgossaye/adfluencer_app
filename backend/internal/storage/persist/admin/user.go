@@ -77,31 +77,25 @@ func (a *admin) BlockUser(ctx context.Context, userID, reason string) error {
 	return a.setStatusAndRevokeSessions(ctx, blockUser, "block user", userID, reason)
 }
 
-func (a *admin) UnblockUser(ctx context.Context, userID string) error {
+// UnblockUser restores the status the user had before being blocked and returns it.
+func (a *admin) UnblockUser(ctx context.Context, userID string) (string, error) {
 	role, _, err := a.getUserRoleStatus(ctx, userID)
 	if err != nil {
-		return err
+		return "", err
 	}
 	if role == "admin" {
-		return ErrCannotModifyAdminUser
+		return "", ErrCannotModifyAdminUser
 	}
 
-	result, err := a.db.ExecContext(ctx, unblockUser, userID)
+	var restored string
+	err = a.db.QueryRowContext(ctx, unblockUser, userID).Scan(&restored)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", ErrInvalidUserStatusChange
+	}
 	if err != nil {
-		return fmt.Errorf("unblock user: %w", err)
+		return "", fmt.Errorf("unblock user: %w", err)
 	}
-	n, _ := result.RowsAffected()
-	if n == 0 {
-		exists, err := a.userExists(ctx, userID)
-		if err != nil {
-			return err
-		}
-		if !exists {
-			return ErrUserNotFound
-		}
-		return ErrInvalidUserStatusChange
-	}
-	return nil
+	return restored, nil
 }
 
 func (a *admin) RemoveUser(ctx context.Context, userID, reason string) error {

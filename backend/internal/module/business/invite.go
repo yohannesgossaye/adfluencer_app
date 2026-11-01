@@ -21,7 +21,7 @@ import (
 func (m *businessModule) GetInfluencerForBusiness(ctx context.Context, userID, influencerUserID, campaignID string) (*businessDto.BusinessInfluencerViewResponse, error) {
 	m.logger.Info(ctx, "business viewing influencer profile", zap.String("business_id", userID), zap.String("influencer_id", influencerUserID))
 
-	if err := m.requireActiveBusiness(ctx, userID); err != nil {
+	if err := m.requireVerifiedBusiness(ctx, userID); err != nil {
 		return nil, err
 	}
 
@@ -112,7 +112,7 @@ func buildInfluencerView(rec *influencerDto.ProfileRecord) *businessDto.Business
 func (m *businessModule) CreateInvite(ctx context.Context, userID, campaignID string, req businessDto.CreateInviteRequest, meta authDto.SessionMeta) (*commonDto.CreatedIDResponse, error) {
 	m.logger.Info(ctx, "creating campaign invite", zap.String("business_id", userID), zap.String("campaign_id", campaignID), zap.String("influencer_id", req.InfluencerUserID))
 
-	if err := m.requireActiveBusiness(ctx, userID); err != nil {
+	if err := m.requireVerifiedBusiness(ctx, userID); err != nil {
 		return nil, err
 	}
 	if err := req.Validate(); err != nil {
@@ -120,7 +120,7 @@ func (m *businessModule) CreateInvite(ctx context.Context, userID, campaignID st
 		return nil, err
 	}
 
-	if _, err := m.requireActiveCampaign(ctx, userID, campaignID); err != nil {
+	if _, err := m.requireLiveCampaign(ctx, userID, campaignID); err != nil {
 		return nil, err
 	}
 
@@ -133,15 +133,15 @@ func (m *businessModule) CreateInvite(ctx context.Context, userID, campaignID st
 		return nil, customErr.ErrCreatorNotFound
 	}
 
-	inviteID := utils.GenerateUUID()
-	if err := m.business.CreateInvite(ctx, businessDto.CreateInviteInput{
-		ID:               inviteID,
+	inviteID, err := m.business.CreateInvite(ctx, businessDto.CreateInviteInput{
+		ID:               utils.GenerateUUID(),
 		CampaignID:       campaignID,
 		BusinessUserID:   userID,
 		InfluencerUserID: req.InfluencerUserID,
 		Message:          businessDto.OptionalInviteMessage(req.Message),
-	}); err != nil {
-		m.logger.Error(ctx, "failed to persist campaign invite", zap.String("invite_id", inviteID), zap.String("reason", err.Error()))
+	})
+	if err != nil {
+		m.logger.Warn(ctx, "campaign invite not created", zap.String("campaign_id", campaignID), zap.String("reason", err.Error()))
 		return nil, mapInviteError(err)
 	}
 

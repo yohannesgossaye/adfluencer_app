@@ -15,9 +15,9 @@ const highlights = [
   },
   {
     icon: BadgePercent,
-    title: "5% per contract",
+    title: "5% from each side",
     description:
-      "Adfluence charges a simple 5% platform fee only when a collaboration contract is completed.",
+      "On each contract, the business pays a 5% platform fee on top of the agreed amount and the creator pays 5% out of it.",
   },
   {
     icon: ShieldCheck,
@@ -37,14 +37,14 @@ const included = [
 
 const faqs = [
   {
-    question: "When is the 5% fee charged?",
+    question: "When are the fees charged?",
     answer:
-      "The platform fee applies when a contract is marked completed — not when you sign up, post a campaign, or send an invite.",
+      "Only on contracts. The business pays the agreed amount plus 5% into escrow when the contract starts; the creator receives the amount minus 5% when the business approves the work. Signing up, posting campaigns and sending invites are free.",
   },
   {
     question: "Do influencers pay to join?",
     answer:
-      "No. Influencers join for free. The 5% fee is taken from the completed contract value, not from creator sign-up.",
+      "No. Influencers join for free. Their 5% fee is deducted from the payout of a completed contract, never charged up front.",
   },
   {
     question: "Are there monthly plans?",
@@ -54,7 +54,7 @@ const faqs = [
   {
     question: "Who pays the platform fee?",
     answer:
-      "The fee is calculated on the total contract value agreed between the business and influencer before payout.",
+      "Both sides pay 5% of the agreed contract amount: the business on top of the amount, the creator out of it. For a 100,000 ETB contract, the business pays 105,000 ETB and the creator receives 95,000 ETB.",
   },
   {
     question: "Is this built for Ethiopia?",
@@ -74,8 +74,8 @@ export function HowFeesWorkPage() {
             </p>
             <h1 className="mt-4 text-3xl font-bold sm:text-4xl md:text-5xl">How Adfluence fees work</h1>
             <p className="mt-4 text-base text-[#CBD5E1] sm:text-lg">
-              No subscriptions. No surprise charges. Just a simple 5% platform fee when a
-              collaboration contract is completed.
+              No subscriptions. No surprise charges. A 5% platform fee from the business and 5%
+              from the creator, only on contracts.
             </p>
           </div>
         </Container>
@@ -93,10 +93,11 @@ export function HowFeesWorkPage() {
             <p className="mt-2 text-4xl font-bold text-[color:var(--adfluence-orange)] sm:text-5xl md:text-6xl">
               5%
             </p>
-            <p className="mt-3 text-xl text-white">per completed contract</p>
+            <p className="mt-3 text-xl text-white">from each side, per contract</p>
             <p className="mx-auto mt-4 max-w-2xl text-sm text-[#CBD5E1] md:text-base">
-              You only pay when value is delivered. Browse creators, run campaigns, and negotiate
-              deals for free — the fee applies once a contract is successfully completed.
+              Browse creators, run campaigns and negotiate for free. Fees apply only when a
+              business and a creator sign a contract: 5% added for the business, 5% deducted for
+              the creator.
             </p>
           </div>
         </Container>
@@ -127,26 +128,28 @@ export function HowFeesWorkPage() {
             <div className="adfluence-glass rounded-2xl border border-white/15 p-6 md:p-8">
               <h2 className="text-2xl font-bold text-white">Example calculation</h2>
               <p className="mt-2 text-sm text-[#CBD5E1]">
-                If a business agrees to pay an influencer ETB 100,000 for a completed campaign
-                contract:
+                A business and a creator agree on a ETB 100,000 contract:
               </p>
               <dl className="mt-6 space-y-4 text-sm">
                 <div className="flex items-center justify-between border-b border-white/10 pb-3">
-                  <dt className="text-[#CBD5E1]">Contract value</dt>
+                  <dt className="text-[#CBD5E1]">Agreed contract amount</dt>
                   <dd className="font-semibold text-white">ETB 100,000</dd>
                 </div>
                 <div className="flex items-center justify-between border-b border-white/10 pb-3">
-                  <dt className="text-[#CBD5E1]">Adfluence fee (5%)</dt>
-                  <dd className="font-semibold text-[color:var(--adfluence-orange)]">ETB 5,000</dd>
+                  <dt className="text-[#CBD5E1]">Business pays (amount + 5%)</dt>
+                  <dd className="font-semibold text-white">ETB 105,000</dd>
+                </div>
+                <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                  <dt className="text-[#CBD5E1]">Creator receives (amount − 5%, before tax)</dt>
+                  <dd className="font-semibold text-white">ETB 95,000</dd>
                 </div>
                 <div className="flex items-center justify-between">
-                  <dt className="text-[#CBD5E1]">Influencer payout (before tax)</dt>
-                  <dd className="font-semibold text-white">ETB 95,000</dd>
+                  <dt className="text-[#CBD5E1]">Adfluence platform fees (5% + 5%)</dt>
+                  <dd className="font-semibold text-[color:var(--adfluence-orange)]">ETB 10,000</dd>
                 </div>
               </dl>
               <p className="mt-4 text-xs text-[#94A3B8]">
-                Demo illustration only. Final payout and tax handling will follow your contract
-                terms and local regulations.
+                Example only. Tax handling follows your contract terms and local regulations.
               </p>
             </div>
 
@@ -172,8 +175,8 @@ export function HowFeesWorkPage() {
       <section className="pb-16">
         <Container>
           <div className="rounded-2xl border border-white/15 bg-[color:var(--adfluence-surface)]/80 p-6 text-center text-[#CBD5E1] backdrop-blur-xl md:p-8">
-            Influencers join for free and earn from brand collaborations. Businesses only pay the
-            5% fee when a contract is completed.
+            Joining is free for everyone. On each contract, the business pays 5% on top and the
+            creator pays 5% out of the agreed amount.
           </div>
         </Container>
       </section>

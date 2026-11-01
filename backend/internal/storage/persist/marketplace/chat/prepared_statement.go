@@ -46,6 +46,10 @@ const (
 		ON CONFLICT (conversation_id, user_id) DO NOTHING
 	`
 
+	isBusinessVerified = `
+		SELECT COALESCE((SELECT is_verified FROM business_profiles WHERE user_id = $1), FALSE)
+	`
+
 	getCampaignOwner = `
 		SELECT business_user_id FROM campaigns WHERE id = $1
 	`

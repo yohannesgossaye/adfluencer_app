@@ -10,7 +10,8 @@ export type NavIconKey =
   | "building"
   | "disputes"
   | "categories"
-  | "support";
+  | "support"
+  | "verification";
 
 export type NavItem = {
   label: string;
@@ -20,6 +21,7 @@ export type NavItem = {
 
 export const businessNav: NavItem[] = [
   { label: "Dashboard", href: "/business/dashboard", icon: "dashboard" },
+  { label: "Business profile", href: "/business/profile", icon: "profile" },
   { label: "Campaigns", href: "/business/campaigns", icon: "briefcase" },
   {
     label: "Create Campaign",
@@ -52,6 +54,7 @@ export const influencerNav: NavItem[] = [
 export const adminNav: NavItem[] = [
   { label: "Dashboard", href: "/admin/dashboard", icon: "dashboard" },
   { label: "Influencers", href: "/admin/influencers", icon: "users" },
+  { label: "Businesses", href: "/admin/businesses", icon: "verification" },
   { label: "Campaigns", href: "/admin/campaigns", icon: "briefcase" },
   { label: "Users", href: "/admin/users", icon: "building" },
   { label: "Disputes", href: "/admin/disputes", icon: "disputes" },

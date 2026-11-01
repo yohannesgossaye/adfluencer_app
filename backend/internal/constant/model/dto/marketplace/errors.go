@@ -15,6 +15,7 @@ var (
 	ErrRecipientUnavailable = errors.New("this user is not available for chat")
 	ErrDeleteNotAllowed     = errors.New("you can only delete your own messages for everyone")
 	ErrSendRateLimited      = errors.New("you are sending messages too quickly, please slow down")
+	ErrBusinessNotVerified  = errors.New("conversations can start once the business is verified by Adfluence")
 )
 
 // ValidationError describes invalid chat input.

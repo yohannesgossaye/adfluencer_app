@@ -9,11 +9,19 @@ import { businessApi, type CampaignListItem } from "@/lib/api/business";
 function getStatusBadge(status: string) {
   const s = status.toLowerCase();
   if (s === "active") return "bg-emerald-500/15 text-emerald-300";
-  if (s === "pending" || s === "draft") return "bg-amber-500/15 text-amber-200";
+  if (s === "draft") return "bg-amber-500/15 text-amber-200";
+  if (s === "paused") return "bg-rose-500/15 text-rose-300";
   if (s === "completed") return "bg-blue-500/15 text-blue-300";
-  if (s === "cancelled") return "bg-rose-500/15 text-rose-300";
-  return "bg-white/10 text-white";
+  return "bg-white/10 text-[#CBD5E1]";
 }
+
+const STATUS_LABEL: Record<string, string> = {
+  draft: "Draft",
+  active: "Live",
+  paused: "Paused by Adfluence",
+  completed: "Completed",
+  cancelled: "Cancelled",
+};
 
 export function CampaignsList() {
   const [campaigns, setCampaigns] = useState<CampaignListItem[]>([]);
@@ -71,14 +79,18 @@ export function CampaignsList() {
               className="adfluence-glass rounded-2xl border border-white/10 p-5"
             >
               <div className="flex items-start justify-between gap-3">
-                <div>
-                  <h2 className="text-lg font-semibold text-white">{campaign.title}</h2>
+                <div className="min-w-0">
+                  <h2 className="text-lg font-semibold text-white">
+                    <Link href={`/business/campaigns/${campaign.id}`} className="hover:underline">
+                      {campaign.title}
+                    </Link>
+                  </h2>
                   <p className="mt-1 text-sm text-[#CBD5E1]">{campaign.business_name}</p>
                 </div>
                 <span
-                  className={`rounded-full px-3 py-1 text-xs capitalize ${getStatusBadge(campaign.status)}`}
+                  className={`shrink-0 rounded-full px-3 py-1 text-xs ${getStatusBadge(campaign.status)}`}
                 >
-                  {campaign.status}
+                  {STATUS_LABEL[campaign.status] ?? campaign.status}
                 </span>
               </div>
 
@@ -107,13 +119,18 @@ export function CampaignsList() {
                 </div>
               </div>
 
-              <div className="mt-5 flex items-center justify-end gap-2">
+              <div className="mt-5 flex flex-wrap items-center justify-end gap-2">
+                {campaign.status === "active" ? (
+                  <Button asChild className="h-10 rounded-xl bg-white/10 text-white hover:bg-white/15">
+                    <Link href={`/business/recommendations?campaign_id=${campaign.id}`}>Find creators</Link>
+                  </Button>
+                ) : null}
                 <Button
                   asChild
-                  className="h-10 rounded-xl bg-white/10 text-white hover:bg-white/15"
+                  className="h-10 rounded-xl bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)]"
                 >
-                  <Link href={`/business/recommendations?campaign_id=${campaign.id}`}>
-                    Matched Creators ({campaign.creators_needed})
+                  <Link href={`/business/campaigns/${campaign.id}`}>
+                    {campaign.status === "draft" ? "Review & publish" : "Open campaign"}
                   </Link>
                 </Button>
               </div>

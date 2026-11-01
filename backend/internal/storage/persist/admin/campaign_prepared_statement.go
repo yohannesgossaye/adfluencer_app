@@ -4,7 +4,7 @@ const (
 	getAdminCampaignStats = `
 	SELECT
 		(SELECT COUNT(*)::int FROM campaigns WHERE status = 'active'),
-		(SELECT COUNT(*)::int FROM campaigns WHERE status = 'pending'),
+		(SELECT COUNT(*)::int FROM campaigns WHERE status = 'draft'),
 		(SELECT COUNT(*)::int FROM campaigns WHERE status = 'paused')
 	`
 
@@ -110,9 +110,15 @@ const (
 	WHERE c.id = $1
 	`
 
+	// $3 lists the statuses the campaign may move from, so an admin cannot,
+	// for example, "complete" a cancelled campaign.
 	updateAdminCampaignStatus = `
 	UPDATE campaigns
 	SET status = $2::campaign_status, updated_at = NOW()
-	WHERE id = $1
+	WHERE id = $1 AND status::text = ANY($3::text[])
+	`
+
+	adminCampaignExists = `
+	SELECT EXISTS (SELECT 1 FROM campaigns WHERE id = $1)
 	`
 )

@@ -6,17 +6,21 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 )
 
-var ErrAdminCampaignNotFound = errors.New("campaign not found")
+var (
+	ErrAdminCampaignNotFound      = errors.New("campaign not found")
+	ErrAdminCampaignInvalidStatus = errors.New("campaign status does not allow this action")
+)
 
 func (a *admin) GetAdminCampaignStats(ctx context.Context) (*adminDto.AdminCampaignStats, error) {
 	var stats adminDto.AdminCampaignStats
 	if err := a.db.QueryRowContext(ctx, getAdminCampaignStats).Scan(
 		&stats.Active,
-		&stats.Pending,
-		&stats.Flagged,
+		&stats.Draft,
+		&stats.Paused,
 	); err != nil {
 		return nil, fmt.Errorf("get admin campaign stats: %w", err)
 	}
@@ -60,16 +64,25 @@ func (a *admin) GetAdminCampaign(ctx context.Context, campaignID string) (*admin
 	return row, nil
 }
 
-func (a *admin) SetAdminCampaignStatus(ctx context.Context, campaignID, status string) error {
-	result, err := a.db.ExecContext(ctx, updateAdminCampaignStatus, campaignID, status)
+// SetAdminCampaignStatus moves a campaign to status if it is currently in one
+// of the from statuses. ErrAdminCampaignInvalidStatus means it exists but is
+// in a state that does not allow this change.
+func (a *admin) SetAdminCampaignStatus(ctx context.Context, campaignID, status string, from []string) error {
+	result, err := a.db.ExecContext(ctx, updateAdminCampaignStatus, campaignID, status, "{"+strings.Join(from, ",")+"}")
 	if err != nil {
 		return fmt.Errorf("update admin campaign status: %w", err)
 	}
-	n, _ := result.RowsAffected()
-	if n == 0 {
+	if n, _ := result.RowsAffected(); n > 0 {
+		return nil
+	}
+	var exists bool
+	if err := a.db.QueryRowContext(ctx, adminCampaignExists, campaignID).Scan(&exists); err != nil {
+		return fmt.Errorf("check campaign exists: %w", err)
+	}
+	if !exists {
 		return ErrAdminCampaignNotFound
 	}
-	return nil
+	return ErrAdminCampaignInvalidStatus
 }
 
 func scanAdminCampaignListRow(s scanner, total *int) (*adminDto.AdminCampaignRow, error) {

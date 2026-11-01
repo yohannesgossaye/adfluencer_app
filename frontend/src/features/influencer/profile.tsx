@@ -29,20 +29,22 @@ export function InfluencerProfile() {
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
   const portfolioInputRef = useRef<HTMLInputElement | null>(null);
 
+  // Starts empty and is filled from the saved profile; never pre-filled with
+  // example values that could be saved to a real account.
   const [form, setForm] = useState({
-    name: "Biruk Alemu",
-    bio: "Tech creator focused on practical reviews, app walkthroughs, and honest recommendations for Ethiopian audiences.",
-    niches: ["Tech"] as string[],
-    platforms: ["YouTube"] as string[],
+    name: "",
+    bio: "",
+    niches: [] as string[],
+    platforms: [] as string[],
     tiktok: "",
     instagram: "",
     youtube: "",
-    followers: "84000",
-    engagement: "7.2",
-    priceMin: "15000",
-    priceMax: "35000",
-    languages: "Amharic, English",
-    location: "Addis Ababa",
+    followers: "",
+    engagement: "",
+    priceMin: "",
+    priceMax: "",
+    languages: "",
+    location: "",
   });
 
   const loadProfile = async () => {
@@ -63,19 +65,19 @@ export function InfluencerProfile() {
         setPortfolioItems(p?.portfolio_items || []);
         if (p) {
           setForm({
-            name: p.creator_name || p.full_name || "Creator",
+            name: p.creator_name || p.full_name || "",
             bio: p.bio || "",
-            niches: p.niches?.map((n) => n.name) || ["Tech"],
-            platforms: p.platforms || ["YouTube"],
+            niches: p.niches?.map((n) => n.name) || [],
+            platforms: p.platforms || [],
             tiktok: p.social_links?.tiktok || "",
             instagram: p.social_links?.instagram || "",
             youtube: p.social_links?.youtube || "",
-            followers: String(p.total_followers || 84000),
-            engagement: String(p.engagement_rate || 7.2),
-            priceMin: String(p.min_price_etb || 15000),
-            priceMax: String(p.max_price_etb || 35000),
-            languages: p.languages?.join(", ") || "Amharic, English",
-            location: p.city || "Addis Ababa",
+            followers: p.total_followers ? String(p.total_followers) : "",
+            engagement: p.engagement_rate != null ? String(p.engagement_rate) : "",
+            priceMin: p.min_price_etb != null ? String(p.min_price_etb) : "",
+            priceMax: p.max_price_etb != null ? String(p.max_price_etb) : "",
+            languages: p.languages?.join(", ") || "",
+            location: p.city || "",
           });
         }
       }
@@ -562,39 +564,6 @@ export function InfluencerProfile() {
         )}
       </section>
 
-      <section>
-        <h2 className="mb-3 text-lg font-semibold text-white">Pricing packages</h2>
-        <div className="grid gap-4 md:grid-cols-3">
-          {(
-            [
-              { title: "Basic", items: ["1 short video", "1 story", "Posting window: 7 days"] },
-              { title: "Standard", items: ["2 videos", "3 stories", "30-day usage rights"] },
-              { title: "Premium", items: ["Campaign bundle", "Multi-platform", "Priority support"] },
-            ] as const
-          ).map((pkg, index) => (
-            <article
-              key={pkg.title}
-              className={
-                index === 1
-                  ? "rounded-2xl border border-[color:var(--adfluence-orange)]/40 bg-[color:var(--adfluence-orange)]/10 p-4"
-                  : "rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-4"
-              }
-            >
-              <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-white">{pkg.title}</h3>
-                {index === 1 ? (
-                  <span className="text-[10px] uppercase text-orange-200">Recommended</span>
-                ) : null}
-              </div>
-              <ul className="mt-2 space-y-1 text-sm text-[#CBD5E1]">
-                {pkg.items.map((line) => (
-                  <li key={line}>• {line}</li>
-                ))}
-              </ul>
-            </article>
-          ))}
-        </div>
-      </section>
 
       <Button
         type="button"

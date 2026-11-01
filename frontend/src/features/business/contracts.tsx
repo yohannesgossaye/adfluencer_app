@@ -1,635 +1,442 @@
 "use client";
 
-import Image from "next/image";
-import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowLeft, FileDown, Plus, CheckCircle, ShieldCheck, AlertCircle } from "lucide-react";
+import Link from "next/link";
+import axios from "axios";
+import { ArrowLeft, Loader2, Plus } from "lucide-react";
+import { toast } from "sonner";
 
+import { ContractDetailView } from "@/components/contracts/contract-detail";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import {
   businessApi,
-  type ContractDetail,
   type CampaignListItem,
+  type ContractDetail,
+  type ContractListItem,
   type InviteResponse,
 } from "@/lib/api/business";
+import { DELIVERABLE_TYPES, contractStatus, formatEtb, previewFees } from "@/lib/contracts";
 import { cn } from "@/lib/utils";
-import { UserAvatar } from "@/components/common/user-avatar";
 
-function statusBadgeClass(status: string) {
-  switch (status.toLowerCase()) {
-    case "draft":
-      return "bg-white/10 text-[#CBD5E1] border-white/15";
-    case "pending":
-      return "bg-[color:var(--adfluence-orange)]/15 text-amber-200 border-[color:var(--adfluence-orange)]/30";
-    case "accepted":
-      return "bg-[color:var(--adfluence-purple-mid)]/15 text-violet-200 border-[color:var(--adfluence-purple-accent)]/35";
-    case "active":
-      return "bg-emerald-500/15 text-emerald-200 border-emerald-400/30";
-    case "completed":
-      return "bg-sky-500/15 text-sky-200 border-sky-400/30";
-    case "cancelled":
-      return "bg-rose-500/15 text-rose-200 border-rose-400/30";
-    default:
-      return "bg-white/10 text-[#CBD5E1] border-white/15";
+const FILTERS = [
+  { id: "", label: "All" },
+  { id: "pending_influencer", label: "Waiting for creator" },
+  { id: "accepted", label: "Ready to fund" },
+  { id: "active", label: "In progress" },
+  { id: "completed", label: "Completed" },
+] as const;
+
+type Confirm = { kind: "pay" | "approve" | "cancel" } | null;
+
+function apiError(err: unknown, fallback: string) {
+  if (axios.isAxiosError(err)) {
+    const data = err.response?.data as { message?: string; error?: { type?: string; details?: Array<{ description?: string }> } } | undefined;
+    switch (data?.error?.type) {
+      case "account_not_verified":
+        return "Your business must be verified to create or manage contracts.";
+      case "invite_not_accepted":
+        return "The creator has not accepted this invite yet.";
+      case "contract_already_exists":
+        return "A contract already exists for this invite.";
+    }
+    return data?.error?.details?.[0]?.description || data?.message || (!err.response ? "You appear to be offline." : fallback);
   }
+  return fallback;
 }
 
-function formatEtb(n: number) {
-  if (n >= 1000) return `ETB ${Math.round(n / 1000)}K`;
-  return `ETB ${(n || 0).toLocaleString()}`;
-}
+const inputClass =
+  "h-11 rounded-xl border-white/10 bg-[color:var(--adfluence-surface)] text-white placeholder:text-[#94A3B8] focus-visible:border-[color:var(--adfluence-orange)] focus-visible:ring-[color:var(--adfluence-orange)]/25";
+const selectClass =
+  "h-11 w-full rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)] px-3 text-sm text-white outline-none focus:border-[color:var(--adfluence-orange)] focus:ring-2 focus:ring-[color:var(--adfluence-orange)]/25";
 
-export function BusinessContracts() {
-  const [contracts, setContracts] = useState<ContractDetail[]>([]);
-  const [selectedId, setSelectedId] = useState<string>("");
-  const [isLoading, setIsLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState(false);
-  const [statusMessage, setStatusMessage] = useState("");
-  const [mobileShowDetail, setMobileShowDetail] = useState(false);
-  const [sheetOpen, setSheetOpen] = useState(false);
-
-  // New contract form dependencies
+function NewContractSheet({ open, onOpenChange, onCreated }: { open: boolean; onOpenChange: (v: boolean) => void; onCreated: (id: string) => void }) {
   const [campaigns, setCampaigns] = useState<CampaignListItem[]>([]);
   const [invites, setInvites] = useState<InviteResponse[]>([]);
-  const [form, setForm] = useState({
-    campaignId: "",
-    inviteId: "",
-    title: "",
-    deliverables: "1 TikTok Video, 2 Instagram Stories",
-    amountEtb: "25000",
-    startDate: new Date().toISOString().slice(0, 10),
-    endDate: new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10),
-    notes: "",
-  });
-
-  const loadContracts = useCallback(async () => {
-    try {
-      const res = await businessApi.listContracts();
-      if (res.data?.items) {
-        setContracts(res.data.items);
-        if (res.data.items.length > 0 && !selectedId) {
-          setSelectedId(res.data.items[0].id);
-        }
-      }
-    } catch {
-      // Fallback
-    } finally {
-      setIsLoading(false);
-    }
-  }, [selectedId]);
+  const [campaignId, setCampaignId] = useState("");
+  const [inviteId, setInviteId] = useState("");
+  const [title, setTitle] = useState("");
+  const [amount, setAmount] = useState("");
+  const [quantities, setQuantities] = useState<Record<string, number>>({});
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [notes, setNotes] = useState("");
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    loadContracts();
-  }, [loadContracts]);
+    if (!open) return;
+    businessApi
+      .listCampaigns({ status: "active", page: 1, limit: 50 })
+      .then((res) => setCampaigns(res.data?.items ?? []))
+      .catch(() => setCampaigns([]));
+  }, [open]);
 
-  // Load campaigns when opening new contract sheet
   useEffect(() => {
-    if (!sheetOpen) return;
-    async function loadFormContext() {
-      try {
-        const cRes = await businessApi.listCampaigns({ page: 1, limit: 50 });
-        const items = cRes.data?.items;
-        if (items && items.length > 0) {
-          setCampaigns(items);
-          if (!form.campaignId) {
-            setForm((prev) => ({
-              ...prev,
-              campaignId: items[0].id,
-              title: `${items[0].title} Collaboration`,
-            }));
-          }
-        }
-      } catch {
-        // Fallback
-      }
-    }
-    loadFormContext();
-  }, [sheetOpen, form.campaignId]);
+    if (!campaignId) return;
+    businessApi
+      .listInvites(campaignId)
+      .then((res) => setInvites((res.data?.items ?? []).filter((i) => i.status === "accepted")))
+      .catch(() => setInvites([]));
+  }, [campaignId]);
 
-  // Load invites for the selected campaign in form
-  useEffect(() => {
-    if (!form.campaignId) return;
-    async function loadCampaignInvites() {
-      try {
-        const invRes = await businessApi.listInvites(form.campaignId);
-        const items = invRes.data?.items;
-        if (items) {
-          setInvites(items);
-          if (items.length > 0 && !form.inviteId) {
-            setForm((prev) => ({ ...prev, inviteId: items[0].id }));
-          }
-        }
-      } catch {
-        setInvites([]);
-      }
-    }
-    loadCampaignInvites();
-  }, [form.campaignId, form.inviteId]);
+  const amountNumber = Number(amount);
+  const fees = previewFees(Number.isFinite(amountNumber) ? amountNumber : 0);
+  const deliverables = Object.entries(quantities)
+    .filter(([, q]) => q > 0)
+    .map(([type, quantity]) => ({ type, quantity }));
 
-  const selected = useMemo(
-    () => contracts.find((c) => c.id === selectedId) ?? contracts[0],
-    [contracts, selectedId],
-  );
+  const problem = !campaignId
+    ? "Choose a live campaign."
+    : !inviteId
+      ? "Choose a creator who accepted your invite."
+      : title.trim().length < 3
+        ? "Give the contract a title (at least 3 characters)."
+        : !(amountNumber >= 1)
+          ? "Enter the amount you agreed with the creator."
+          : deliverables.length === 0
+            ? "Add at least one deliverable."
+            : startDate && endDate && endDate < startDate
+              ? "The end date must be on or after the start date."
+              : null;
 
-  const stats = useMemo(() => {
-    let pending = 0;
-    let active = 0;
-    let completed = 0;
-    let totalValue = 0;
-
-    for (const c of contracts) {
-      const s = c.status.toLowerCase();
-      if (s === "pending" || s === "draft") pending++;
-      else if (s === "active") active++;
-      else if (s === "completed") completed++;
-
-      totalValue += c.fees?.amount_etb || c.fees?.total_business_payable_etb || 0;
-    }
-
-    return { pending, active, completed, totalValue };
-  }, [contracts]);
-
-  const selectContract = useCallback((id: string) => {
-    setSelectedId(id);
-    if (typeof window !== "undefined" && window.matchMedia("(max-width: 1279px)").matches) {
-      setMobileShowDetail(true);
-    }
-  }, []);
-
-  const handleCreateContract = async () => {
-    if (!form.campaignId || !form.inviteId) {
-      setStatusMessage("Please select a campaign and an invited creator.");
-      setTimeout(() => setStatusMessage(""), 3000);
-      return;
-    }
-
-    const amount = Number(form.amountEtb.replace(/\D/g, "")) || 20000;
-    const deliverablesList = form.deliverables
-      .split(",")
-      .map((d) => d.trim())
-      .filter(Boolean)
-      .map((d) => ({
-        type: d,
-        quantity: 1,
-        description: d,
-      }));
-
-    setActionLoading(true);
+  const create = async () => {
+    if (problem) return;
+    setSaving(true);
     try {
       const res = await businessApi.createContract({
-        invite_id: form.inviteId,
-        title: form.title || "Influencer Collaboration Agreement",
-        description: form.notes || undefined,
-        amount_etb: amount,
-        deliverables:
-          deliverablesList.length > 0
-            ? deliverablesList
-            : [{ type: "Content Post", quantity: 1 }],
-        start_date: form.startDate,
-        end_date: form.endDate,
+        invite_id: inviteId,
+        title: title.trim(),
+        description: notes.trim() || undefined,
+        amount_etb: amountNumber,
+        deliverables,
+        start_date: startDate || undefined,
+        end_date: endDate || undefined,
       });
-
-      const newContract = res.data?.contract;
-      if (newContract) {
-        setContracts((prev) => [newContract, ...prev]);
-        setSelectedId(newContract.id);
-        setSheetOpen(false);
-        setStatusMessage("Contract created successfully!");
-        setTimeout(() => setStatusMessage(""), 3000);
+      if (res.data?.id) {
+        toast.success("Contract sent to the creator.");
+        onCreated(res.data.id);
+        onOpenChange(false);
+        setInviteId("");
+        setTitle("");
+        setAmount("");
+        setQuantities({});
+        setNotes("");
       }
-    } catch {
-      setStatusMessage("Failed to create contract. Ensure invited creator is valid.");
-      setTimeout(() => setStatusMessage(""), 3500);
+    } catch (err) {
+      toast.error(apiError(err, "Could not create the contract."));
     } finally {
-      setActionLoading(false);
+      setSaving(false);
     }
-  };
-
-  const handlePayEscrow = async (contractId: string) => {
-    setActionLoading(true);
-    try {
-      const res = await businessApi.payContract(contractId, "telebirr");
-      const updatedContract = res.data?.contract;
-      if (updatedContract) {
-        setContracts((prev) => prev.map((c) => (c.id === contractId ? updatedContract : c)));
-        setStatusMessage("Escrow payment funded successfully! Contract is now Active.");
-        setTimeout(() => setStatusMessage(""), 3500);
-      }
-    } catch {
-      setStatusMessage("Payment simulation failed.");
-      setTimeout(() => setStatusMessage(""), 3500);
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  const handleApproveWork = async (contractId: string) => {
-    setActionLoading(true);
-    try {
-      const res = await businessApi.approveWork(contractId);
-      const updatedContract = res.data?.contract;
-      if (updatedContract) {
-        setContracts((prev) => prev.map((c) => (c.id === contractId ? updatedContract : c)));
-        setStatusMessage("Work approved! Escrow funds released to creator.");
-        setTimeout(() => setStatusMessage(""), 3500);
-      }
-    } catch {
-      setStatusMessage("Failed to approve work.");
-      setTimeout(() => setStatusMessage(""), 3500);
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  const handleDownloadPDF = () => {
-    window.print();
   };
 
   return (
-    <div className="space-y-6 text-white">
-      <section className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold text-white">Contracts</h1>
-          <p className="mt-1 max-w-xl text-sm text-[#CBD5E1]">
-            Create, review, and manage influencer collaboration agreements and escrow payments.
-          </p>
-        </div>
-        <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-          <SheetTrigger asChild>
-            <Button className="h-11 rounded-xl bg-[color:var(--adfluence-orange)] px-5 text-white hover:bg-[color:var(--adfluence-orange-hover)]">
-              <Plus className="mr-2 size-4" />
-              New Contract
-            </Button>
-          </SheetTrigger>
-          <SheetContent
-            side="right"
-            className="flex w-full max-w-md flex-col border-white/10 bg-[color:var(--adfluence-surface)] text-white"
-          >
-            <SheetHeader>
-              <SheetTitle className="text-white">New Collaboration Contract</SheetTitle>
-            </SheetHeader>
-            <div className="mt-4 flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pr-1">
-              <label className="space-y-2 text-sm">
-                <span className="text-[#CBD5E1]">Campaign</span>
-                {campaigns.length > 0 ? (
-                  <select
-                    value={form.campaignId}
-                    onChange={(e) => {
-                      const cId = e.target.value;
-                      const cObj = campaigns.find((c) => c.id === cId);
-                      setForm((f) => ({
-                        ...f,
-                        campaignId: cId,
-                        title: cObj ? `${cObj.title} Agreement` : f.title,
-                      }));
-                    }}
-                    className="h-11 w-full rounded-xl border border-white/10 bg-[color:var(--adfluence-bg)] px-3 text-white outline-none focus:border-[color:var(--adfluence-orange)]"
-                  >
-                    {campaigns.map((c) => (
-                      <option key={c.id} value={c.id} className="bg-[color:var(--adfluence-bg)]">
-                        {c.title} ({c.status})
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <p className="text-xs text-amber-200">No campaigns available. Create a campaign first.</p>
-                )}
-              </label>
-
-              <label className="space-y-2 text-sm">
-                <span className="text-[#CBD5E1]">Invited Creator</span>
-                {invites.length > 0 ? (
-                  <select
-                    value={form.inviteId}
-                    onChange={(e) => setForm((f) => ({ ...f, inviteId: e.target.value }))}
-                    className="h-11 w-full rounded-xl border border-white/10 bg-[color:var(--adfluence-bg)] px-3 text-white outline-none focus:border-[color:var(--adfluence-orange)]"
-                  >
-                    {invites.map((inv) => (
-                      <option
-                        key={inv.id}
-                        value={inv.id}
-                        className="bg-[color:var(--adfluence-bg)]"
-                      >
-                        {inv.creator_name || "Creator"} ({inv.status})
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <p className="text-xs text-amber-200">
-                    No invited creators for this campaign. Invite creators from Recommendations first.
-                  </p>
-                )}
-              </label>
-
-              <label className="space-y-2 text-sm">
-                <span className="text-[#CBD5E1]">Contract Title</span>
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="right" className="w-full overflow-y-auto border-white/10 bg-[color:var(--adfluence-bg)] text-white sm:max-w-lg">
+        <SheetHeader>
+          <SheetTitle className="text-white">New contract</SheetTitle>
+          <SheetDescription className="text-[#94A3B8]">
+            Send terms to a creator who accepted your invite. They accept it, then you fund escrow.
+          </SheetDescription>
+        </SheetHeader>
+        <div className="space-y-4 px-4 pb-6">
+          <label className="block space-y-1">
+            <span className="text-sm text-[#CBD5E1]">Campaign *</span>
+            <select id="contract-campaign" value={campaignId} onChange={(e) => { setCampaignId(e.target.value); setInviteId(""); }} className={selectClass}>
+              <option value="">{campaigns.length ? "Select a live campaign" : "No live campaigns"}</option>
+              {campaigns.map((c) => (
+                <option key={c.id} value={c.id}>{c.title}</option>
+              ))}
+            </select>
+          </label>
+          <label className="block space-y-1">
+            <span className="text-sm text-[#CBD5E1]">Creator *</span>
+            <select id="contract-invite" value={inviteId} disabled={!campaignId} onChange={(e) => {
+              setInviteId(e.target.value);
+              const inv = invites.find((i) => i.id === e.target.value);
+              const camp = campaigns.find((c) => c.id === campaignId);
+              if (inv && !title) setTitle(`${camp?.title ?? "Campaign"} × ${inv.creator_name ?? "creator"}`);
+            }} className={selectClass}>
+              <option value="">{campaignId && invites.length === 0 ? "No creator has accepted an invite yet" : "Select a creator"}</option>
+              {invites.map((i) => (
+                <option key={i.id} value={i.id}>{i.creator_name || "Creator"}</option>
+              ))}
+            </select>
+          </label>
+          <label className="block space-y-1">
+            <span className="text-sm text-[#CBD5E1]">Title *</span>
+            <Input id="contract-title" value={title} maxLength={255} onChange={(e) => setTitle(e.target.value)} className={inputClass} />
+          </label>
+          <label className="block space-y-1">
+            <span className="text-sm text-[#CBD5E1]">Agreed amount (ETB) *</span>
+            <Input id="contract-amount" value={amount} inputMode="decimal" onChange={(e) => setAmount(e.target.value)} className={inputClass} placeholder="e.g. 20000" />
+          </label>
+          {amountNumber >= 1 ? (
+            <div className="rounded-xl border border-white/10 bg-black/20 p-3 text-sm">
+              <div className="flex justify-between"><span className="text-[#94A3B8]">You pay (amount + 5%)</span><span className="tabular-nums">{formatEtb(fees.totalBusinessPays)}</span></div>
+              <div className="flex justify-between"><span className="text-[#94A3B8]">Creator receives (amount − 5%)</span><span className="tabular-nums">{formatEtb(fees.influencerReceives)}</span></div>
+            </div>
+          ) : null}
+          <fieldset className="space-y-2">
+            <legend className="text-sm text-[#CBD5E1]">Deliverables *</legend>
+            {DELIVERABLE_TYPES.map((d) => (
+              <div key={d.id} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 px-3 py-2">
+                <span className="text-sm">{d.label}</span>
                 <Input
-                  value={form.title}
-                  onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-                  placeholder="e.g. Betu Cosmetics x Hana Launch"
-                  className="h-11 rounded-xl border-white/10 bg-[color:var(--adfluence-bg)] text-white placeholder:text-[#94A3B8]"
+                  id={`qty-${d.id}`}
+                  aria-label={`${d.label} quantity`}
+                  type="number"
+                  min={0}
+                  max={20}
+                  value={quantities[d.id] ?? 0}
+                  onChange={(e) => setQuantities((q) => ({ ...q, [d.id]: Math.max(0, Math.min(20, Number(e.target.value) || 0)) }))}
+                  className="h-9 w-20 rounded-lg border-white/10 bg-[color:var(--adfluence-surface)] text-white"
                 />
-              </label>
-
-              <label className="space-y-2 text-sm">
-                <span className="text-[#CBD5E1]">Deliverables (comma separated)</span>
-                <Input
-                  value={form.deliverables}
-                  onChange={(e) => setForm((f) => ({ ...f, deliverables: e.target.value }))}
-                  placeholder="e.g. 1 TikTok Video, 2 Instagram Stories"
-                  className="h-11 rounded-xl border-white/10 bg-[color:var(--adfluence-bg)] text-white placeholder:text-[#94A3B8]"
-                />
-              </label>
-
-              <div className="grid grid-cols-2 gap-3">
-                <label className="space-y-2 text-sm">
-                  <span className="text-[#CBD5E1]">Start Date</span>
-                  <Input
-                    type="date"
-                    value={form.startDate}
-                    onChange={(e) => setForm((f) => ({ ...f, startDate: e.target.value }))}
-                    className="h-11 rounded-xl border-white/10 bg-[color:var(--adfluence-bg)] text-white"
-                  />
-                </label>
-                <label className="space-y-2 text-sm">
-                  <span className="text-[#CBD5E1]">End Date</span>
-                  <Input
-                    type="date"
-                    value={form.endDate}
-                    onChange={(e) => setForm((f) => ({ ...f, endDate: e.target.value }))}
-                    className="h-11 rounded-xl border-white/10 bg-[color:var(--adfluence-bg)] text-white"
-                  />
-                </label>
               </div>
+            ))}
+          </fieldset>
+          <div className="grid grid-cols-2 gap-3">
+            <label className="space-y-1">
+              <span className="text-sm text-[#CBD5E1]">Start date</span>
+              <Input id="contract-start" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputClass} />
+            </label>
+            <label className="space-y-1">
+              <span className="text-sm text-[#CBD5E1]">End date</span>
+              <Input id="contract-end" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className={inputClass} />
+            </label>
+          </div>
+          <label className="block space-y-1">
+            <span className="text-sm text-[#CBD5E1]">Notes for the creator</span>
+            <textarea id="contract-notes" value={notes} maxLength={2000} rows={3} onChange={(e) => setNotes(e.target.value)} className="w-full rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)] px-3 py-2 text-sm text-white outline-none focus:border-[color:var(--adfluence-orange)]" />
+          </label>
+          {problem ? <p className="text-xs text-[#94A3B8]">{problem}</p> : null}
+          <Button type="button" disabled={!!problem || saving} onClick={() => void create()} className="h-11 w-full rounded-xl bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)]">
+            {saving ? <Loader2 className="mr-2 size-4 animate-spin" aria-hidden /> : null}
+            Send contract to creator
+          </Button>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
 
-              <label className="space-y-2 text-sm">
-                <span className="text-[#CBD5E1]">Payment Amount (ETB)</span>
-                <Input
-                  value={form.amountEtb}
-                  onChange={(e) => setForm((f) => ({ ...f, amountEtb: e.target.value }))}
-                  placeholder="e.g. 25000"
-                  className="h-11 rounded-xl border-white/10 bg-[color:var(--adfluence-bg)] text-white placeholder:text-[#94A3B8]"
-                />
-              </label>
+export function BusinessContracts() {
+  const [filter, setFilter] = useState<string>("");
+  const [rows, setRows] = useState<ContractListItem[]>([]);
+  const [listState, setListState] = useState<"loading" | "ready" | "error">("loading");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [detail, setDetail] = useState<ContractDetail | null>(null);
+  const [detailError, setDetailError] = useState<string | null>(null);
+  const [mobileShowDetail, setMobileShowDetail] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [confirm, setConfirm] = useState<Confirm>(null);
+  const [busy, setBusy] = useState(false);
 
-              <label className="space-y-2 text-sm">
-                <span className="text-[#CBD5E1]">Notes / Instructions</span>
-                <textarea
-                  value={form.notes}
-                  onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-                  rows={3}
-                  className="w-full rounded-xl border border-white/10 bg-[color:var(--adfluence-bg)] px-3 py-2 text-white placeholder:text-[#94A3B8]"
-                  placeholder="Brand guidelines or specific requirements"
-                />
-              </label>
-            </div>
+  const loadList = useCallback(async () => {
+    try {
+      const res = await businessApi.listContracts({ status: filter || undefined, limit: 50 });
+      setRows(res.data?.items ?? []);
+      setListState("ready");
+    } catch {
+      setListState("error");
+    }
+  }, [filter]);
 
-            <Button
-              type="button"
-              disabled={actionLoading || !form.campaignId || !form.inviteId}
-              className="mt-4 h-11 w-full rounded-xl bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)]"
-              onClick={handleCreateContract}
-            >
-              {actionLoading ? "Creating Contract..." : "Create & Issue Contract"}
-            </Button>
-          </SheetContent>
-        </Sheet>
-      </section>
+  const loadDetail = useCallback(async (id: string) => {
+    try {
+      const res = await businessApi.getContract(id);
+      setDetail(res.data ?? null);
+      setDetailError(null);
+    } catch (err) {
+      setDetailError(apiError(err, "Could not load this contract."));
+    }
+  }, []);
 
-      {statusMessage ? (
-        <p className="rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-2.5 text-sm text-emerald-200">
-          {statusMessage}
-        </p>
-      ) : null}
+  useEffect(() => {
+    void Promise.resolve().then(loadList);
+  }, [loadList]);
 
-      {/* Contract KPIs */}
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {[
-          { label: "Pending Review", value: String(stats.pending) },
-          { label: "Active Contracts", value: String(stats.active) },
-          { label: "Completed", value: String(stats.completed) },
-          { label: "Total Value", value: formatEtb(stats.totalValue) },
-        ].map((card) => (
-          <article
-            key={card.label}
-            className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-4"
-          >
-            <p className="text-xs text-[#CBD5E1]">{card.label}</p>
-            <p className="mt-2 text-2xl font-bold text-[color:var(--adfluence-orange)]">
-              {card.value}
-            </p>
-          </article>
-        ))}
-      </section>
+  const select = (id: string) => {
+    setSelectedId(id);
+    setDetail(null);
+    setConfirm(null);
+    void loadDetail(id);
+    if (window.matchMedia("(max-width: 1279px)").matches) setMobileShowDetail(true);
+  };
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
-        <section className={cn("space-y-3", mobileShowDetail && "hidden xl:block")}>
-          <h2 className="text-sm font-medium uppercase tracking-wide text-[#CBD5E1]">
-            All contracts
-          </h2>
+  const run = async () => {
+    if (!detail || !confirm) return;
+    setBusy(true);
+    try {
+      if (confirm.kind === "pay") {
+        await businessApi.payContract(detail.id);
+        toast.success("Escrow funded. The creator can start the work.");
+      } else if (confirm.kind === "approve") {
+        await businessApi.approveWork(detail.id);
+        toast.success("Work approved. The creator's payout has been released.");
+      } else {
+        await businessApi.cancelContract(detail.id);
+        toast.success("Contract cancelled.");
+      }
+      setConfirm(null);
+      await Promise.all([loadList(), loadDetail(detail.id)]);
+    } catch (err) {
+      toast.error(apiError(err, "The action could not be completed."));
+    } finally {
+      setBusy(false);
+    }
+  };
 
-          {contracts.length > 0 ? (
-            <div className="space-y-3">
-              {contracts.map((c) => {
-                const rowActive = c.id === selectedId;
-                const influencerName = c.influencer?.creator_name || "Creator";
-                const campaignTitle = c.campaign?.title || "Campaign Collaboration";
-                const deliverablesSummary = c.deliverables?.length
-                  ? c.deliverables.map((d) => `${d.quantity} ${d.type}`).join(", ")
-                  : "Campaign deliverables";
+  const confirmCopy = useMemo(() => {
+    if (!detail || !confirm) return null;
+    if (confirm.kind === "pay")
+      return {
+        text: `Fund escrow with ${formatEtb(detail.fees.total_business_payable_etb)}? Online payment is not connected yet, so this records the escrow as funded.`,
+        button: "Fund escrow",
+        tone: "bg-[color:var(--adfluence-orange)] hover:bg-[color:var(--adfluence-orange-hover)]",
+      };
+    if (confirm.kind === "approve")
+      return {
+        text: `Approve the delivered work? This releases ${formatEtb(detail.fees.influencer_receivable_etb)} to the creator and completes the contract.`,
+        button: "Approve and release payout",
+        tone: "bg-emerald-600 hover:bg-emerald-700",
+      };
+    return { text: "Cancel this contract? The creator will see it as cancelled.", button: "Cancel contract", tone: "bg-rose-600 hover:bg-rose-700" };
+  }, [detail, confirm]);
 
-                return (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onClick={() => selectContract(c.id)}
-                    className={cn(
-                      "flex w-full min-w-0 flex-col gap-3 rounded-2xl border p-4 text-left transition-colors sm:flex-row sm:items-center",
-                      rowActive
-                        ? "border-[color:var(--adfluence-orange)]/35 bg-[color:var(--adfluence-orange)]/10"
-                        : "border-white/10 bg-[rgba(255,255,255,0.08)] hover:border-white/20",
-                    )}
-                  >
-                    <UserAvatar
-                      src={c.influencer?.profile_image_url}
-                      name={influencerName}
-                      size="lg"
-                      fallback="IN"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <p className="font-semibold text-white truncate">{c.title}</p>
-                      <p className="text-xs text-[#CBD5E1] truncate">{campaignTitle} · {influencerName}</p>
-                      <p className="mt-1 text-xs text-[#94A3B8] truncate">{deliverablesSummary}</p>
-                      <div className="mt-2 flex flex-wrap gap-2 text-xs text-[#CBD5E1]">
-                        <span>{formatEtb(c.fees?.amount_etb || 0)}</span>
-                        <span>·</span>
-                        <span>
-                          {c.start_date
-                            ? `${new Date(c.start_date).toLocaleDateString()} - ${new Date(c.end_date || "").toLocaleDateString()}`
-                            : "Flexible"}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex shrink-0 flex-col items-start gap-2 sm:items-end">
-                      <span
-                        className={cn(
-                          "rounded-full border px-2.5 py-0.5 text-xs font-medium capitalize",
-                          statusBadgeClass(c.status),
-                        )}
-                      >
-                        {c.status}
-                      </span>
-                      <div className="flex flex-wrap gap-2">
-                        {c.influencer?.user_id ? (
-                          <Button
-                            asChild
-                            size="sm"
-                            className="h-11 rounded-lg bg-white/10 px-3 text-xs text-white hover:bg-white/15 sm:h-8"
-                          >
-                            <Link href={`/business/influencers/${c.influencer.user_id}`}>Profile</Link>
-                          </Button>
-                        ) : null}
-                        <Button
-                          asChild
-                          size="sm"
-                          className="h-11 rounded-lg bg-white/10 px-3 text-xs text-white hover:bg-white/15 sm:h-8"
-                        >
-                          <Link href="/business/messages">Message</Link>
-                        </Button>
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-12 text-center">
-              <p className="font-medium text-white">No contracts created yet</p>
-              <p className="mt-1 text-sm text-[#CBD5E1]">
-                Invite creators from your campaigns and click &quot;New Contract&quot; to issue collaboration agreements.
-              </p>
-            </div>
-          )}
-        </section>
+  const actions = detail ? (
+    confirm && confirmCopy ? (
+      <div className="w-full space-y-2 rounded-xl border border-white/15 bg-black/20 p-3">
+        <p className="text-sm">{confirmCopy.text}</p>
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" disabled={busy} onClick={() => void run()} className={cn("h-10 rounded-xl text-white", confirmCopy.tone)}>
+            {busy ? <Loader2 className="mr-2 size-4 animate-spin" aria-hidden /> : null}
+            {confirmCopy.button}
+          </Button>
+          <Button type="button" variant="ghost" disabled={busy} onClick={() => setConfirm(null)} className="h-10 rounded-xl text-white hover:bg-white/10">
+            Keep as is
+          </Button>
+        </div>
+      </div>
+    ) : (
+      <>
+        {detail.status === "accepted" ? (
+          <Button type="button" onClick={() => setConfirm({ kind: "pay" })} className="h-10 rounded-xl bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)]">
+            Fund escrow ({formatEtb(detail.fees.total_business_payable_etb)})
+          </Button>
+        ) : null}
+        {detail.status === "active" ? (
+          <Button type="button" onClick={() => setConfirm({ kind: "approve" })} className="h-10 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700">
+            Approve work and release payout
+          </Button>
+        ) : null}
+        {detail.status === "pending_influencer" || detail.status === "accepted" ? (
+          <Button type="button" variant="outline" onClick={() => setConfirm({ kind: "cancel" })} className="h-10 rounded-xl border-rose-400/40 bg-transparent text-rose-200 hover:bg-rose-500/10">
+            Cancel contract
+          </Button>
+        ) : null}
+        <Button asChild variant="ghost" className="h-10 rounded-xl text-white hover:bg-white/10">
+          <Link href={`/business/influencers/${detail.influencer.user_id}`}>View creator</Link>
+        </Button>
+      </>
+    )
+  ) : null;
 
-        {selected ? (
-          <aside
+  return (
+    <div className="space-y-6 text-white">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold">Contracts</h1>
+          <p className="mt-1 max-w-2xl text-sm text-[#CBD5E1]">Send terms to creators, fund escrow and release payouts when the work is done.</p>
+        </div>
+        <Button type="button" onClick={() => setSheetOpen(true)} className="h-11 rounded-xl bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)]">
+          <Plus className="mr-1 size-4" aria-hidden /> New contract
+        </Button>
+      </div>
+
+      <div className="flex flex-wrap gap-2" role="tablist" aria-label="Contract status">
+        {FILTERS.map((f) => (
+          <button
+            key={f.id || "all"}
+            type="button"
+            role="tab"
+            aria-selected={filter === f.id}
+            onClick={() => { setFilter(f.id); setListState("loading"); }}
             className={cn(
-              "xl:sticky xl:top-4 xl:self-start",
-              !mobileShowDetail && "hidden xl:block",
+              "inline-flex min-h-11 items-center rounded-full border px-4 py-2 text-sm font-medium transition-colors sm:min-h-0",
+              filter === f.id ? "border-transparent bg-[color:var(--adfluence-orange)] text-white" : "border-white/10 bg-[rgba(255,255,255,0.06)] text-[#CBD5E1] hover:text-white",
             )}
           >
-            <div className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-5">
-              <div className="mb-3 xl:hidden">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="shrink-0 text-white hover:bg-white/10"
-                  aria-label="Back to contracts"
-                  onClick={() => setMobileShowDetail(false)}
-                >
-                  <ArrowLeft className="size-5" />
-                </Button>
-              </div>
-
-              <h3 className="text-lg font-semibold text-white">{selected.title}</h3>
-              <p className="mt-1 text-sm text-[#CBD5E1]">
-                {selected.campaign?.title} × {selected.influencer?.creator_name || "Creator"}
-              </p>
-              <span
-                className={cn(
-                  "mt-3 inline-flex rounded-full border px-2.5 py-0.5 text-xs font-medium capitalize",
-                  statusBadgeClass(selected.status),
-                )}
-              >
-                {selected.status}
-              </span>
-
-              <div className="mt-4 space-y-2 text-sm text-[#CBD5E1]">
-                <p>
-                  <span className="text-white">Contract Amount:</span>{" "}
-                  {formatEtb(selected.fees?.amount_etb || 0)}
-                </p>
-                <p>
-                  <span className="text-white">Platform Fee (5%):</span>{" "}
-                  {formatEtb(selected.fees?.business_fee_amount_etb || 0)}
-                </p>
-                <p>
-                  <span className="text-white font-medium">Total Escrow Payable:</span>{" "}
-                  <span className="font-semibold text-white">
-                    {formatEtb(selected.fees?.total_business_payable_etb || selected.fees?.amount_etb || 0)}
-                  </span>
-                </p>
-                <p>
-                  <span className="text-white">Timeline:</span>{" "}
-                  {selected.start_date
-                    ? `${new Date(selected.start_date).toLocaleDateString()} - ${new Date(selected.end_date || "").toLocaleDateString()}`
-                    : "Flexible"}
-                </p>
-                <p>
-                  <span className="text-white">Notes:</span> {selected.description || "—"}
-                </p>
-              </div>
-
-              {selected.deliverables && selected.deliverables.length > 0 ? (
-                <div className="mt-4">
-                  <p className="text-xs font-medium uppercase tracking-wide text-[#94A3B8]">
-                    Deliverables
-                  </p>
-                  <ul className="mt-2 space-y-2">
-                    {selected.deliverables.map((item, idx) => (
-                      <li key={item.id || idx} className="flex items-center gap-2 text-sm text-[#E2E8F0]">
-                        <CheckCircle className="size-4 text-emerald-400" />
-                        <span>{item.quantity}x {item.type} {item.description ? `(${item.description})` : ""}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
-
-              {/* Action Buttons based on status */}
-              <div className="mt-5 flex flex-col gap-2">
-                {selected.status === "pending" || selected.status === "draft" ? (
-                  <Button
-                    type="button"
-                    disabled={actionLoading}
-                    className="h-10 w-full rounded-xl bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)]"
-                    onClick={() => handlePayEscrow(selected.id)}
-                  >
-                    <ShieldCheck className="mr-2 size-4" />
-                    Fund Escrow ({formatEtb(selected.fees?.total_business_payable_etb || selected.fees?.amount_etb || 0)})
-                  </Button>
-                ) : null}
-
-                {selected.status === "active" ? (
-                  <Button
-                    type="button"
-                    disabled={actionLoading}
-                    className="h-10 w-full rounded-xl bg-emerald-600 text-white hover:bg-emerald-700"
-                    onClick={() => handleApproveWork(selected.id)}
-                  >
-                    <CheckCircle className="mr-2 size-4" />
-                    Approve Work & Release Payout
-                  </Button>
-                ) : null}
-
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="h-10 w-full rounded-xl border-white/15 bg-transparent text-white hover:bg-white/10"
-                  onClick={handleDownloadPDF}
-                >
-                  <FileDown className="mr-2 size-4" />
-                  Print / Save Contract (PDF)
-                </Button>
-              </div>
-            </div>
-          </aside>
-        ) : null}
+            {f.label}
+          </button>
+        ))}
       </div>
+
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_440px]">
+        <div className={cn("min-w-0 space-y-3", mobileShowDetail && "hidden xl:block")}>
+          {listState === "loading" ? (
+            <p className="flex items-center gap-2 p-6 text-sm text-[#94A3B8]"><Loader2 className="size-4 animate-spin" aria-hidden /> Loading contracts…</p>
+          ) : listState === "error" ? (
+            <div role="alert" className="rounded-2xl border border-rose-400/30 bg-rose-500/10 p-6 text-sm text-rose-100">
+              Could not load contracts.
+              <Button type="button" variant="link" className="ml-2 h-auto p-0 text-white" onClick={() => void loadList()}>Try again</Button>
+            </div>
+          ) : rows.length === 0 ? (
+            <div className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-8 text-center text-sm text-[#CBD5E1]">
+              No contracts here yet. When a creator accepts your invite, use <span className="text-white">New contract</span> to send them terms.
+            </div>
+          ) : (
+            rows.map((r) => {
+              const st = contractStatus(r.status, "business");
+              return (
+                <button
+                  key={r.id}
+                  type="button"
+                  onClick={() => select(r.id)}
+                  aria-current={selectedId === r.id ? "true" : undefined}
+                  className={cn(
+                    "flex w-full min-w-0 items-start justify-between gap-4 rounded-2xl border p-4 text-left transition-colors focus-visible:outline-2 focus-visible:outline-[color:var(--adfluence-orange)]",
+                    selectedId === r.id ? "border-[color:var(--adfluence-orange)]/35 bg-[color:var(--adfluence-orange)]/10" : "border-white/10 bg-[rgba(255,255,255,0.08)] hover:border-white/20",
+                  )}
+                >
+                  <div className="min-w-0">
+                    <p className="font-semibold text-white">{r.title}</p>
+                    <p className="text-xs text-[#CBD5E1]">{r.counterparty_name} · {r.campaign_title}</p>
+                    <span className={cn("mt-2 inline-block rounded-full border px-2 py-0.5 text-[10px] font-medium", st.badgeClass)}>{st.label}</span>
+                  </div>
+                  <span className="shrink-0 text-sm font-semibold tabular-nums">{formatEtb(r.total_business_payable_etb || r.amount_etb)}</span>
+                </button>
+              );
+            })
+          )}
+        </div>
+
+        {selectedId ? (
+          <aside aria-label="Contract details" className={cn("min-w-0 rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-5 xl:sticky xl:top-4 xl:self-start", !mobileShowDetail && "hidden xl:block")}>
+            <Button type="button" variant="ghost" size="sm" onClick={() => setMobileShowDetail(false)} className="mb-3 -ml-2 text-white hover:bg-white/10 xl:hidden">
+              <ArrowLeft className="mr-1 size-4" aria-hidden /> Back to contracts
+            </Button>
+            {detailError ? (
+              <p role="alert" className="text-sm text-rose-200">{detailError}</p>
+            ) : !detail ? (
+              <p className="flex items-center gap-2 text-sm text-[#94A3B8]"><Loader2 className="size-4 animate-spin" aria-hidden /> Loading contract…</p>
+            ) : (
+              <ContractDetailView contract={detail} role="business" actions={actions} />
+            )}
+          </aside>
+        ) : (
+          <aside className="hidden rounded-2xl border border-dashed border-white/10 p-8 text-center text-sm text-[#94A3B8] xl:block">Select a contract to see its details.</aside>
+        )}
+      </div>
+
+      <NewContractSheet
+        open={sheetOpen}
+        onOpenChange={setSheetOpen}
+        onCreated={(id) => {
+          setFilter("");
+          void loadList().then(() => select(id));
+        }}
+      />
     </div>
   );
 }

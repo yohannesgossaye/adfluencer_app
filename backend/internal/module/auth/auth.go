@@ -84,6 +84,9 @@ func (m *userAuthModule) SignUp(ctx context.Context, req authDto.SignUpRequest, 
 	}
 
 	res.Tokens = helper.TokenResponse(tokenPair)
+	// Same rules as login: a new creator goes to their profile, not the
+	// dashboard, which is only available after approval.
+	res.RedirectTo = helper.RedirectToLogin(res.User.Role, res.User.Status)
 	m.writeAuditAsync(authDto.CreateAuditLogInput{
 		ActorUserID:  &res.User.ID,
 		TargetUserID: &res.User.ID,

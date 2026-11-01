@@ -164,7 +164,7 @@ func (m *businessModule) UpdateCampaign(ctx context.Context, userID, campaignID 
 func (m *businessModule) PublishCampaign(ctx context.Context, userID, campaignID string, meta authDto.SessionMeta) (*businessDto.CampaignMutationResponse, error) {
 	m.logger.Info(ctx, "publishing campaign", zap.String("user_id", userID), zap.String("campaign_id", campaignID))
 
-	if err := m.requireActiveBusiness(ctx, userID); err != nil {
+	if err := m.requireVerifiedBusiness(ctx, userID); err != nil {
 		return nil, err
 	}
 
@@ -254,12 +254,11 @@ func (m *businessModule) requireActiveBusiness(ctx context.Context, userID strin
 		return err
 	}
 	switch model.UserStatus(user.Status) {
-	case model.ActiveStatus, model.PendingProfileStatus, model.PendingApprovalStatus:
+	case model.ActiveStatus, model.PendingProfileStatus:
 		return nil
 	default:
 		return customErr.ErrAccountNotActive
 	}
-	return nil
 }
 
 func mapCampaignError(err error) error {

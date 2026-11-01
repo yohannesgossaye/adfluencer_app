@@ -110,7 +110,6 @@ func (a *auth) SignUp(ctx context.Context, user model.User, name string, isInflu
 			CreatedAt:     now,
 		},
 		Profile:    profile,
-		RedirectTo: signupRedirectTo(user.Role),
 	}, nil
 }
 
@@ -660,13 +659,6 @@ func (a *auth) CountRateLimitEvents(ctx context.Context, scope, rateKey string, 
 		return 0, fmt.Errorf("count rate limit events: %w", err)
 	}
 	return count, nil
-}
-
-func signupRedirectTo(role model.Role) string {
-	if role == model.InfluencerRole {
-		return "/influencer/dashboard"
-	}
-	return "/business/dashboard"
 }
 
 func mapUniqueViolation(err error) error {

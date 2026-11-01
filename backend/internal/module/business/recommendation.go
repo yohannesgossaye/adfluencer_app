@@ -17,7 +17,7 @@ import (
 func (m *businessModule) GenerateRecommendations(ctx context.Context, userID, campaignID string, meta authDto.SessionMeta) (*businessDto.GenerateRecommendationsResponse, error) {
 	m.logger.Info(ctx, "generating AI/Smart recommendations for campaign", zap.String("business_id", userID), zap.String("campaign_id", campaignID))
 
-	if err := m.requireActiveBusiness(ctx, userID); err != nil {
+	if err := m.requireVerifiedBusiness(ctx, userID); err != nil {
 		return nil, err
 	}
 
@@ -66,7 +66,7 @@ func (m *businessModule) GenerateRecommendations(ctx context.Context, userID, ca
 func (m *businessModule) ListRecommendations(ctx context.Context, userID, campaignID string, query businessDto.ListRecommendationsQuery) (*businessDto.ListRecommendationsResponse, error) {
 	m.logger.Info(ctx, "listing campaign recommendations", zap.String("business_id", userID), zap.String("campaign_id", campaignID))
 
-	if err := m.requireActiveBusiness(ctx, userID); err != nil {
+	if err := m.requireVerifiedBusiness(ctx, userID); err != nil {
 		return nil, err
 	}
 
@@ -90,12 +90,26 @@ func (m *businessModule) ListRecommendations(ctx context.Context, userID, campai
 	}, nil
 }
 
+// requireActiveCampaign allows draft or live campaigns (recommendations can be
+// previewed on a draft). Inviting creators needs a live campaign: see requireLiveCampaign.
 func (m *businessModule) requireActiveCampaign(ctx context.Context, userID, campaignID string) (*businessDto.CampaignRecord, error) {
 	rec, err := m.business.GetCampaignByID(ctx, userID, campaignID)
 	if err != nil {
 		return nil, mapCampaignError(err)
 	}
 	if rec.Status != "active" && rec.Status != "draft" {
+		return nil, customErr.ErrInvalidCampaignStatus
+	}
+	return rec, nil
+}
+
+// requireLiveCampaign allows only published (active) campaigns.
+func (m *businessModule) requireLiveCampaign(ctx context.Context, userID, campaignID string) (*businessDto.CampaignRecord, error) {
+	rec, err := m.business.GetCampaignByID(ctx, userID, campaignID)
+	if err != nil {
+		return nil, mapCampaignError(err)
+	}
+	if rec.Status != "active" {
 		return nil, customErr.ErrInvalidCampaignStatus
 	}
 	return rec, nil

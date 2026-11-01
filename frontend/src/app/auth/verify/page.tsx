@@ -1,5 +1,6 @@
 "use client";
 
+import { homeFor } from "@/lib/role-home";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -44,10 +45,12 @@ export default function VerifyPage() {
         await authApi.verifyEmail(code.trim());
       }
 
-      setMessage("Verification successful! Redirecting to dashboard...");
+      setMessage("Verified! Taking you back…");
       await refreshMe();
+      const stored = window.localStorage.getItem("auth_user");
+      const signedIn = stored ? (JSON.parse(stored) as { user?: { role?: string; status?: string } }).user : null;
       setTimeout(() => {
-        router.push("/dashboard");
+        router.push(homeFor(signedIn));
       }, 1200);
     } catch (err: unknown) {
       if (axios.isAxiosError(err) && err.response?.data?.message) {

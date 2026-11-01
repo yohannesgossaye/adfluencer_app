@@ -62,17 +62,22 @@ const (
 	WHERE u.id = $1
 	`
 
+	// Blocking remembers the previous status (re-blocking keeps the original).
 	blockUser = `
 	UPDATE users
-	SET status = 'blocked', status_reason = $2, updated_at = NOW()
+	SET previous_status = CASE WHEN status = 'blocked' THEN previous_status ELSE status END,
+		status = 'blocked', status_reason = $2, updated_at = NOW()
 	WHERE id = $1 AND role <> 'admin'
 	`
 
-	// Only blocked accounts can be unblocked; removed accounts stay removed.
+	// Only blocked accounts can be unblocked; they return to the status they
+	// had before (e.g. a creator still awaiting approval stays awaiting it).
 	unblockUser = `
 	UPDATE users
-	SET status = 'active', status_reason = NULL, updated_at = NOW()
+	SET status = COALESCE(previous_status, 'active'), previous_status = NULL,
+		status_reason = NULL, updated_at = NOW()
 	WHERE id = $1 AND role <> 'admin' AND status = 'blocked'
+	RETURNING status::text
 	`
 
 	revokeUserSessions = `

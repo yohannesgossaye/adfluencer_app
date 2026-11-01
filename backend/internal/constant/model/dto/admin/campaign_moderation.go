@@ -47,9 +47,9 @@ func AdminCampaignStatusFilterDB(status string) string {
 }
 
 type AdminCampaignStats struct {
-	Active  int `json:"active"`
-	Pending int `json:"pending"`
-	Flagged int `json:"flagged"`
+	Active int `json:"active"`
+	Draft  int `json:"draft"`
+	Paused int `json:"paused"`
 }
 
 type AdminCampaignListItem struct {
@@ -116,9 +116,7 @@ type AdminCampaignRow struct {
 	UpdatedAt          time.Time
 }
 
+// MapAdminCampaignStatus returns the status shown in the admin portal.
 func MapAdminCampaignStatus(status string) string {
-	if status == "paused" {
-		return "flagged"
-	}
 	return status
 }

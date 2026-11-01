@@ -6,11 +6,10 @@ import axios from "axios";
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { businessApi } from "@/lib/api/business";
+import { businessApi, type CampaignDetail } from "@/lib/api/business";
 
 type CampaignFormState = {
   title: string;
-  businessName: string;
   goal: string;
   description: string;
   niche: string;
@@ -57,7 +56,6 @@ const deliverables = [
 
 const initialForm: CampaignFormState = {
   title: "",
-  businessName: "",
   goal: "",
   description: "",
   niche: "",
@@ -73,13 +71,65 @@ const initialForm: CampaignFormState = {
   additionalNotes: "",
 };
 
+const BUDGETS: Record<(typeof budgetRanges)[number], [number, number]> = {
+  "Under 10,000 ETB": [0, 10000],
+  "10,000–25,000 ETB": [10000, 25000],
+  "25,000–50,000 ETB": [25000, 50000],
+  "50,000+ ETB": [50000, 200000],
+};
+
+const SIZE_TO_API: Record<(typeof creatorSizes)[number], string> = {
+  "Micro creator": "micro",
+  "Mid-tier creator": "mid",
+  "Large creator": "macro",
+};
+
+const DELIVERABLE_TO_API: Record<(typeof deliverables)[number], string> = {
+  "TikTok video": "tiktok_video",
+  "Instagram reel": "instagram_reel",
+  "Instagram story": "instagram_story",
+  "YouTube short": "youtube_short",
+  "Product review": "product_review",
+};
+
+/** Maps a saved campaign back into the form (edit mode). */
+function campaignToForm(c: CampaignDetail): CampaignFormState {
+  const budget =
+    (Object.entries(BUDGETS) as Array<[(typeof budgetRanges)[number], [number, number]]>).find(
+      ([, [min, max]]) => min === (c.budget_min_etb ?? -1) && max === (c.budget_max_etb ?? -1),
+    )?.[0] ?? "";
+  const size = (Object.entries(SIZE_TO_API).find(([, api]) => api === c.creator_size_preference)?.[0] ?? "") as string;
+  const chosen = (Object.entries(DELIVERABLE_TO_API) as Array<[string, string]>)
+    .filter(([, api]) => c.deliverables.some((d) => d.type === api))
+    .map(([label]) => label);
+  return {
+    title: c.title,
+    goal: c.goal ?? "",
+    description: c.description,
+    niche: c.category?.slug ?? "",
+    targetAudience: c.target_audience ?? "",
+    location: c.city ?? "",
+    platforms: c.platforms.map((p) => platforms.find((x) => x.toLowerCase() === p) ?? p),
+    budgetRange: budget,
+    creatorSize: size,
+    creatorsNeeded: String(c.number_of_creators_needed ?? ""),
+    deliverables: chosen,
+    startDate: c.start_date?.slice(0, 10) ?? "",
+    endDate: c.end_date?.slice(0, 10) ?? "",
+    additionalNotes: "",
+  };
+}
+
 function toggleArrayValue(arr: string[], value: string) {
   return arr.includes(value) ? arr.filter((entry) => entry !== value) : [...arr, value];
 }
 
-export function CreateCampaign() {
+/** Create a campaign draft, or edit an existing campaign when campaignId is given. */
+export function CreateCampaign({ campaignId }: { campaignId?: string } = {}) {
   const router = useRouter();
+  const isEdit = Boolean(campaignId);
   const [form, setForm] = useState<CampaignFormState>(initialForm);
+  const [loadingCampaign, setLoadingCampaign] = useState(isEdit);
   const [categories, setCategories] = useState<Array<{ id: string; name: string; slug: string }>>([]);
   const [error, setError] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
@@ -98,16 +148,17 @@ export function CreateCampaign() {
     loadCategories();
   }, []);
 
-  const estimatedMatches = useMemo(() => {
-    let score = 8;
-    if (form.goal) score += 4;
-    if (form.niche) score += 4;
-    score += form.platforms.length * 6;
-    if (form.budgetRange) score += 5;
-    if (form.creatorSize) score += 4;
-    if (Number(form.creatorsNeeded) >= 5) score += 3;
-    return score;
-  }, [form]);
+  useEffect(() => {
+    if (!campaignId) return;
+    businessApi
+      .getCampaign(campaignId)
+      .then((res) => {
+        if (res.data) setForm(campaignToForm(res.data));
+      })
+      .catch(() => setError("Could not load this campaign."))
+      .finally(() => setLoadingCampaign(false));
+  }, [campaignId]);
+
 
   const onSubmit = async () => {
     if (!form.title.trim() || form.title.trim().length < 3) {
@@ -158,24 +209,10 @@ export function CreateCampaign() {
     setError("");
     setIsLoading(true);
 
-    let budgetMin = 10000;
-    let budgetMax = 25000;
-    if (form.budgetRange === "Under 10,000 ETB") {
-      budgetMin = 0;
-      budgetMax = 10000;
-    } else if (form.budgetRange === "10,000–25,000 ETB") {
-      budgetMin = 10000;
-      budgetMax = 25000;
-    } else if (form.budgetRange === "25,000–50,000 ETB") {
-      budgetMin = 25000;
-      budgetMax = 50000;
-    } else if (form.budgetRange === "50,000+ ETB") {
-      budgetMin = 50000;
-      budgetMax = 200000;
-    }
+    const [budgetMin, budgetMax] = BUDGETS[form.budgetRange as (typeof budgetRanges)[number]] ?? [0, 0];
 
     const campaignDeliverables = form.deliverables.map((d) => ({
-      type: d.toLowerCase().replace(/\s+/g, "_"),
+      type: DELIVERABLE_TO_API[d as (typeof deliverables)[number]] ?? "other",
       quantity: 1,
       description: d,
     }));
@@ -188,55 +225,43 @@ export function CreateCampaign() {
       });
     }
 
+    const payload = {
+      title: form.title.trim(),
+      goal: form.goal,
+      description: form.description.trim(),
+      niche: form.niche,
+      target_audience: form.targetAudience,
+      city: form.location,
+      platforms: form.platforms.map((p) => p.toLowerCase()),
+      budget_min_etb: budgetMin,
+      budget_max_etb: budgetMax,
+      creator_size_preference: SIZE_TO_API[form.creatorSize as (typeof creatorSizes)[number]] ?? "any",
+      number_of_creators_needed: Number(form.creatorsNeeded) || 1,
+      deliverables: campaignDeliverables,
+      start_date: form.startDate.slice(0, 10),
+      end_date: form.endDate.slice(0, 10),
+      additional_notes: form.additionalNotes,
+    };
+
     try {
-      const res = await businessApi.createCampaign({
-        title: form.title.trim(),
-        goal: form.goal,
-        description: form.description.trim(),
-        niche: form.niche,
-        target_audience: form.targetAudience,
-        city: form.location,
-        platforms: form.platforms.map((p) => p.toLowerCase()),
-        budget_min_etb: budgetMin,
-        budget_max_etb: budgetMax,
-        creator_size_preference: form.creatorSize.toLowerCase().includes("micro")
-          ? "micro"
-          : form.creatorSize.toLowerCase().includes("mid")
-            ? "mid"
-            : "macro",
-        number_of_creators_needed: Number(form.creatorsNeeded) || 1,
-        deliverables: campaignDeliverables,
-        start_date: form.startDate.slice(0, 10),
-        end_date: form.endDate.slice(0, 10),
-        additional_notes: form.additionalNotes,
-      });
-
-      const campaignId = (res.data as any)?.id || (res.data as any)?.campaign?.id;
       if (campaignId) {
-        try {
-          await businessApi.generateRecommendations(campaignId);
-        } catch {
-          // Ignore matching generation error if already computed
-        }
-
-        router.push(`/business/recommendations?campaign_id=${campaignId}`);
+        await businessApi.updateCampaign(campaignId, payload);
+        router.push(`/business/campaigns/${campaignId}`);
       } else {
-        router.push("/business/campaigns");
+        const res = await businessApi.createCampaign(payload);
+        // New campaigns are drafts; the detail page offers Publish.
+        router.push(res.data?.id ? `/business/campaigns/${res.data.id}?created=1` : "/business/campaigns");
       }
     } catch (err: unknown) {
-      if (axios.isAxiosError(err)) {
-        const msg = err.response?.data?.message || err.response?.data?.error;
-        if (err.response?.status === 403 || msg?.toLowerCase().includes("business access")) {
-          setError("Business account required: You are currently signed in with an Influencer account. Please sign in or register with a Business account to create campaigns.");
-        } else if (msg) {
-          setError(msg);
-        } else {
-          setError("Failed to create campaign. Please try again.");
-        }
-      } else if (err instanceof Error) {
-        setError(err.message);
+      const data = axios.isAxiosError(err)
+        ? (err.response?.data as { message?: string; error?: { type?: string; details?: Array<{ description?: string }> } } | undefined)
+        : undefined;
+      if (data?.error?.type === "invalid_campaign_status") {
+        setError("This campaign can no longer be edited (it is completed or cancelled).");
+      } else if (data?.error?.type === "account_not_active" || data?.error?.type === "profile_locked") {
+        setError("Your account cannot create campaigns right now. Check your business profile.");
       } else {
-        setError("Failed to create campaign. Please try again.");
+        setError(data?.error?.details?.[0]?.description || data?.message || "Could not save the campaign. Please try again.");
       }
     } finally {
       setIsLoading(false);
@@ -279,13 +304,15 @@ export function CreateCampaign() {
     <div className="space-y-6 text-white">
       <section className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-white">Create Campaign</h1>
+          <h1 className="text-2xl font-semibold text-white">{isEdit ? "Edit campaign" : "Create campaign"}</h1>
           <p className="mt-1 text-sm text-[#CBD5E1]">
-            Tell us what you want to promote and we&apos;ll recommend the best creators.
+            {isEdit
+              ? "Update the campaign details. Creators you already invited keep their invites."
+              : "Saved as a draft first. Publish it from the campaign page when you’re ready to invite creators."}
           </p>
         </div>
         <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-[#CBD5E1]">
-          {completedStepsCount === 4 ? "Ready to Launch (4/4)" : `${completedStepsCount} of 4 Sections Complete`}
+          {completedStepsCount === 4 ? "Ready to save (4/4)" : `${completedStepsCount} of 4 sections complete`}
         </span>
       </section>
 
@@ -331,17 +358,6 @@ export function CreateCampaign() {
                   value={form.title}
                   onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))}
                   placeholder="e.g. Summer Product Launch"
-                  className="h-11 rounded-xl border-white/10 bg-[color:var(--adfluence-surface)] text-white placeholder:text-[#94A3B8] focus-visible:border-[color:var(--adfluence-orange)] focus-visible:ring-[color:var(--adfluence-orange)]/25"
-                />
-              </label>
-              <label className="space-y-2">
-                <span className="text-sm text-[#CBD5E1]">Brand / business name *</span>
-                <Input
-                  value={form.businessName}
-                  onChange={(e) =>
-                    setForm((prev) => ({ ...prev, businessName: e.target.value }))
-                  }
-                  placeholder="e.g. Betu Cosmetics"
                   className="h-11 rounded-xl border-white/10 bg-[color:var(--adfluence-surface)] text-white placeholder:text-[#94A3B8] focus-visible:border-[color:var(--adfluence-orange)] focus-visible:ring-[color:var(--adfluence-orange)]/25"
                 />
               </label>
@@ -579,15 +595,15 @@ export function CreateCampaign() {
             <Button
               type="button"
               onClick={onSubmit}
-              disabled={isLoading}
+              disabled={isLoading || loadingCampaign}
               className="h-12 rounded-xl bg-[color:var(--adfluence-orange)] px-8 text-base font-semibold text-white shadow-lg shadow-[color:var(--adfluence-orange)]/20 hover:bg-[color:var(--adfluence-orange-hover)]"
             >
-              {isLoading ? "Creating Campaign..." : "Create Campaign"}
+              {isLoading ? "Saving…" : isEdit ? "Save changes" : "Save as draft"}
             </Button>
             <Button
               type="button"
               variant="outline"
-              onClick={() => router.push("/business/campaigns")}
+              onClick={() => router.push(campaignId ? `/business/campaigns/${campaignId}` : "/business/campaigns")}
               className="h-12 rounded-xl border-white/10 text-sm text-[#CBD5E1] hover:bg-white/5"
             >
               Cancel
@@ -619,9 +635,6 @@ export function CreateCampaign() {
                 Creator size:{" "}
                 <span className="text-white">{form.creatorSize || "Not selected"}</span>
               </p>
-              <p className="text-[#CBD5E1]">
-                Estimated matches: <span className="text-white">{estimatedMatches}</span>
-              </p>
             </div>
             <p className="text-xs text-[#CBD5E1]">
               Recommendations are based on niche, platform, budget, and creator fit.
@@ -634,10 +647,10 @@ export function CreateCampaign() {
             <Button
               type="button"
               onClick={onSubmit}
-              disabled={isLoading}
+              disabled={isLoading || loadingCampaign}
               className="h-12 w-full rounded-xl bg-[color:var(--adfluence-orange)] text-base font-semibold text-white shadow-lg shadow-[color:var(--adfluence-orange)]/20 hover:bg-[color:var(--adfluence-orange-hover)]"
             >
-              {isLoading ? "Creating Campaign..." : "Create Campaign"}
+              {isLoading ? "Saving…" : isEdit ? "Save changes" : "Save as draft"}
             </Button>
           </div>
         </aside>

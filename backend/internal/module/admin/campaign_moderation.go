@@ -69,23 +69,31 @@ func (m *adminModule) GetAdminCampaign(ctx context.Context, campaignID string) (
 	return &res, nil
 }
 
-func (m *adminModule) PauseAdminCampaign(ctx context.Context, adminUserID, campaignID string, meta authDto.SessionMeta) (*adminDto.ModerateCampaignResponse, error) {
-	m.logger.Info(ctx, "admin pausing campaign", zap.String("admin_id", adminUserID), zap.String("campaign_id", campaignID))
-	return m.moderateCampaign(ctx, adminUserID, campaignID, "pending", "campaign paused by admin", meta)
-}
+// Moderation rules:
+//   pause / flag : active          -> paused  (hidden from creators; flag records why in the audit log)
+//   resume       : paused          -> active
+//   complete     : active | paused -> completed
+// Drafts, cancelled and completed campaigns cannot be moderated.
 
-func (m *adminModule) CompleteAdminCampaign(ctx context.Context, adminUserID, campaignID string, meta authDto.SessionMeta) (*adminDto.ModerateCampaignResponse, error) {
-	m.logger.Info(ctx, "admin completing campaign", zap.String("admin_id", adminUserID), zap.String("campaign_id", campaignID))
-	return m.moderateCampaign(ctx, adminUserID, campaignID, "completed", "campaign marked completed by admin", meta)
+func (m *adminModule) PauseAdminCampaign(ctx context.Context, adminUserID, campaignID string, meta authDto.SessionMeta) (*adminDto.ModerateCampaignResponse, error) {
+	return m.moderateCampaign(ctx, adminUserID, campaignID, "paused", []string{"active"}, "campaign paused by admin", meta)
 }
 
 func (m *adminModule) FlagAdminCampaign(ctx context.Context, adminUserID, campaignID string, meta authDto.SessionMeta) (*adminDto.ModerateCampaignResponse, error) {
-	m.logger.Info(ctx, "admin flagging campaign", zap.String("admin_id", adminUserID), zap.String("campaign_id", campaignID))
-	return m.moderateCampaign(ctx, adminUserID, campaignID, "paused", "campaign flagged by admin", meta)
+	return m.moderateCampaign(ctx, adminUserID, campaignID, "paused", []string{"active"}, "campaign flagged and paused by admin", meta)
 }
 
-func (m *adminModule) moderateCampaign(ctx context.Context, adminUserID, campaignID, status, desc string, meta authDto.SessionMeta) (*adminDto.ModerateCampaignResponse, error) {
-	if err := m.admin.SetAdminCampaignStatus(ctx, campaignID, status); err != nil {
+func (m *adminModule) ResumeAdminCampaign(ctx context.Context, adminUserID, campaignID string, meta authDto.SessionMeta) (*adminDto.ModerateCampaignResponse, error) {
+	return m.moderateCampaign(ctx, adminUserID, campaignID, "active", []string{"paused"}, "campaign resumed by admin", meta)
+}
+
+func (m *adminModule) CompleteAdminCampaign(ctx context.Context, adminUserID, campaignID string, meta authDto.SessionMeta) (*adminDto.ModerateCampaignResponse, error) {
+	return m.moderateCampaign(ctx, adminUserID, campaignID, "completed", []string{"active", "paused"}, "campaign marked completed by admin", meta)
+}
+
+func (m *adminModule) moderateCampaign(ctx context.Context, adminUserID, campaignID, status string, from []string, desc string, meta authDto.SessionMeta) (*adminDto.ModerateCampaignResponse, error) {
+	m.logger.Info(ctx, "admin moderating campaign", zap.String("admin_id", adminUserID), zap.String("campaign_id", campaignID), zap.String("to", status))
+	if err := m.admin.SetAdminCampaignStatus(ctx, campaignID, status, from); err != nil {
 		m.logger.Error(ctx, "failed to update campaign status in persistence", zap.String("campaign_id", campaignID), zap.String("reason", err.Error()))
 		return nil, mapCampaignError(err)
 	}
@@ -111,6 +119,9 @@ func (m *adminModule) moderateCampaign(ctx context.Context, adminUserID, campaig
 func mapCampaignError(err error) error {
 	if errors.Is(err, adminPersist.ErrAdminCampaignNotFound) {
 		return customErr.ErrCampaignNotFound
+	}
+	if errors.Is(err, adminPersist.ErrAdminCampaignInvalidStatus) {
+		return customErr.ErrInvalidCampaignStatus
 	}
 	return err
 }
