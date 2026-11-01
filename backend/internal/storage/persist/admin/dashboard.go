@@ -4,8 +4,6 @@ import (
 	adminDto "adinfluence_service_app/internal/constant/model/dto/admin"
 	"context"
 	"fmt"
-
-	"golang.org/x/sync/errgroup"
 )
 
 func (a *admin) GetDashboardKPIs(ctx context.Context) (*adminDto.DashboardKPIRow, error) {
@@ -105,80 +103,24 @@ func (a *admin) ListDashboardMonthlyRevenue(ctx context.Context, months int) ([]
 }
 
 func (a *admin) ListDashboardAlerts(ctx context.Context, limit int) ([]adminDto.DashboardAlertRow, error) {
-	var disputes, tickets []adminDto.DashboardAlertRow
-
-	g, ctx := errgroup.WithContext(ctx)
-
-	g.Go(func() error {
-		var err error
-		disputes, err = a.listDisputeAlerts(ctx, limit)
-		return err
-	})
-
-	g.Go(func() error {
-		var err error
-		tickets, err = a.listSupportAlerts(ctx, limit)
-		return err
-	})
-
-	if err := g.Wait(); err != nil {
-		return nil, err
-	}
-
-	items := append(disputes, tickets...)
-	if items == nil {
-		items = []adminDto.DashboardAlertRow{}
-	}
-	if len(items) > limit {
-		items = items[:limit]
-	}
-	return items, nil
-}
-
-func (a *admin) listDisputeAlerts(ctx context.Context, limit int) ([]adminDto.DashboardAlertRow, error) {
-	rows, err := a.db.QueryContext(ctx, listDashboardDisputeAlerts, limit)
+	rows, err := a.db.QueryContext(ctx, listDashboardAlerts, limit)
 	if err != nil {
-		return nil, fmt.Errorf("list dispute alerts: %w", err)
+		return nil, fmt.Errorf("list dashboard alerts: %w", err)
 	}
 	defer rows.Close()
 
 	items := make([]adminDto.DashboardAlertRow, 0, limit)
 	for rows.Next() {
-		var id, severity, detail string
-		if err := rows.Scan(&id, &severity, &detail); err != nil {
-			return nil, fmt.Errorf("scan dispute alert: %w", err)
+		var item adminDto.DashboardAlertRow
+		var level string
+		if err := rows.Scan(&item.ID, &item.EntityType, &level, &item.Title, &item.Detail); err != nil {
+			return nil, fmt.Errorf("scan dashboard alert: %w", err)
 		}
-		items = append(items, adminDto.DashboardAlertRow{
-			ID:         id,
-			Title:      "Open dispute",
-			Detail:     detail,
-			Severity:   severity,
-			EntityType: "dispute",
-		})
-	}
-	return items, rows.Err()
-}
-
-func (a *admin) listSupportAlerts(ctx context.Context, limit int) ([]adminDto.DashboardAlertRow, error) {
-	rows, err := a.db.QueryContext(ctx, listDashboardSupportAlerts, limit)
-	if err != nil {
-		return nil, fmt.Errorf("list support alerts: %w", err)
-	}
-	defer rows.Close()
-
-	items := make([]adminDto.DashboardAlertRow, 0, limit)
-	for rows.Next() {
-		var id, priority, subject, detail string
-		if err := rows.Scan(&id, &priority, &subject, &detail); err != nil {
-			return nil, fmt.Errorf("scan support alert: %w", err)
+		item.Severity = level
+		if item.EntityType == "support_ticket" {
+			item.Severity = supportPriorityToSeverity(level)
 		}
-		items = append(items, adminDto.DashboardAlertRow{
-			ID:         id,
-			Title:      subject,
-			Detail:     detail,
-			Severity:   supportPriorityToSeverity(priority),
-			EntityType: "support_ticket",
-		})
+		items = append(items, item)
 	}
 	return items, rows.Err()
 }

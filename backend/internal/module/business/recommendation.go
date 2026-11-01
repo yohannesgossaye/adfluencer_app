@@ -26,7 +26,11 @@ func (m *businessModule) GenerateRecommendations(ctx context.Context, userID, ca
 		return nil, err
 	}
 
-	candidates, err := m.business.ListMatchCandidates(ctx)
+	// Without a niche no creator can reach the minimum score.
+	var candidates []businessDto.MatchCandidate
+	if campaign.Category != nil && campaign.Category.ID != "" && len(campaign.Platforms) > 0 {
+		candidates, err = m.business.ListMatchCandidates(ctx, campaign.Category.ID, helper.NormalizePlatforms(campaign.Platforms))
+	}
 	if err != nil {
 		m.logger.Error(ctx, "failed to query candidates for recommendation", zap.String("campaign_id", campaignID), zap.String("reason", err.Error()))
 		return nil, err

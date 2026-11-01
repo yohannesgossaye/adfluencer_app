@@ -7,7 +7,6 @@ import (
 	"context"
 
 	"go.uber.org/zap"
-	"golang.org/x/sync/errgroup"
 )
 
 func (m *businessModule) GetDashboardSummary(ctx context.Context, userID string) (*businessDto.DashboardSummaryResponse, error) {
@@ -25,34 +24,25 @@ func (m *businessModule) GetDashboardSummary(ctx context.Context, userID string)
 		recommendations []businessDto.DashboardRecommendationRow
 	)
 
-	g, ctx := errgroup.WithContext(ctx)
-
-	g.Go(func() error {
-		var err error
-		profile, err = m.business.GetProfileByUserID(ctx, userID)
-		return err
-	})
-
-	g.Go(func() error {
-		var err error
-		kpis, err = m.business.GetDashboardKPIs(ctx, userID)
-		return err
-	})
-
-	g.Go(func() error {
-		var err error
-		campaigns, err = m.business.ListDashboardRecentCampaigns(ctx, userID)
-		return err
-	})
-
-	g.Go(func() error {
-		var err error
-		recommendations, err = m.business.ListDashboardTopRecommendations(ctx, userID)
-		return err
-	})
-
-	if err := g.Wait(); err != nil {
-		m.logger.Error(ctx, "failed to load parallel business dashboard summary data", zap.String("user_id", userID), zap.String("reason", err.Error()))
+	// Run one after another: each query takes a few ms, and running them in
+	// parallel would hold several pool connections for one page load.
+	err := func() (err error) {
+		if profile, err = m.business.GetProfileByUserID(ctx, userID); err != nil {
+			return err
+		}
+		if kpis, err = m.business.GetDashboardKPIs(ctx, userID); err != nil {
+			return err
+		}
+		if campaigns, err = m.business.ListDashboardRecentCampaigns(ctx, userID); err != nil {
+			return err
+		}
+		if recommendations, err = m.business.ListDashboardTopRecommendations(ctx, userID); err != nil {
+			return err
+		}
+		return nil
+	}()
+	if err != nil {
+		m.logger.Error(ctx, "failed to load business dashboard summary data", zap.String("user_id", userID), zap.String("reason", err.Error()))
 		return nil, err
 	}
 

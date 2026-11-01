@@ -11,8 +11,10 @@ import (
 	"strings"
 )
 
-func (p *business) ListMatchCandidates(ctx context.Context) ([]businessDto.MatchCandidate, error) {
-	rows, err := p.db.QueryContext(ctx, listEligibleInfluencers)
+// ListMatchCandidates returns approved creators in the given category who are
+// on at least one of the given platforms.
+func (p *business) ListMatchCandidates(ctx context.Context, categoryID string, platforms []string) ([]businessDto.MatchCandidate, error) {
+	rows, err := p.db.QueryContext(ctx, listEligibleInfluencers, categoryID, platforms)
 	if err != nil {
 		return nil, fmt.Errorf("list eligible influencers: %w", err)
 	}
@@ -85,35 +87,37 @@ func (p *business) ReplaceRecommendations(ctx context.Context, campaignID string
 	}
 
 	inserted := 0
-	for _, item := range items {
-		breakdownJSON, err := json.Marshal(item.ScoreBreakdown)
-		if err != nil {
-			return 0, fmt.Errorf("marshal score breakdown: %w", err)
+	if len(items) > 0 {
+		ids := make([]string, len(items))
+		influencers := make([]string, len(items))
+		scores := make([]float64, len(items))
+		breakdowns := make([]string, len(items))
+		ranks := make([]int32, len(items))
+		for i, item := range items {
+			breakdownJSON, err := json.Marshal(item.ScoreBreakdown)
+			if err != nil {
+				return 0, fmt.Errorf("marshal score breakdown: %w", err)
+			}
+			ids[i] = item.ID
+			if ids[i] == "" {
+				ids[i] = utils.GenerateUUID()
+			}
+			influencers[i] = item.InfluencerUserID
+			scores[i] = item.MatchScore
+			breakdowns[i] = string(breakdownJSON)
+			ranks[i] = int32(item.RankPosition)
 		}
 
-		id := item.ID
-		if id == "" {
-			id = utils.GenerateUUID()
-		}
-
-		result, err := tx.ExecContext(ctx, upsertRecommendation,
-			id,
-			campaignID,
-			item.InfluencerUserID,
-			item.MatchScore,
-			breakdownJSON,
-			item.RankPosition,
-		)
+		// One statement for the whole batch instead of one round trip per row.
+		result, err := tx.ExecContext(ctx, upsertRecommendations, campaignID, ids, influencers, scores, breakdowns, ranks)
 		if err != nil {
-			return 0, fmt.Errorf("upsert recommendation: %w", err)
+			return 0, fmt.Errorf("upsert recommendations: %w", err)
 		}
-		rows, err := result.RowsAffected()
+		n, err := result.RowsAffected()
 		if err != nil {
-			return 0, fmt.Errorf("upsert recommendation rows: %w", err)
+			return 0, fmt.Errorf("upsert recommendations rows: %w", err)
 		}
-		if rows > 0 {
-			inserted++
-		}
+		inserted = int(n)
 	}
 
 	if err := tx.Commit(); err != nil {

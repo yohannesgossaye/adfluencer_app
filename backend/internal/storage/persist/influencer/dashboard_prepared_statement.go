@@ -1,16 +1,29 @@
 package influencer
 
 const (
+	// One pass per table: COUNT/SUM ... FILTER computes every number together.
 	getInfluencerDashboardKPIs = `
+	WITH
+	k AS (
+		SELECT
+			COUNT(*) FILTER (WHERE status = 'active')::int AS active,
+			COUNT(*) FILTER (WHERE status IN ('pending_influencer', 'accepted'))::int AS pending,
+			COUNT(*) FILTER (WHERE status = 'completed')::int AS completed,
+			COALESCE(SUM(influencer_receivable_etb) FILTER (WHERE status = 'completed'), 0)::float8 AS earned
+		FROM contracts WHERE influencer_user_id = $1
+	),
+	p AS (
+		SELECT
+			COALESCE(SUM(amount_etb) FILTER (WHERE status IN ('pending', 'processing')), 0)::float8 AS pending_amount,
+			COALESCE(SUM(amount_etb) FILTER (WHERE status = 'paid'), 0)::float8 AS paid_amount,
+			MIN(created_at) FILTER (WHERE status IN ('pending', 'processing')) AS oldest_pending
+		FROM payouts WHERE influencer_user_id = $1
+	)
 	SELECT
 		(SELECT COUNT(*)::int FROM campaign_invites WHERE influencer_user_id = $1 AND status = 'pending'),
-		(SELECT COUNT(*)::int FROM contracts WHERE influencer_user_id = $1 AND status = 'active'),
-		(SELECT COUNT(*)::int FROM contracts WHERE influencer_user_id = $1 AND status IN ('pending_influencer', 'accepted')),
-		(SELECT COUNT(*)::int FROM contracts WHERE influencer_user_id = $1 AND status = 'completed'),
-		(SELECT COALESCE(SUM(influencer_receivable_etb), 0)::float8 FROM contracts WHERE influencer_user_id = $1 AND status = 'completed'),
-		(SELECT COALESCE(SUM(amount_etb), 0)::float8 FROM payouts WHERE influencer_user_id = $1 AND status IN ('pending', 'processing')),
-		(SELECT COALESCE(SUM(amount_etb), 0)::float8 FROM payouts WHERE influencer_user_id = $1 AND status = 'paid'),
-		(SELECT MIN(created_at) FROM payouts WHERE influencer_user_id = $1 AND status IN ('pending', 'processing'))
+		k.active, k.pending, k.completed, k.earned,
+		p.pending_amount, p.paid_amount, p.oldest_pending
+	FROM k, p
 	`
 
 	listInfluencerDashboardPendingInvites = `

@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"go.uber.org/zap"
-	"golang.org/x/sync/errgroup"
 )
 
 const (
@@ -27,39 +26,27 @@ func (m *adminModule) GetDashboardSummary(ctx context.Context) (*adminDto.Dashbo
 		alerts   []adminDto.DashboardAlertRow
 	)
 
-	g, ctx := errgroup.WithContext(ctx)
-
-	g.Go(func() error {
-		var err error
-		kpis, err = m.admin.GetDashboardKPIs(ctx)
-		return err
-	})
-
-	g.Go(func() error {
-		var err error
-		pending, err = m.admin.ListDashboardPendingApprovals(ctx, dashboardPendingLimit)
-		return err
-	})
-
-	g.Go(func() error {
-		var err error
-		activity, err = m.admin.ListDashboardRecentActivity(ctx, dashboardActivityLimit)
-		return err
-	})
-
-	g.Go(func() error {
-		var err error
-		trend, err = m.admin.ListDashboardMonthlyRevenue(ctx, dashboardTrendMonths)
-		return err
-	})
-
-	g.Go(func() error {
-		var err error
-		alerts, err = m.admin.ListDashboardAlerts(ctx, dashboardAlertLimit)
-		return err
-	})
-
-	if err := g.Wait(); err != nil {
+	// Run one after another: each query takes a few ms, and running them in
+	// parallel would hold several pool connections for one page load.
+	err := func() (err error) {
+		if kpis, err = m.admin.GetDashboardKPIs(ctx); err != nil {
+			return err
+		}
+		if pending, err = m.admin.ListDashboardPendingApprovals(ctx, dashboardPendingLimit); err != nil {
+			return err
+		}
+		if activity, err = m.admin.ListDashboardRecentActivity(ctx, dashboardActivityLimit); err != nil {
+			return err
+		}
+		if trend, err = m.admin.ListDashboardMonthlyRevenue(ctx, dashboardTrendMonths); err != nil {
+			return err
+		}
+		if alerts, err = m.admin.ListDashboardAlerts(ctx, dashboardAlertLimit); err != nil {
+			return err
+		}
+		return nil
+	}()
+	if err != nil {
 		m.logger.Error(ctx, "failed to load admin dashboard summary data", zap.String("reason", err.Error()))
 		return nil, err
 	}
