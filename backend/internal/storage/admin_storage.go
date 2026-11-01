@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"time"
 	adminDto "adinfluence_service_app/internal/constant/model/dto/admin"
 	authDto "adinfluence_service_app/internal/constant/model/dto/auth"
 	"context"
@@ -16,8 +17,9 @@ type AdminPersistence interface {
 
 	ListBusinessVerifications(ctx context.Context, query adminDto.ListBusinessVerificationsQuery) ([]adminDto.BusinessVerificationListItem, int, error)
 	GetBusinessVerification(ctx context.Context, userID string) (*adminDto.BusinessVerificationRow, error)
-	VerifyBusiness(ctx context.Context, userID string) error
-	RevokeBusinessVerification(ctx context.Context, userID string) error
+	VerifyBusiness(ctx context.Context, userID, adminUserID, note string) (time.Time, error)
+	RejectBusinessVerification(ctx context.Context, userID, adminUserID, reason string) error
+	RevokeBusinessVerification(ctx context.Context, userID, adminUserID, reason string) error
 
 	ListCategories(ctx context.Context) ([]adminDto.CategoryRow, error)
 	GetCategoryByID(ctx context.Context, categoryID string) (*adminDto.CategoryRow, error)
@@ -30,7 +32,7 @@ type AdminPersistence interface {
 	ListUsers(ctx context.Context, query adminDto.ListUsersQuery) ([]adminDto.UserRow, int, error)
 	GetUser(ctx context.Context, userID string) (*adminDto.UserRow, error)
 	BlockUser(ctx context.Context, userID, reason string) error
-	UnblockUser(ctx context.Context, userID string) error
+	UnblockUser(ctx context.Context, userID string) (string, error)
 	RemoveUser(ctx context.Context, userID, reason string) error
 
 	GetDashboardKPIs(ctx context.Context) (*adminDto.DashboardKPIRow, error)
@@ -42,7 +44,7 @@ type AdminPersistence interface {
 	GetAdminCampaignStats(ctx context.Context) (*adminDto.AdminCampaignStats, error)
 	ListAdminCampaigns(ctx context.Context, query adminDto.ListAdminCampaignsQuery) ([]adminDto.AdminCampaignRow, int, error)
 	GetAdminCampaign(ctx context.Context, campaignID string) (*adminDto.AdminCampaignRow, error)
-	SetAdminCampaignStatus(ctx context.Context, campaignID, status string) error
+	SetAdminCampaignStatus(ctx context.Context, campaignID, status string, from []string) error
 
 	ListAdminDisputes(ctx context.Context, query adminDto.ListAdminDisputesQuery) ([]adminDto.DisputeRow, int, error)
 	GetAdminDispute(ctx context.Context, disputeID string) (*adminDto.DisputeRow, error)

@@ -224,7 +224,7 @@ func (m *businessModule) CompleteProfile(ctx context.Context, userID string, met
 	}
 
 	switch model.UserStatus(user.Status) {
-	case model.PendingProfileStatus, model.RejectedStatus:
+	case model.PendingProfileStatus, model.RejectedStatus, model.ActiveStatus:
 	default:
 		m.logger.Warn(ctx, "invalid status for profile complete", zap.String("user_id", userID), zap.String("status", user.Status))
 		return nil, customErr.ErrInvalidStatusForComplete
@@ -257,7 +257,7 @@ func (m *businessModule) CompleteProfile(ctx context.Context, userID string, met
 		Action:       string(model.StatusChangeAction),
 		EntityType:   "user",
 		EntityID:     &userID,
-		Description:  "business profile completed — pending admin verification for marketplace",
+		Description:  "business profile submitted for admin verification",
 		IPAddress:    meta.IPAddress,
 		UserAgent:    meta.UserAgent,
 	})
@@ -266,8 +266,8 @@ func (m *businessModule) CompleteProfile(ctx context.Context, userID string, met
 
 	return &businessDto.CompleteProfileResponse{
 		Status:      string(model.ActiveStatus),
-		Message:     "Business profile completed. Admin verification is required before marketplace visibility and contracts.",
-		IsVerified:  rec.IsVerified,
+		Message:     "Your business profile was submitted. Our team will verify it; you can prepare campaign drafts meanwhile.",
+		IsVerified:  false,
 		CompletedAt: now,
 	}, nil
 }

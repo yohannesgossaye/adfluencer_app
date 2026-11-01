@@ -100,12 +100,13 @@ const (
 		AND u.id = $1
 	`
 
+	// Only creators who actually submitted their profile can be approved.
 	approveInfluencerApplication = `
 	UPDATE users
 	SET status = 'active', status_reason = NULL, updated_at = NOW()
 	WHERE id = $1
 		AND role = 'influencer'
-		AND (status = 'pending_approval' OR status = 'pending_profile' OR status = 'active')
+		AND status = 'pending_approval'
 	`
 
 	setInfluencerApproved = `
@@ -119,12 +120,14 @@ const (
 	WHERE user_id = $1
 	`
 
+	// Reject a submitted application, or withdraw approval from an active
+	// creator ("changes requested"). Profiles never submitted cannot be rejected.
 	rejectInfluencerApplication = `
 	UPDATE users
 	SET status = 'rejected', status_reason = $2, updated_at = NOW()
 	WHERE id = $1
 		AND role = 'influencer'
-		AND (status = 'pending_approval' OR status = 'pending_profile' OR status = 'active')
+		AND status IN ('pending_approval', 'active')
 	`
 
 	setInfluencerRejected = `

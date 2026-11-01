@@ -67,6 +67,12 @@ func (h *adminHandler) FlagAdminCampaign(w http.ResponseWriter, r *http.Request)
 	})
 }
 
+func (h *adminHandler) ResumeAdminCampaign(w http.ResponseWriter, r *http.Request) {
+	h.moderateCampaign(w, r, func(ctx context.Context, adminID, campaignID string, meta authDto.SessionMeta) (*adminDto.ModerateCampaignResponse, error) {
+		return h.service.ResumeAdminCampaign(ctx, adminID, campaignID, meta)
+	})
+}
+
 type moderateCampaignFunc func(ctx context.Context, adminID, campaignID string, meta authDto.SessionMeta) (*adminDto.ModerateCampaignResponse, error)
 
 func (h *adminHandler) moderateCampaign(w http.ResponseWriter, r *http.Request, fn moderateCampaignFunc) {

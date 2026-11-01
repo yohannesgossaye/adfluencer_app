@@ -79,6 +79,12 @@ func AdminRoutes(router chi.Router, rest handler.AdminHandler, authMiddleware mi
 				},
 				{
 					Method:      http.MethodPost,
+					Path:        "/verifications/{user_id}/reject",
+					Handler:     rest.RejectBusinessVerification,
+					Middlewares: auth,
+				},
+				{
+					Method:      http.MethodPost,
 					Path:        "/verifications/{user_id}/revoke",
 					Handler:     rest.RevokeBusinessVerification,
 					Middlewares: auth,
@@ -219,6 +225,12 @@ func AdminRoutes(router chi.Router, rest handler.AdminHandler, authMiddleware mi
 					Method:      http.MethodPost,
 					Path:        "/{campaign_id}/flag",
 					Handler:     rest.FlagAdminCampaign,
+					Middlewares: auth,
+				},
+				{
+					Method:      http.MethodPost,
+					Path:        "/{campaign_id}/resume",
+					Handler:     rest.ResumeAdminCampaign,
 					Middlewares: auth,
 				},
 			}

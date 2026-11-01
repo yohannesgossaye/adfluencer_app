@@ -68,6 +68,7 @@ var (
 	ErrBusinessNotFound           = errors.New("business not found")
 	ErrBusinessAlreadyVerified    = errors.New("business already verified")
 	ErrBusinessNotVerified        = errors.New("business is not verified")
+	ErrBusinessNotPendingReview   = errors.New("business is not awaiting verification")
 	ErrSupportTicketNotFound      = errors.New("support ticket not found")
 	ErrCategoryNotFound           = errors.New("category not found")
 	ErrCategoryAlreadyExists      = errors.New("category already exists")
@@ -142,6 +143,7 @@ var ErrorMap = map[error]int{
 	ErrBusinessNotFound:           http.StatusNotFound,
 	ErrBusinessAlreadyVerified:    http.StatusConflict,
 	ErrBusinessNotVerified:        http.StatusConflict,
+	ErrBusinessNotPendingReview:   http.StatusConflict,
 	ErrSupportTicketNotFound:      http.StatusNotFound,
 	ErrCategoryNotFound:           http.StatusNotFound,
 	ErrCategoryAlreadyExists:      http.StatusConflict,

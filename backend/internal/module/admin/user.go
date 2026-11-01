@@ -99,7 +99,8 @@ func (m *adminModule) BlockUser(ctx context.Context, adminUserID, targetUserID s
 func (m *adminModule) UnblockUser(ctx context.Context, adminUserID, targetUserID string, meta authDto.SessionMeta) (*adminDto.UnblockUserResponse, error) {
 	m.logger.Info(ctx, "admin unblocking user", zap.String("admin_id", adminUserID), zap.String("target_user_id", targetUserID))
 
-	if err := m.admin.UnblockUser(ctx, targetUserID); err != nil {
+	restoredStatus, err := m.admin.UnblockUser(ctx, targetUserID)
+	if err != nil {
 		m.logger.Error(ctx, "failed to unblock user in persistence", zap.String("target_user_id", targetUserID), zap.String("reason", err.Error()))
 		return nil, mapUserError(err)
 	}
@@ -117,7 +118,7 @@ func (m *adminModule) UnblockUser(ctx context.Context, adminUserID, targetUserID
 
 	m.logger.Info(ctx, "user unblocked successfully", zap.String("target_user_id", targetUserID))
 
-	return &adminDto.UnblockUserResponse{UserID: targetUserID, Status: "active"}, nil
+	return &adminDto.UnblockUserResponse{UserID: targetUserID, Status: normalizeAdminUserStatus(restoredStatus)}, nil
 }
 
 func (m *adminModule) RemoveUser(ctx context.Context, adminUserID, targetUserID string, req adminDto.RemoveUserRequest, meta authDto.SessionMeta) (*adminDto.RemoveUserResponse, error) {

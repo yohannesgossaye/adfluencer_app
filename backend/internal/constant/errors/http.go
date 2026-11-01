@@ -143,6 +143,8 @@ func ClientErrorCode(err error) string {
 		return "business_already_verified"
 	case errors.Is(err, ErrBusinessNotVerified):
 		return "business_not_verified"
+	case errors.Is(err, ErrBusinessNotPendingReview):
+		return "business_not_pending_review"
 	case errors.Is(err, ErrSupportTicketNotFound):
 		return "support_ticket_not_found"
 	case errors.Is(err, ErrCategoryNotFound):

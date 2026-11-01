@@ -28,7 +28,7 @@ type BusinessPersistence interface {
 	GetRecommendation(ctx context.Context, campaignID, influencerUserID string) (*businessDto.RecommendationRecord, error)
 	IsVerifiedActiveInfluencer(ctx context.Context, userID string) (bool, error)
 
-	CreateInvite(ctx context.Context, input businessDto.CreateInviteInput) error
+	CreateInvite(ctx context.Context, input businessDto.CreateInviteInput) (string, error)
 	ListInvites(ctx context.Context, businessUserID, campaignID string) ([]businessDto.InviteResponse, error)
 	GetInviteByID(ctx context.Context, businessUserID, campaignID, inviteID string) (*businessDto.InviteResponse, error)
 	CancelInvite(ctx context.Context, businessUserID, campaignID, inviteID string) error

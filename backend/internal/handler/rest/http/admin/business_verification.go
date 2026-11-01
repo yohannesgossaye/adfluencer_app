@@ -72,27 +72,45 @@ func (h *adminHandler) VerifyBusiness(w http.ResponseWriter, r *http.Request) {
 	response.SendSuccessResponse(w, r, http.StatusOK, "business verified successfully", res, nil)
 }
 
+func (h *adminHandler) RejectBusinessVerification(w http.ResponseWriter, r *http.Request) {
+	h.decideBusinessVerification(w, r, false)
+}
+
 func (h *adminHandler) RevokeBusinessVerification(w http.ResponseWriter, r *http.Request) {
+	h.decideBusinessVerification(w, r, true)
+}
+
+// decideBusinessVerification handles reject (pending business) and revoke
+// (verified business). Both require a reason the business will see.
+func (h *adminHandler) decideBusinessVerification(w http.ResponseWriter, r *http.Request, revoke bool) {
 	ctx := r.Context()
 	admin, ok := h.requireAdmin(w, r)
 	if !ok {
 		return
 	}
-	adminID := admin.UserID
 
 	r.Body = http.MaxBytesReader(w, r.Body, maxAdminBodySize)
-	var req adminDto.RevokeBusinessVerificationRequest
+	var req adminDto.RejectBusinessVerificationRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil && r.ContentLength > 0 {
 		response.SendErrorResponse(w, http.StatusBadRequest, "invalid_request", err, "invalid request body")
 		return
 	}
 
 	targetUserID := chi.URLParam(r, "user_id")
-	res, err := h.service.RevokeBusinessVerification(ctx, adminID, targetUserID, req, sessionMetaFromRequest(r))
+	if revoke {
+		res, err := h.service.RevokeBusinessVerification(ctx, admin.UserID, targetUserID, req, sessionMetaFromRequest(r))
+		if err != nil {
+			writeError(w, err)
+			return
+		}
+		response.SendSuccessResponse(w, r, http.StatusOK, "business verification revoked", res, nil)
+		return
+	}
+
+	res, err := h.service.RejectBusinessVerification(ctx, admin.UserID, targetUserID, req, sessionMetaFromRequest(r))
 	if err != nil {
 		writeError(w, err)
 		return
 	}
-
-	response.SendSuccessResponse(w, r, http.StatusOK, "business verification revoked successfully", res, nil)
+	response.SendSuccessResponse(w, r, http.StatusOK, "business verification rejected", res, nil)
 }

@@ -23,6 +23,7 @@ var chatErrorStatus = []struct {
 	{dto.ErrRecipientUnavailable, http.StatusForbidden, "recipient_unavailable"},
 	{dto.ErrDeleteNotAllowed, http.StatusForbidden, "delete_not_allowed"},
 	{dto.ErrSendRateLimited, http.StatusTooManyRequests, "rate_limited"},
+	{dto.ErrBusinessNotVerified, http.StatusForbidden, "business_not_verified"},
 }
 
 // classifyChatError maps a service error to an HTTP status, a stable code

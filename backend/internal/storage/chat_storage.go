@@ -8,6 +8,7 @@ import (
 type ChatPersistence interface {
 	GetOrCreateConversation(ctx context.Context, userOneID, userTwoID string, campaignID *string) (*dto.ConversationItem, bool, error)
 	GetCampaignOwner(ctx context.Context, campaignID string) (string, error)
+	IsBusinessVerified(ctx context.Context, userID string) (bool, error)
 	GetConversationSummary(ctx context.Context, conversationID, currentUserID string) (*dto.ConversationItem, error)
 	ListConversationsByUserID(ctx context.Context, userID string, limit, offset int) ([]dto.ConversationItem, error)
 	IsConversationParticipant(ctx context.Context, conversationID, userID string) (bool, error)

@@ -6,11 +6,11 @@ import (
 )
 
 var (
-	ErrProfileNotFound           = errors.New("business profile not found")
-	ErrProfileIncomplete         = errors.New("profile incomplete")
-	ErrInvalidStatusForComplete  = errors.New("invalid status for complete")
-	ErrProfileLocked             = errors.New("profile locked")
-	ErrNotVerified               = errors.New("account not verified")
+	ErrProfileNotFound          = errors.New("business profile not found")
+	ErrProfileIncomplete        = errors.New("profile incomplete")
+	ErrInvalidStatusForComplete = errors.New("invalid status for complete")
+	ErrProfileLocked            = errors.New("profile locked")
+	ErrNotVerified              = errors.New("account not verified")
 )
 
 type SocialLinks struct {
@@ -31,24 +31,42 @@ type ProfileUserResponse struct {
 }
 
 type ProfileDetailResponse struct {
-	ID                     string      `json:"id"`
-	OwnerFullName          string      `json:"owner_full_name"`
-	BusinessName           string      `json:"business_name"`
-	LegalBusinessName      *string     `json:"legal_business_name,omitempty"`
-	LogoURL                *string     `json:"logo_url,omitempty"`
-	Description            *string     `json:"description,omitempty"`
-	Industry               *string     `json:"industry,omitempty"`
-	BusinessType           *string     `json:"business_type,omitempty"`
-	BusinessSize           *string     `json:"business_size,omitempty"`
-	City                   *string     `json:"city,omitempty"`
-	Region                 *string     `json:"region,omitempty"`
-	Address                *string     `json:"address,omitempty"`
-	TINNumber              *string     `json:"tin_number,omitempty"`
-	WebsiteURL             *string     `json:"website_url,omitempty"`
-	SocialLinks            SocialLinks `json:"social_links"`
-	PreferredPlatforms     []string    `json:"preferred_platforms"`
-	MonthlyMarketingBudget *float64    `json:"monthly_marketing_budget,omitempty"`
-	IsVerified             bool        `json:"is_verified"`
+	ID                     string           `json:"id"`
+	OwnerFullName          string           `json:"owner_full_name"`
+	BusinessName           string           `json:"business_name"`
+	LegalBusinessName      *string          `json:"legal_business_name,omitempty"`
+	LogoURL                *string          `json:"logo_url,omitempty"`
+	Description            *string          `json:"description,omitempty"`
+	Industry               *string          `json:"industry,omitempty"`
+	BusinessType           *string          `json:"business_type,omitempty"`
+	BusinessSize           *string          `json:"business_size,omitempty"`
+	City                   *string          `json:"city,omitempty"`
+	Region                 *string          `json:"region,omitempty"`
+	Address                *string          `json:"address,omitempty"`
+	TINNumber              *string          `json:"tin_number,omitempty"`
+	WebsiteURL             *string          `json:"website_url,omitempty"`
+	SocialLinks            SocialLinks      `json:"social_links"`
+	PreferredPlatforms     []string         `json:"preferred_platforms"`
+	MonthlyMarketingBudget *float64         `json:"monthly_marketing_budget,omitempty"`
+	IsVerified             bool             `json:"is_verified"`
+	Verification           VerificationInfo `json:"verification"`
+}
+
+// Business verification workflow states.
+const (
+	VerificationUnsubmitted = "unsubmitted"
+	VerificationPending     = "pending"
+	VerificationVerified    = "verified"
+	VerificationRejected    = "rejected"
+)
+
+// VerificationInfo tells the business where its verification stands and,
+// when rejected, why.
+type VerificationInfo struct {
+	Status      string     `json:"status"`
+	Note        *string    `json:"note,omitempty"`
+	SubmittedAt *time.Time `json:"submitted_at,omitempty"`
+	VerifiedAt  *time.Time `json:"verified_at,omitempty"`
 }
 
 type CompletenessResponse struct {
@@ -60,14 +78,16 @@ type CompletenessResponse struct {
 type MarketplaceAccessResponse struct {
 	VisibleInMarketplace bool   `json:"visible_in_marketplace"`
 	CanCreateContracts   bool   `json:"can_create_contracts"`
+	CanPublishCampaigns  bool   `json:"can_publish_campaigns"`
+	VerificationStatus   string `json:"verification_status"`
 	Message              string `json:"message,omitempty"`
 }
 
 type GetProfileResponse struct {
-	User               ProfileUserResponse       `json:"user"`
-	Profile            ProfileDetailResponse     `json:"profile"`
-	Completeness       CompletenessResponse      `json:"completeness"`
-	MarketplaceAccess  MarketplaceAccessResponse `json:"marketplace_access"`
+	User              ProfileUserResponse       `json:"user"`
+	Profile           ProfileDetailResponse     `json:"profile"`
+	Completeness      CompletenessResponse      `json:"completeness"`
+	MarketplaceAccess MarketplaceAccessResponse `json:"marketplace_access"`
 }
 
 type UpdateProfileRequest struct {

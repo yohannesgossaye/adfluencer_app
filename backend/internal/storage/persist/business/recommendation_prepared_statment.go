@@ -318,7 +318,8 @@ const (
 		JOIN influencer_profiles ip ON ip.user_id = u.id
 		WHERE u.id = $1
 			AND u.role = 'influencer'
-			AND (u.status = 'active' OR ip.is_verified = TRUE)
+			AND u.status = 'active'
+			AND ip.is_verified = TRUE
 	)
 	`
 )

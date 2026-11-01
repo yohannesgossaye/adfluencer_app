@@ -52,22 +52,29 @@ func BuildCompleteness(profile businessDto.ProfileDetailResponse) businessDto.Co
 	}
 }
 
+// BuildMarketplaceAccess explains what the business can do now. Until an
+// admin verifies it, a business can only prepare drafts: publishing,
+// recommendations, invites, creator profiles and contracts are locked.
 func BuildMarketplaceAccess(profile businessDto.ProfileDetailResponse, userStatus string) businessDto.MarketplaceAccessResponse {
 	active := userStatus == "active"
-	verified := profile.IsVerified
+	verified := active && profile.IsVerified
 
 	access := businessDto.MarketplaceAccessResponse{
-		VisibleInMarketplace: active && verified,
-		CanCreateContracts:   active && verified,
+		VisibleInMarketplace: verified,
+		CanCreateContracts:   verified,
+		CanPublishCampaigns:  verified,
+		VerificationStatus:   profile.Verification.Status,
 	}
 
 	switch {
-	case !active:
-		access.Message = "Complete your business profile to activate your account."
-	case !verified:
-		access.Message = "Your profile is active. Admin verification is required before you appear to creators and can create contracts."
+	case verified:
+		access.Message = "Your business is verified. You can publish campaigns, invite creators and create contracts."
+	case profile.Verification.Status == businessDto.VerificationPending:
+		access.Message = "Your business is being verified by our team. You can prepare campaign drafts meanwhile."
+	case profile.Verification.Status == businessDto.VerificationRejected:
+		access.Message = "Verification was not approved. Update your profile as described and submit it again."
 	default:
-		access.Message = "Your business is verified and visible in the marketplace."
+		access.Message = "Complete your business profile and submit it for verification to start working with creators."
 	}
 
 	return access

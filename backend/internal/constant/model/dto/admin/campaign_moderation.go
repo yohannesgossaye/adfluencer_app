@@ -116,9 +116,7 @@ type AdminCampaignRow struct {
 	UpdatedAt          time.Time
 }
 
+// MapAdminCampaignStatus returns the status shown in the admin portal.
 func MapAdminCampaignStatus(status string) string {
-	if status == "paused" {
-		return "flagged"
-	}
 	return status
 }

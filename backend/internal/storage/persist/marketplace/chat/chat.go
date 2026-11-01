@@ -121,6 +121,14 @@ func (p *chatPersistence) GetOrCreateConversation(ctx context.Context, userOneID
 	return item, created, nil
 }
 
+func (p *chatPersistence) IsBusinessVerified(ctx context.Context, userID string) (bool, error) {
+	var verified bool
+	if err := p.db.QueryRowContext(ctx, isBusinessVerified, userID).Scan(&verified); err != nil {
+		return false, fmt.Errorf("check business verified: %w", err)
+	}
+	return verified, nil
+}
+
 func (p *chatPersistence) GetCampaignOwner(ctx context.Context, campaignID string) (string, error) {
 	var ownerID string
 	err := p.db.QueryRowContext(ctx, getCampaignOwner, campaignID).Scan(&ownerID)

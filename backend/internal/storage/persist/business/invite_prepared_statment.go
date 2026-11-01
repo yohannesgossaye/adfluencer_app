@@ -1,10 +1,21 @@
 package business
 
 const (
+	// One invite row per campaign + creator. Inviting again after the creator
+	// rejected it (or the business cancelled it) reopens that row; a pending or
+	// accepted invite is left alone and nothing is returned.
 	insertCampaignInvite = `
 	INSERT INTO campaign_invites (
 		id, campaign_id, business_user_id, influencer_user_id, message, status
 	) VALUES ($1, $2, $3, $4, $5, 'pending')
+	ON CONFLICT (campaign_id, influencer_user_id) DO UPDATE
+	SET status = 'pending',
+		message = EXCLUDED.message,
+		responded_at = NULL,
+		created_at = NOW(),
+		updated_at = NOW()
+	WHERE campaign_invites.status IN ('rejected', 'cancelled')
+	RETURNING id
 	`
 
 	listCampaignInvites = `
@@ -48,15 +59,5 @@ const (
 	UPDATE campaign_recommendations
 	SET status = 'invited'
 	WHERE campaign_id = $1 AND influencer_user_id = $2
-	`
-
-	inviteExistsForCampaign = `
-	SELECT EXISTS (
-		SELECT 1
-		FROM campaign_invites
-		WHERE campaign_id = $1
-			AND influencer_user_id = $2
-			AND status IN ('pending', 'accepted')
-	)
 	`
 )

@@ -217,6 +217,9 @@ func parseMultipartFile(w http.ResponseWriter, r *http.Request, maxSize int64) (
 
 func (h *influencerHandler) ListCategories(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	if _, ok := h.requireInfluencer(w, r); !ok {
+		return
+	}
 	items, err := h.service.ListActiveCategories(ctx)
 	if err != nil {
 		writeError(w, err)

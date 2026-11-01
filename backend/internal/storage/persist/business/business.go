@@ -89,17 +89,34 @@ func (p *business) UpdateLogoURL(ctx context.Context, userID, logoURL string) er
 	return nil
 }
 
+// CompleteProfile activates the account and submits the business for admin
+// verification. It fails with ErrInvalidStatusForComplete when the business is
+// already under review or verified.
 func (p *business) CompleteProfile(ctx context.Context, userID string) error {
-	res, err := p.db.ExecContext(ctx, completeBusinessProfile, userID)
+	tx, err := p.db.BeginTx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf("complete business profile: %w", err)
+		return fmt.Errorf("begin complete business profile: %w", err)
 	}
-	n, err := res.RowsAffected()
+	defer tx.Rollback()
+
+	res, err := tx.ExecContext(ctx, activateBusinessUser, userID)
 	if err != nil {
-		return fmt.Errorf("complete business profile rows: %w", err)
+		return fmt.Errorf("activate business user: %w", err)
 	}
-	if n == 0 {
+	if n, _ := res.RowsAffected(); n == 0 {
 		return businessDto.ErrInvalidStatusForComplete
+	}
+
+	res, err = tx.ExecContext(ctx, submitBusinessForVerification, userID)
+	if err != nil {
+		return fmt.Errorf("submit business for verification: %w", err)
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return businessDto.ErrInvalidStatusForComplete
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit complete business profile: %w", err)
 	}
 	return nil
 }
@@ -223,6 +240,8 @@ func scanBusinessProfile(s businessProfileScanner) (*businessDto.ProfileRecord, 
 	var instagram, tiktok, facebook, linkedin sql.NullString
 	var platforms []byte
 	var budget sql.NullFloat64
+	var verificationNote sql.NullString
+	var submittedAt, verifiedAt sql.NullTime
 
 	if err := s.Scan(
 		&rec.ID,
@@ -247,6 +266,10 @@ func scanBusinessProfile(s businessProfileScanner) (*businessDto.ProfileRecord, 
 		&platforms,
 		&budget,
 		&rec.IsVerified,
+		&rec.Verification.Status,
+		&verificationNote,
+		&submittedAt,
+		&verifiedAt,
 	); err != nil {
 		return nil, err
 	}
@@ -267,6 +290,15 @@ func scanBusinessProfile(s businessProfileScanner) (*businessDto.ProfileRecord, 
 		TikTok:    tiktok.String,
 		Facebook:  facebook.String,
 		LinkedIn:  linkedin.String,
+	}
+	rec.Verification.Note = nullStringPtr(verificationNote)
+	if submittedAt.Valid {
+		t := submittedAt.Time
+		rec.Verification.SubmittedAt = &t
+	}
+	if verifiedAt.Valid {
+		t := verifiedAt.Time
+		rec.Verification.VerifiedAt = &t
 	}
 	rec.PreferredPlatforms = parseTextArray(platforms)
 	if rec.PreferredPlatforms == nil {
