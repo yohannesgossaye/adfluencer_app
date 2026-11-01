@@ -340,7 +340,7 @@ export function InfluencerProfile() {
           </div>
         </div>
 
-        {canSubmit ? (
+        {awaitingSubmit && canSubmit ? (
           <Button
             type="button"
             onClick={onSubmitForReview}
