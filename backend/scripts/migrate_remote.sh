@@ -8,7 +8,7 @@
 set -euo pipefail
 
 BACKEND_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-MIGRATION_FILE="${BACKEND_DIR}/migration/deploy_all.sql"
+MIGRATION_FILE="${BACKEND_DIR}/migration/versions/00001_baseline.sql"
 
 TARGET_URL="${1:-${DATABASE_URL:-}}"
 
@@ -21,7 +21,7 @@ fi
 
 if ! command -v psql >/dev/null 2>&1; then
   echo "❌ Error: psql command not found."
-  echo "Please install PostgreSQL client tools or copy/paste 'migration/deploy_all.sql' directly into your cloud database SQL console."
+  echo "Please install PostgreSQL client tools or copy/paste 'migration/versions/00001_baseline.sql' directly into your cloud database SQL console."
   exit 1
 fi
 

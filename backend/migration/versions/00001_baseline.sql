@@ -1,3 +1,11 @@
+-- +goose NO TRANSACTION
+-- +goose Up
+-- Baseline: the full schema as of Phase 3B (the former deploy_all.sql).
+-- Applied only to a brand-new database. An existing database that already has
+-- this schema is marked as being at version 1 without running it (see
+-- migration/migrate.go). The file manages its own BEGIN/COMMIT blocks, so it
+-- is sent as a single statement.
+-- +goose StatementBegin
 -- =============================================================================
 -- AUTH.SQL — Login, profiles, verification, sessions (10 tables)
 -- =============================================================================
@@ -1320,3 +1328,4 @@ ANALYZE contracts, campaign_invites, campaigns, payouts;
 -- production databases, so it must never contain credentials.
 -- Local development: run `make seed-admin` (migration/seed_admin.sql).
 -- Other environments: create the first admin manually with a strong password.
+-- +goose StatementEnd
