@@ -20,7 +20,7 @@ services:
       retries: 10
 
   minio:
-    image: minio/minio:latest
+    image: quay.io/minio/minio:latest
     container_name: adfluence_minio
     restart: unless-stopped
     command: server /data --console-address ":9001"
@@ -39,7 +39,7 @@ services:
       retries: 10
 
   minio-init:
-    image: minio/mc:latest
+    image: quay.io/minio/mc:latest
     container_name: adfluence_minio_init
     depends_on:
       minio:
