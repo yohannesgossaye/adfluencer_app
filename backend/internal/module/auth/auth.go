@@ -28,16 +28,20 @@ type userAuthModule struct {
 	mail        *mail.Client
 	sms         *sms.Client
 	frontendURL string
+	logSecrets  bool
 	logger      utils.Logger
 }
 
-func InitAuthModule(p storage.AuthPersisitence, tokens *jwt.TokenManager, email *mail.Client, smsClient *sms.Client, frontendURL string, log utils.Logger) module.AuthService {
+// logSecrets allows OTPs and reset links to be written to the log when no
+// email/SMS provider is configured. Enable it only for local development.
+func InitAuthModule(p storage.AuthPersisitence, tokens *jwt.TokenManager, email *mail.Client, smsClient *sms.Client, frontendURL string, logSecrets bool, log utils.Logger) module.AuthService {
 	return &userAuthModule{
 		persistence: p,
 		tokens:      tokens,
 		mail:        email,
 		sms:         smsClient,
 		frontendURL: strings.TrimRight(frontendURL, "/"),
+		logSecrets:  logSecrets,
 		logger:      log,
 	}
 }
@@ -382,10 +386,14 @@ func (m *userAuthModule) ForgotPassword(ctx context.Context, req authDto.ForgotP
 		return nil
 	}
 
-	m.logger.Info(ctx, "password reset link generated (console fallback)",
-		zap.String("email", cred.Email),
-		zap.String("link", resetLink),
-	)
+	if m.logSecrets {
+		m.logger.Info(ctx, "password reset link generated (console fallback)",
+			zap.String("email", cred.Email),
+			zap.String("link", resetLink),
+		)
+	} else {
+		m.logger.Warn(ctx, "password reset email not sent: smtp not configured", zap.String("email", cred.Email))
+	}
 	return nil
 }
 
@@ -479,10 +487,14 @@ func (m *userAuthModule) SendVerifyEmail(ctx context.Context, userID string) err
 		return nil
 	}
 
-	m.logger.Info(ctx, "email verification code generated (console fallback)",
-		zap.String("email", user.Email),
-		zap.String("otp", code),
-	)
+	if m.logSecrets {
+		m.logger.Info(ctx, "email verification code generated (console fallback)",
+			zap.String("email", user.Email),
+			zap.String("otp", code),
+		)
+	} else {
+		m.logger.Warn(ctx, "verification email not sent: smtp not configured", zap.String("user_id", userID))
+	}
 	return nil
 }
 
@@ -504,9 +516,14 @@ func (m *userAuthModule) VerifyEmail(ctx context.Context, userID string, req aut
 		return nil, customErr.ErrEmailAlreadyVerified
 	}
 
+	if err := m.checkOTPAttempts(ctx, verifyEmailAttemptScope, userID); err != nil {
+		return nil, err
+	}
+
 	token, err := m.persistence.GetEmailVerificationTokenByHash(ctx, userID, otp.Hash(req.OTP))
 	if err != nil {
 		m.logger.Warn(ctx, "invalid or expired email verification OTP", zap.String("user_id", userID))
+		m.recordOTPFailure(ctx, verifyEmailAttemptScope, userID, err)
 		return nil, err
 	}
 
@@ -592,10 +609,14 @@ func (m *userAuthModule) SendVerifyPhone(ctx context.Context, userID string) err
 		return nil
 	}
 
-	m.logger.Info(ctx, "phone verification OTP generated (console fallback)",
-		zap.String("phone", phone),
-		zap.String("otp", code),
-	)
+	if m.logSecrets {
+		m.logger.Info(ctx, "phone verification OTP generated (console fallback)",
+			zap.String("phone", phone),
+			zap.String("otp", code),
+		)
+	} else {
+		m.logger.Warn(ctx, "verification sms not sent: sms not configured", zap.String("user_id", userID))
+	}
 	return nil
 }
 
@@ -617,9 +638,14 @@ func (m *userAuthModule) VerifyPhone(ctx context.Context, userID string, req aut
 		return nil, customErr.ErrPhoneAlreadyVerified
 	}
 
+	if err := m.checkOTPAttempts(ctx, verifyPhoneAttemptScope, userID); err != nil {
+		return nil, err
+	}
+
 	token, err := m.persistence.GetPhoneVerificationTokenByHash(ctx, userID, otp.Hash(req.OTP))
 	if err != nil {
 		m.logger.Warn(ctx, "invalid or expired phone verification OTP", zap.String("user_id", userID))
+		m.recordOTPFailure(ctx, verifyPhoneAttemptScope, userID, err)
 		return nil, err
 	}
 
