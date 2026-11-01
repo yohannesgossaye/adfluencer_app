@@ -18,6 +18,7 @@ help:
 	@echo "  make migrate-chat-integrity    One conversation per pair, message idempotency, chat indexes"
 	@echo "  make migrate-business-logic    Business verification workflow, unblock restore, campaign statuses"
 	@echo "  make migrate-performance-indexes  Phase 3B dashboard/list indexes (indexes only)"
+	@echo "  NOTE: from Phase 3C the backend applies migration/versions/ itself on startup"
 	@echo "  make seed-categories     Seed niche categories (Beauty, Tech, …)"
 	@echo "  make logs      Show postgres logs"
 	@echo "  make psql      Open psql shell"

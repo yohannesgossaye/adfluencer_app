@@ -11,6 +11,8 @@ import (
 
 	"adinfluence_service_app/internal/constant/model/response"
 	"adinfluence_service_app/internal/handler/middleware"
+	"adinfluence_service_app/migration"
+	"adinfluence_service_app/platform/cleanup"
 	"adinfluence_service_app/platform/jwt"
 	"adinfluence_service_app/platform/mail"
 	"adinfluence_service_app/platform/notify"
@@ -42,6 +44,20 @@ func Initiator(ctx context.Context) {
 	defer db.Close()
 
 	logger.Info(ctx, "database connected successfully")
+
+	if cfg.MigrateOnStart {
+		migrateCtx, cancelMigrate := context.WithTimeout(ctx, 5*time.Minute)
+		version, err := migration.Up(migrateCtx, db)
+		cancelMigrate()
+		if err != nil {
+			logger.Fatal(ctx, "database migration failed", zap.Error(err))
+		}
+		logger.Info(ctx, "database schema up to date", zap.Int64("version", version))
+	}
+
+	bgCtx, stopBackground := context.WithCancel(context.Background())
+	defer stopBackground()
+	cleanup.Start(bgCtx, db, logger, time.Hour)
 
 	emailClient := mail.New(mail.Config{
 		Host:     cfg.SMTP.Host,

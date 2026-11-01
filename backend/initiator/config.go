@@ -16,11 +16,13 @@ type Config struct {
 	FrontendURL string
 	AppEnv      string
 	CORSOrigins []string
-	DB          DBConfig
-	JWT         JWTConfig
-	SMTP        SMTPConfig
-	SMS         SMSConfig
-	S3          S3Config
+	// MigrateOnStart applies pending migrations before serving (default true).
+	MigrateOnStart bool
+	DB             DBConfig
+	JWT            JWTConfig
+	SMTP           SMTPConfig
+	SMS            SMSConfig
+	S3             S3Config
 }
 
 type S3Config struct {
@@ -67,16 +69,17 @@ func Load() *Config {
 	_ = godotenv.Load()
 
 	cfg := &Config{
-		Port:        Getenv("PORT", "8080"),
-		DbUrl:       Getenv("DATABASE_URL", ""),
-		FrontendURL: Getenv("FRONTEND_URL", "http://localhost:3000"),
-		AppEnv:      Getenv("APP_ENV", "production"),
-		CORSOrigins: parseList(Getenv("CORS_ORIGINS", defaultCORSOrigins)),
-		DB:          loadDBConfig(),
-		JWT:         loadJWTConfig(),
-		SMTP:        loadSMTPConfig(),
-		SMS:         loadSMSConfig(),
-		S3:          loadS3Config(),
+		Port:           Getenv("PORT", "8080"),
+		DbUrl:          Getenv("DATABASE_URL", ""),
+		FrontendURL:    Getenv("FRONTEND_URL", "http://localhost:3000"),
+		AppEnv:         Getenv("APP_ENV", "production"),
+		CORSOrigins:    parseList(Getenv("CORS_ORIGINS", defaultCORSOrigins)),
+		MigrateOnStart: Getenv("MIGRATE_ON_START", "true") == "true",
+		DB:             loadDBConfig(),
+		JWT:            loadJWTConfig(),
+		SMTP:           loadSMTPConfig(),
+		SMS:            loadSMSConfig(),
+		S3:             loadS3Config(),
 	}
 
 	if cfg.DbUrl == "" {
