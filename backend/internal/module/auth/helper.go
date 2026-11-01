@@ -6,6 +6,7 @@ import (
 	authDto "adinfluence_service_app/internal/constant/model/dto/auth"
 	"adinfluence_service_app/internal/module/auth/helper"
 	"context"
+	"errors"
 	"time"
 
 	"go.uber.org/zap"
@@ -19,7 +20,40 @@ const (
 	verifyPhoneRateLimit       = 3
 	verifyPhoneRateLimitWindow = time.Hour
 	forgotPasswordRateScope    = "forgot_password_email"
+
+	// A 6-digit code has 10^6 values; capping wrong guesses per user makes
+	// brute force impractical within the code's lifetime.
+	verifyEmailAttemptScope = "verify_email_attempt"
+	verifyPhoneAttemptScope = "verify_phone_attempt"
+	maxOTPFailures          = 5
+	otpFailureWindow        = 15 * time.Minute
 )
+
+// checkOTPAttempts rejects verification once a user has made too many wrong
+// guesses inside the failure window.
+func (m *userAuthModule) checkOTPAttempts(ctx context.Context, scope, userID string) error {
+	count, err := m.persistence.CountRateLimitEvents(ctx, scope, userID, time.Now().UTC().Add(-otpFailureWindow))
+	if err != nil {
+		m.logger.Error(ctx, "otp attempt check failed", zap.String("scope", scope), zap.String("user_id", userID), zap.String("reason", err.Error()))
+		return err
+	}
+	if count >= maxOTPFailures {
+		m.logger.Warn(ctx, "too many incorrect otp attempts", zap.String("scope", scope), zap.String("user_id", userID))
+		return customErr.ErrTooManyOTPAttempts
+	}
+	return nil
+}
+
+// recordOTPFailure counts a wrong code. Lookup errors other than a wrong or
+// expired code are not counted against the user.
+func (m *userAuthModule) recordOTPFailure(ctx context.Context, scope, userID string, verifyErr error) {
+	if !errors.Is(verifyErr, authDto.ErrInvalidVerifyOTP) {
+		return
+	}
+	if err := m.persistence.InsertRateLimitEvent(ctx, scope, userID); err != nil {
+		m.logger.Error(ctx, "failed to record otp failure", zap.String("scope", scope), zap.String("user_id", userID), zap.String("reason", err.Error()))
+	}
+}
 
 func checkLoginAllowed(user authDto.UserResponse) error {
 	switch model.UserStatus(user.Status) {

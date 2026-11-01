@@ -43,6 +43,8 @@ func ClientErrorCode(err error) string {
 		return "validation_error"
 	}
 	switch {
+	case errors.Is(err, ErrTooManyOTPAttempts):
+		return "too_many_otp_attempts"
 	case errors.Is(err, ErrEmailAlreadyExists):
 		return "email_already_exists"
 	case errors.Is(err, ErrPhoneAlreadyExists):

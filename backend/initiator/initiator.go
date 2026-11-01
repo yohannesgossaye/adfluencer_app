@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"adinfluence_service_app/internal/constant/model/response"
 	"adinfluence_service_app/internal/handler/middleware"
 	"adinfluence_service_app/platform/jwt"
 	"adinfluence_service_app/platform/mail"
@@ -25,6 +26,11 @@ func Initiator(ctx context.Context) {
 	defer logger.Sync()
 
 	cfg := Load()
+
+	response.OnHiddenError = func(status int, code string, err error) {
+		logger.Error(context.Background(), "error details withheld from client",
+			zap.Int("status", status), zap.String("code", code), zap.Error(err))
+	}
 
 	logger.Info(ctx, "initiating database connection ......")
 
@@ -71,18 +77,11 @@ func Initiator(ctx context.Context) {
 
 	r := chi.NewRouter()
 
-	// Enable CORS for frontend integration (browser access from localhost, Vercel deployments, production domains)
+	// Only origins listed in CORS_ORIGINS (comma-separated, "*" wildcards allowed
+	// within a host, e.g. https://*.example.com) may call the API from a browser.
+	logger.Info(ctx, "cors allowed origins", zap.Strings("origins", cfg.CORSOrigins))
 	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins: []string{
-			"http://localhost:3000",
-			"http://127.0.0.1:3000",
-			"https://*.vercel.app",
-			"https://*.onrender.com",
-		},
-		AllowOriginFunc: func(r *http.Request, origin string) bool {
-			// Allow all origins (including Vercel preview URLs & custom domains)
-			return true
-		},
+		AllowedOrigins:   cfg.CORSOrigins,
 		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token", "Origin"},
 		ExposedHeaders:   []string{"Link", "Content-Length"},
@@ -95,9 +94,9 @@ func Initiator(ctx context.Context) {
 	r.Use(chimiddleware.Logger)
 	r.Use(chimiddleware.Recoverer)
 
-	// Serve uploaded files statically
+	// Serve uploaded files statically (files only — directory listings are disabled)
 	workDir, _ := os.Getwd()
-	uploadsDir := http.Dir(filepath.Join(workDir, "uploads"))
+	uploadsDir := filesOnlyFS{http.Dir(filepath.Join(workDir, "uploads"))}
 	r.Handle("/uploads/*", http.StripPrefix("/uploads/", http.FileServer(uploadsDir)))
 
 	postgresRepo := InitPersistence(db, logger)
@@ -107,7 +106,7 @@ func Initiator(ctx context.Context) {
 		RefreshTokenTTL:           cfg.JWT.RefreshTokenTTL,
 		RememberMeRefreshTokenTTL: cfg.JWT.RememberMeRefreshTokenTTL,
 	})
-	service := InitModules(postgresRepo, tokens, emailClient, smsClient, fileStorage, cfg.FrontendURL, logger)
+	service := InitModules(postgresRepo, tokens, emailClient, smsClient, fileStorage, cfg.FrontendURL, cfg.IsDevelopment(), logger)
 	handler := InitHandler(service, tokens, logger)
 	authMW := middleware.InitAuthMiddleware(tokens)
 	InitRoute(r, handler, authMW)

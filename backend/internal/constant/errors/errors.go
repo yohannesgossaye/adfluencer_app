@@ -34,6 +34,7 @@ var (
 	ErrTooManyVerifyEmailRequests = errors.New("too many verification emails requested")
 	ErrPhoneAlreadyVerified       = errors.New("phone is already verified")
 	ErrTooManyVerifyPhoneRequests = errors.New("too many verification sms requested")
+	ErrTooManyOTPAttempts         = errors.New("too many incorrect verification codes, request a new code later")
 	ErrNoPhoneOnAccount           = errors.New("no phone number on account")
 	ErrProfileNotFound            = errors.New("influencer profile not found")
 	ErrProfileIncomplete          = errors.New("profile incomplete")
@@ -107,6 +108,7 @@ var ErrorMap = map[error]int{
 	ErrTooManyVerifyEmailRequests: http.StatusTooManyRequests,
 	ErrPhoneAlreadyVerified:       http.StatusConflict,
 	ErrTooManyVerifyPhoneRequests: http.StatusTooManyRequests,
+	ErrTooManyOTPAttempts:         http.StatusTooManyRequests,
 	ErrNoPhoneOnAccount:           http.StatusBadRequest,
 	ErrProfileNotFound:            http.StatusNotFound,
 	ErrProfileIncomplete:          http.StatusBadRequest,

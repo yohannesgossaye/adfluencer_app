@@ -200,10 +200,7 @@ func (p *chatPersistence) InsertMessage(ctx context.Context, req dto.SendMessage
 		return nil, fmt.Errorf("insert message: %w", err)
 	}
 
-	preview := req.Body
-	if len(preview) > 100 {
-		preview = preview[:97] + "..."
-	}
+	preview := messagePreview(req.Body)
 	if req.MediaURL != nil && *req.MediaURL != "" && req.Body == "" {
 		preview = "Attachment: " + mediaType
 	}

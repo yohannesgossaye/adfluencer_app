@@ -22,9 +22,9 @@ type modules struct {
 	chat       module.ChatService
 }
 
-func InitModules(persistence persistence, tokens *jwt.TokenManager, email *mail.Client, smsClient *sms.Client, files platformStorage.Service, frontendURL string, log utils.Logger) modules {
+func InitModules(persistence persistence, tokens *jwt.TokenManager, email *mail.Client, smsClient *sms.Client, files platformStorage.Service, frontendURL string, logSecrets bool, log utils.Logger) modules {
 	return modules{
-		auth:       auth.InitAuthModule(persistence.auth, tokens, email, smsClient, frontendURL, log),
+		auth:       auth.InitAuthModule(persistence.auth, tokens, email, smsClient, frontendURL, logSecrets, log),
 		influencer: influencer.InitInfluencerModule(persistence.influencer, persistence.contract, persistence.support, persistence.auth, files, log),
 		business:   businessModule.InitBusinessModule(persistence.business, persistence.influencer, persistence.contract, persistence.support, persistence.auth, files, log),
 		admin:      adminModule.InitAdminModule(persistence.admin, persistence.influencer, persistence.support, log),

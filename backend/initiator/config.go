@@ -3,6 +3,7 @@ package initiator
 import (
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/joho/godotenv"
@@ -12,6 +13,8 @@ type Config struct {
 	Port        string
 	DbUrl       string
 	FrontendURL string
+	AppEnv      string
+	CORSOrigins []string
 	JWT         JWTConfig
 	SMTP        SMTPConfig
 	SMS         SMSConfig
@@ -56,6 +59,8 @@ func Load() *Config {
 		Port:        Getenv("PORT", "8080"),
 		DbUrl:       Getenv("DATABASE_URL", ""),
 		FrontendURL: Getenv("FRONTEND_URL", "http://localhost:3000"),
+		AppEnv:      Getenv("APP_ENV", "production"),
+		CORSOrigins: parseList(Getenv("CORS_ORIGINS", defaultCORSOrigins)),
 		JWT:         loadJWTConfig(),
 		SMTP:        loadSMTPConfig(),
 		SMS:         loadSMSConfig(),
@@ -65,8 +70,36 @@ func Load() *Config {
 	if cfg.DbUrl == "" {
 		log.Fatal("DATABASE_URL is required")
 	}
+	if cfg.JWT.SecretKey == "" {
+		log.Fatal("JWT_SECRET is required")
+	}
+	if len(cfg.JWT.SecretKey) < minJWTSecretLength {
+		log.Printf("WARNING: JWT_SECRET is shorter than %d bytes; use a longer random secret", minJWTSecretLength)
+	}
 
 	return cfg
+}
+
+// IsDevelopment reports whether the service runs in local development mode,
+// where secrets such as OTPs may be written to logs for testing.
+func (c *Config) IsDevelopment() bool {
+	return c.AppEnv == "development" || c.AppEnv == "dev" || c.AppEnv == "local"
+}
+
+const (
+	minJWTSecretLength = 32
+	defaultCORSOrigins = "http://localhost:3000,http://127.0.0.1:3000,https://adfluence-habesha.vercel.app"
+)
+
+func parseList(raw string) []string {
+	parts := strings.Split(raw, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		if p = strings.TrimSpace(p); p != "" {
+			out = append(out, strings.TrimRight(p, "/"))
+		}
+	}
+	return out
 }
 
 func loadSMTPConfig() SMTPConfig {
@@ -101,7 +134,7 @@ func loadS3Config() S3Config {
 }
 
 func loadJWTConfig() JWTConfig {
-	secret := Getenv("JWT_SECRET", "adfluence-secure-default-jwt-secret-key-prod-2026-auth")
+	secret := os.Getenv("JWT_SECRET")
 
 	return JWTConfig{
 		SecretKey:                 secret,
