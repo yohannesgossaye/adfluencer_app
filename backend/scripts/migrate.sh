@@ -18,7 +18,7 @@ fi
 
 echo "==> Connecting to ${PGUSER}@${PGHOST}:${PGPORT}/${PGDATABASE}"
 
-for file in auth auth_security auth_phone_verification admin campaigns marketplace support influencer_portfolio chat_messages session_rotation; do
+for file in auth auth_security auth_phone_verification admin campaigns marketplace support influencer_portfolio chat_messages session_rotation chat_integrity; do
   echo "    -> ${file}.sql"
   psql -v ON_ERROR_STOP=1 -f "${MIGRATION_DIR}/${file}.sql"
 done
