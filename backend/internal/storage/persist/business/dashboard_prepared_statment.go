@@ -1,31 +1,45 @@
 package business
 
 const (
+	// One pass per table: COUNT(*) FILTER computes every number together.
 	getDashboardKPIs = `
+	WITH
+	c AS (
+		SELECT
+			COUNT(*) FILTER (WHERE status = 'active')::int AS active,
+			COUNT(*)::int AS total
+		FROM campaigns WHERE business_user_id = $1
+	),
+	-- Distinct creators still recommended on open campaigns (not dismissed or
+	-- already invited, and not on cancelled/completed campaigns).
+	r AS (
+		SELECT
+			COUNT(DISTINCT cr.influencer_user_id) FILTER (WHERE cr.match_score >= 78)::int AS good,
+			COUNT(DISTINCT cr.influencer_user_id) FILTER (WHERE cr.match_score >= 85)::int AS strong
+		FROM campaign_recommendations cr
+		INNER JOIN campaigns c ON c.id = cr.campaign_id
+		WHERE c.business_user_id = $1 AND c.status IN ('draft', 'active')
+		  AND cr.status = 'recommended' AND cr.match_score >= 78
+	),
+	k AS (
+		SELECT
+			COUNT(*) FILTER (WHERE status IN ('pending_influencer', 'accepted'))::int AS pending,
+			COUNT(*) FILTER (WHERE status = 'pending_influencer')::int AS awaiting_creator,
+			COUNT(*) FILTER (WHERE status = 'accepted')::int AS awaiting_funding,
+			COUNT(*) FILTER (WHERE status = 'active')::int AS active,
+			COUNT(*) FILTER (WHERE status = 'completed')::int AS completed
+		FROM contracts WHERE business_user_id = $1
+	)
 	SELECT
-		(SELECT COUNT(*)::int FROM campaigns WHERE business_user_id = $1 AND status = 'active'),
-		(SELECT COUNT(*)::int FROM campaigns WHERE business_user_id = $1),
-		-- Distinct creators still recommended on open campaigns (not dismissed or
-		-- already invited, and not on cancelled/completed campaigns).
-		(SELECT COUNT(DISTINCT cr.influencer_user_id)::int
-		 FROM campaign_recommendations cr
-		 INNER JOIN campaigns c ON c.id = cr.campaign_id
-		 WHERE c.business_user_id = $1 AND c.status IN ('draft', 'active')
-		   AND cr.status = 'recommended' AND cr.match_score >= 78),
-		(SELECT COUNT(DISTINCT cr.influencer_user_id)::int
-		 FROM campaign_recommendations cr
-		 INNER JOIN campaigns c ON c.id = cr.campaign_id
-		 WHERE c.business_user_id = $1 AND c.status IN ('draft', 'active')
-		   AND cr.status = 'recommended' AND cr.match_score >= 85),
-		(SELECT COUNT(*)::int FROM contracts WHERE business_user_id = $1 AND status IN ('pending_influencer', 'accepted')),
-		(SELECT COUNT(*)::int FROM contracts WHERE business_user_id = $1 AND status = 'pending_influencer'),
-		(SELECT COUNT(*)::int FROM contracts WHERE business_user_id = $1 AND status = 'accepted'),
+		c.active, c.total,
+		r.good, r.strong,
+		k.pending, k.awaiting_creator, k.awaiting_funding,
 		(SELECT COUNT(*)::int
 		 FROM campaign_invites ci
-		 INNER JOIN campaigns c ON c.id = ci.campaign_id
-		 WHERE c.business_user_id = $1 AND ci.status = 'pending'),
-		(SELECT COUNT(*)::int FROM contracts WHERE business_user_id = $1 AND status = 'active'),
-		(SELECT COUNT(*)::int FROM contracts WHERE business_user_id = $1 AND status = 'completed')
+		 INNER JOIN campaigns cp ON cp.id = ci.campaign_id
+		 WHERE cp.business_user_id = $1 AND ci.status = 'pending'),
+		k.active, k.completed
+	FROM c, r, k
 	`
 
 	listDashboardRecentCampaigns = `

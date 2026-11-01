@@ -22,7 +22,7 @@ type BusinessPersistence interface {
 	PublishCampaign(ctx context.Context, userID, campaignID string) error
 	CancelCampaign(ctx context.Context, userID, campaignID string) error
 
-	ListMatchCandidates(ctx context.Context) ([]businessDto.MatchCandidate, error)
+	ListMatchCandidates(ctx context.Context, categoryID string, platforms []string) ([]businessDto.MatchCandidate, error)
 	ReplaceRecommendations(ctx context.Context, campaignID string, items []businessDto.SaveRecommendationInput) (int, error)
 	ListRecommendations(ctx context.Context, campaignID string, query businessDto.ListRecommendationsQuery) ([]businessDto.RecommendationItem, int, error)
 	GetRecommendation(ctx context.Context, campaignID, influencerUserID string) (*businessDto.RecommendationRecord, error)

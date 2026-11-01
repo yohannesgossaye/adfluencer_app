@@ -77,6 +77,18 @@ func platformsOverlap(campaignPlatforms, influencerPlatforms []string) bool {
 	return false
 }
 
+// NormalizePlatforms lower-cases and trims platform names, matching how
+// platformsOverlap compares them.
+func NormalizePlatforms(platforms []string) []string {
+	out := make([]string, 0, len(platforms))
+	for _, p := range platforms {
+		if p = strings.ToLower(strings.TrimSpace(p)); p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
 func nicheMatches(campaignCategoryID *string, candidateCategoryIDs []string) bool {
 	if campaignCategoryID == nil || *campaignCategoryID == "" {
 		return false

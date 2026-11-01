@@ -33,6 +33,16 @@ const (
 	WHERE u.role = 'influencer'
 		AND u.status = 'active'
 		AND ip.is_verified = TRUE
+		-- Prefilter: a creator needs both the niche (40) and a platform (25)
+		-- to reach MinRecommendationScore, so this drops no real match.
+		AND EXISTS (
+			SELECT 1 FROM influencer_profile_categories ipc
+			WHERE ipc.influencer_user_id = u.id AND ipc.category_id = $1::uuid
+		)
+		AND EXISTS (
+			SELECT 1 FROM influencer_profile_platforms ipp
+			WHERE ipp.influencer_user_id = u.id AND ipp.platform::text = ANY($2::text[])
+		)
 	`
 
 	getInfluencerCategoryIDs = `
@@ -54,10 +64,13 @@ const (
 	WHERE campaign_id = $1 AND status = 'recommended'
 	`
 
-	upsertRecommendation = `
+	upsertRecommendations = `
 	INSERT INTO campaign_recommendations (
 		id, campaign_id, influencer_user_id, match_score, score_breakdown, rank_position, status
-	) VALUES ($1, $2, $3, $4, $5::jsonb, $6, 'recommended')
+	)
+	SELECT r.id, $1::uuid, r.influencer_user_id, r.match_score, r.breakdown::jsonb, r.rank_position, 'recommended'
+	FROM unnest($2::uuid[], $3::uuid[], $4::numeric[], $5::text[], $6::int[])
+		AS r(id, influencer_user_id, match_score, breakdown, rank_position)
 	ON CONFLICT (campaign_id, influencer_user_id) DO UPDATE SET
 		match_score = EXCLUDED.match_score,
 		score_breakdown = EXCLUDED.score_breakdown,

@@ -6,7 +6,6 @@ import (
 	"context"
 
 	"go.uber.org/zap"
-	"golang.org/x/sync/errgroup"
 )
 
 func (m *influencerModule) GetDashboardSummary(ctx context.Context, userID string) (*influencerDto.DashboardSummaryResponse, error) {
@@ -24,34 +23,25 @@ func (m *influencerModule) GetDashboardSummary(ctx context.Context, userID strin
 		contracts []influencerDto.DashboardContractRow
 	)
 
-	g, ct := errgroup.WithContext(ctx)
-
-	g.Go(func() error {
-		var err error
-		rec, err = m.influencer.GetProfileByUserID(ct, userID)
-		return err
-	})
-
-	g.Go(func() error {
-		var err error
-		kpis, err = m.influencer.GetDashboardKPIs(ct, userID)
-		return err
-	})
-
-	g.Go(func() error {
-		var err error
-		invites, err = m.influencer.ListDashboardPendingInvites(ct, userID)
-		return err
-	})
-
-	g.Go(func() error {
-		var err error
-		contracts, err = m.influencer.ListDashboardActiveContracts(ct, userID)
-		return err
-	})
-
-	if err := g.Wait(); err != nil {
-		m.logger.Error(ctx, "failed to load parallel influencer dashboard data", zap.String("user_id", userID), zap.String("reason", err.Error()))
+	// Run one after another: each query takes a few ms, and running them in
+	// parallel would hold several pool connections for one page load.
+	err := func() (err error) {
+		if rec, err = m.influencer.GetProfileByUserID(ctx, userID); err != nil {
+			return err
+		}
+		if kpis, err = m.influencer.GetDashboardKPIs(ctx, userID); err != nil {
+			return err
+		}
+		if invites, err = m.influencer.ListDashboardPendingInvites(ctx, userID); err != nil {
+			return err
+		}
+		if contracts, err = m.influencer.ListDashboardActiveContracts(ctx, userID); err != nil {
+			return err
+		}
+		return nil
+	}()
+	if err != nil {
+		m.logger.Error(ctx, "failed to load influencer dashboard data", zap.String("user_id", userID), zap.String("reason", err.Error()))
 		return nil, err
 	}
 
