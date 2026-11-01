@@ -18,6 +18,7 @@ import {
   IconUsers,
 } from "@tabler/icons-react";
 
+import { useOptionalChat } from "@/components/chat/chat-provider";
 import { BrandLogo } from "@/components/common/brand-logo";
 import { useAuth } from "@/components/providers/auth-provider";
 import type { NavItem } from "@/lib/navigation";
@@ -51,6 +52,7 @@ export function DashboardSidebar({
   const router = useRouter();
 
   const { logout } = useAuth();
+  const unreadMessages = useOptionalChat()?.totalUnread ?? 0;
 
   const homeHref =
     items.find((item) => item.icon === "dashboard")?.href ?? items[0]?.href ?? "/";
@@ -95,6 +97,14 @@ export function DashboardSidebar({
               />
               <ItemIcon className="size-4 shrink-0" />
               <span className="truncate">{item.label}</span>
+              {item.icon === "messages" && unreadMessages > 0 ? (
+                <span
+                  aria-label={`${unreadMessages} unread messages`}
+                  className="ml-auto inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-[color:var(--adfluence-orange)] px-1.5 py-0.5 text-[10px] font-semibold text-white"
+                >
+                  {unreadMessages > 99 ? "99+" : unreadMessages}
+                </span>
+              ) : null}
             </Link>
           );
         })}
