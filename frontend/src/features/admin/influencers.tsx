@@ -23,9 +23,25 @@ const tabs: Array<{ id: "all" | "pending" | "approved" | "rejected"; label: stri
   { id: "rejected", label: "Rejected" },
 ];
 
+const STATUS_LABEL: Record<string, string> = {
+  pending_profile: "Profile not submitted",
+  pending_approval: "Waiting for review",
+  pending: "Waiting for review",
+  active: "Approved",
+  approved: "Approved",
+  rejected: "Rejected",
+  blocked: "Blocked",
+  removed: "Removed",
+};
+
+const canApprove = (status: string) => status === "pending" || status === "pending_approval";
+// The backend rejects only submitted or approved creators.
+const canReject = (status: string) => canApprove(status) || status === "active" || status === "approved";
+
 function statusBadge(s: string) {
   const lower = s.toLowerCase();
-  if (lower === "pending") return "border-amber-400/30 bg-amber-500/10 text-amber-200";
+  if (lower === "pending" || lower === "pending_approval") return "border-amber-400/30 bg-amber-500/10 text-amber-200";
+  if (lower === "pending_profile") return "border-white/15 bg-white/5 text-[#CBD5E1]";
   if (lower === "approved" || lower === "active") return "border-emerald-400/30 bg-emerald-500/10 text-emerald-200";
   return "border-rose-400/30 bg-rose-500/10 text-rose-200";
 }
@@ -229,11 +245,11 @@ export function AdminInfluencers() {
                     <p className="font-semibold text-white">{r.creator_name}</p>
                     <span
                       className={cn(
-                        "rounded-full border px-2 py-0.5 text-[10px] font-medium capitalize",
+                        "rounded-full border px-2 py-0.5 text-[10px] font-medium",
                         statusBadge(r.status),
                       )}
                     >
-                      {r.status}
+                      {STATUS_LABEL[r.status] ?? r.status.replace(/_/g, " ")}
                     </span>
                   </div>
                   <p className="text-xs text-[#CBD5E1]">
@@ -241,7 +257,7 @@ export function AdminInfluencers() {
                     {r.engagement_rate != null ? ` · ${r.engagement_rate}% engagement` : ""}
                   </p>
                   <p className="mt-1 text-xs text-[#94A3B8]">
-                    Submitted {new Date(r.submitted_at).toLocaleDateString()}
+                    {r.status === "pending_profile" ? "Last updated" : "Submitted"} {new Date(r.submitted_at).toLocaleDateString()}
                   </p>
                   <p className="mt-1 text-xs text-[#CBD5E1]">
                     Profile {r.completeness_percent}% complete
@@ -251,7 +267,7 @@ export function AdminInfluencers() {
                       type="button"
                       size="sm"
                       className="h-11 bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)] sm:h-8"
-                      disabled={!(r.status === "pending" || r.status === "pending_approval")}
+                      disabled={!canApprove(r.status)}
                       onClick={(e) => {
                         e.stopPropagation();
                         setStatus(r.user_id, "approved");
@@ -264,7 +280,7 @@ export function AdminInfluencers() {
                       size="sm"
                       variant="outline"
                       className="h-11 border-white/15 text-white hover:bg-white/10 sm:h-8"
-                      disabled={r.status === "rejected" || r.status === "removed"}
+                      disabled={!canReject(r.status)}
                       onClick={(e) => {
                         e.stopPropagation();
                         setStatus(r.user_id, "rejected");
@@ -273,6 +289,11 @@ export function AdminInfluencers() {
                       {r.status === "approved" || r.status === "active" ? "Request changes" : "Reject"}
                     </Button>
                   </div>
+                  {r.status === "pending_profile" ? (
+                    <p className="mt-2 text-xs text-[#94A3B8]">
+                      Waiting for the creator to complete and submit their profile. You can approve it once they submit.
+                    </p>
+                  ) : null}
                 </div>
               </div>
             ))
