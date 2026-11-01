@@ -1,7 +1,7 @@
 # Adfluence backend — quick commands (run from backend/)
 # Usage: make help
 
-.PHONY: help up down restart reset logs psql migrate migrate-security migrate-phone-verification migrate-portfolio seed-categories status tables seed-admin
+.PHONY: help up down restart reset logs psql migrate migrate-security migrate-phone-verification migrate-portfolio migrate-session-rotation seed-categories status tables seed-admin
 
 help:
 	@echo "Adfluence database commands"
@@ -14,6 +14,7 @@ help:
 	@echo "  make migrate-security  Add rate-limit tables to existing DB"
 	@echo "  make migrate-phone-verification  Add phone OTP table to existing DB"
 	@echo "  make migrate-portfolio     Add influencer_portfolio_items table"
+	@echo "  make migrate-session-rotation  Session rotation columns + refresh token index"
 	@echo "  make seed-categories     Seed niche categories (Beauty, Tech, …)"
 	@echo "  make logs      Show postgres logs"
 	@echo "  make psql      Open psql shell"
@@ -51,6 +52,10 @@ migrate-phone-verification:
 migrate-portfolio:
 	chmod +x ./scripts/migrate_portfolio.sh
 	./scripts/migrate_portfolio.sh
+
+migrate-session-rotation:
+	chmod +x ./scripts/migrate_session_rotation.sh
+	./scripts/migrate_session_rotation.sh
 
 seed-categories:
 	PGPASSWORD=adfluence123 psql -h localhost -p 5433 -U adfluence -d adfluence_db -v ON_ERROR_STOP=1 -f migration/seed_categories.sql

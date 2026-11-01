@@ -179,11 +179,37 @@ func (a *auth) CreateSession(ctx context.Context, input authDto.CreateSessionInp
 		nullString(input.UserAgent),
 		input.ExpiresAt,
 		time.Now().UTC(),
+		nullPositiveInt(input.RefreshTTLSeconds),
 	)
 	if err != nil {
 		return fmt.Errorf("insert session: %w", err)
 	}
 	return nil
+}
+
+func (a *auth) RotateSession(ctx context.Context, refreshTokenHash string, grace time.Duration) (*authDto.UserSession, error) {
+	var session authDto.UserSession
+	var ttlSeconds sql.NullInt64
+	err := a.db.QueryRowContext(ctx, rotateSession, refreshTokenHash, grace.Seconds()).Scan(
+		&session.ID,
+		&session.UserID,
+		&session.ExpiresAt,
+		&ttlSeconds,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, customErr.ErrInvalidRefreshToken
+		}
+		return nil, fmt.Errorf("rotate session: %w", err)
+	}
+	if ttlSeconds.Valid {
+		session.RefreshTTL = time.Duration(ttlSeconds.Int64) * time.Second
+	}
+	return &session, nil
+}
+
+func nullPositiveInt(v int) sql.NullInt64 {
+	return sql.NullInt64{Int64: int64(v), Valid: v > 0}
 }
 
 func (a *auth) GetSessionByRefreshTokenHash(ctx context.Context, refreshTokenHash string) (*authDto.UserSession, error) {

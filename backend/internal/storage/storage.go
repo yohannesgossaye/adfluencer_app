@@ -14,6 +14,7 @@ type AuthPersisitence interface {
 	UpdateLastLoginAt(ctx context.Context, userID string, at time.Time) error
 	CreateSession(ctx context.Context, input authDto.CreateSessionInput) error
 	GetSessionByRefreshTokenHash(ctx context.Context, refreshTokenHash string) (*authDto.UserSession, error)
+	RotateSession(ctx context.Context, refreshTokenHash string, grace time.Duration) (*authDto.UserSession, error)
 	RevokeSession(ctx context.Context, sessionID string) error
 	GetUserByID(ctx context.Context, userID string) (*authDto.UserResponse, error)
 	GetProfileByUserID(ctx context.Context, userID, role string) (*authDto.ProfileResponse, error)

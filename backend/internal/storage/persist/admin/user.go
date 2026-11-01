@@ -74,15 +74,7 @@ func (a *admin) BlockUser(ctx context.Context, userID, reason string) error {
 		return ErrInvalidUserStatusChange
 	}
 
-	result, err := a.db.ExecContext(ctx, blockUser, userID, nullReason(reason))
-	if err != nil {
-		return fmt.Errorf("block user: %w", err)
-	}
-	n, _ := result.RowsAffected()
-	if n == 0 {
-		return ErrUserNotFound
-	}
-	return nil
+	return a.setStatusAndRevokeSessions(ctx, blockUser, "block user", userID, reason)
 }
 
 func (a *admin) UnblockUser(ctx context.Context, userID string) error {
@@ -124,13 +116,31 @@ func (a *admin) RemoveUser(ctx context.Context, userID, reason string) error {
 		return ErrInvalidUserStatusChange
 	}
 
-	result, err := a.db.ExecContext(ctx, removeUser, userID, nullReason(reason))
+	return a.setStatusAndRevokeSessions(ctx, removeUser, "remove user", userID, reason)
+}
+
+// setStatusAndRevokeSessions applies a blocking status change and signs the
+// user out everywhere in the same transaction, so refresh tokens issued
+// before the block can no longer be used.
+func (a *admin) setStatusAndRevokeSessions(ctx context.Context, statusQuery, op, userID, reason string) error {
+	tx, err := a.db.BeginTx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf("remove user: %w", err)
+		return fmt.Errorf("%s: begin tx: %w", op, err)
 	}
-	n, _ := result.RowsAffected()
-	if n == 0 {
+	defer tx.Rollback()
+
+	result, err := tx.ExecContext(ctx, statusQuery, userID, nullReason(reason))
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+	if n, _ := result.RowsAffected(); n == 0 {
 		return ErrUserNotFound
+	}
+	if _, err := tx.ExecContext(ctx, revokeUserSessions, userID); err != nil {
+		return fmt.Errorf("%s: revoke sessions: %w", op, err)
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("%s: commit: %w", op, err)
 	}
 	return nil
 }

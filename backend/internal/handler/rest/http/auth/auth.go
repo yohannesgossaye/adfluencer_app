@@ -9,6 +9,7 @@ import (
 	"adinfluence_service_app/internal/module"
 	"adinfluence_service_app/platform/utils"
 	"encoding/json"
+	"errors"
 	"net/http"
 )
 
@@ -271,7 +272,14 @@ func (h *authHandler) RefreshToken(w http.ResponseWriter, r *http.Request) {
 
 	res, err := h.service.RefreshToken(ctx, req, sessionMetaFromRequest(r))
 	if err != nil {
-		response.SendErrorResponse(w, http.StatusUnauthorized, "invalid_refresh_token", err, "invalid or expired refresh token")
+		// Only a bad token means "log in again". Anything else (database
+		// unavailable, timeout) is temporary: clients should keep their
+		// session and retry instead of logging the user out.
+		if errors.Is(err, customErr.ErrInvalidRefreshToken) {
+			response.SendErrorResponse(w, http.StatusUnauthorized, "invalid_refresh_token", nil, "invalid or expired refresh token")
+			return
+		}
+		response.SendErrorResponse(w, http.StatusServiceUnavailable, "refresh_unavailable", err, "token refresh temporarily unavailable, please retry")
 		return
 	}
 	response.SendSuccessResponse(w, r, http.StatusOK, "token refreshed", res, nil)

@@ -68,10 +68,17 @@ const (
 	WHERE id = $1 AND role <> 'admin'
 	`
 
+	// Only blocked accounts can be unblocked; removed accounts stay removed.
 	unblockUser = `
 	UPDATE users
 	SET status = 'active', status_reason = NULL, updated_at = NOW()
-	WHERE id = $1 AND role <> 'admin' AND status <> 'active'
+	WHERE id = $1 AND role <> 'admin' AND status = 'blocked'
+	`
+
+	revokeUserSessions = `
+	UPDATE user_sessions
+	SET revoked_at = NOW()
+	WHERE user_id = $1 AND revoked_at IS NULL
 	`
 
 	removeUser = `

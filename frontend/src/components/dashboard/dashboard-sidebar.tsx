@@ -21,7 +21,6 @@ import {
 import { BrandLogo } from "@/components/common/brand-logo";
 import { useAuth } from "@/components/providers/auth-provider";
 import type { NavItem } from "@/lib/navigation";
-import { signOut } from "@/lib/sign-out";
 import { cn } from "@/lib/utils";
 
 const iconMap = {
@@ -51,14 +50,13 @@ export function DashboardSidebar({
   const pathname = usePathname();
   const router = useRouter();
 
-  const { setAccessToken } = useAuth();
+  const { logout } = useAuth();
 
   const homeHref =
     items.find((item) => item.icon === "dashboard")?.href ?? items[0]?.href ?? "/";
 
-  const onLogout = () => {
-    signOut();
-    setAccessToken(null);
+  const onLogout = async () => {
+    await logout();
     router.push("/");
   };
 

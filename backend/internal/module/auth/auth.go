@@ -220,9 +220,13 @@ func (m *userAuthModule) RefreshToken(ctx context.Context, req authDto.RefreshTo
 	}
 
 	hash := jwt.HashRefreshToken(req.RefreshToken)
-	session, err := m.persistence.GetSessionByRefreshTokenHash(ctx, hash)
+	session, err := m.persistence.RotateSession(ctx, hash, refreshRotationGrace)
 	if err != nil {
-		m.logger.Warn(ctx, "invalid or expired session for refresh token hash")
+		if errors.Is(err, customErr.ErrInvalidRefreshToken) {
+			m.logger.Warn(ctx, "invalid, expired or already rotated refresh token")
+		} else {
+			m.logger.Error(ctx, "failed to rotate session", zap.String("reason", err.Error()))
+		}
 		return nil, err
 	}
 
@@ -246,12 +250,9 @@ func (m *userAuthModule) RefreshToken(ctx context.Context, req authDto.RefreshTo
 		return nil, err
 	}
 
-	if err := m.persistence.RevokeSession(ctx, session.ID); err != nil {
-		m.logger.Error(ctx, "failed to rotate session", zap.String("session_id", session.ID), zap.String("reason", err.Error()))
-		return nil, err
-	}
-
-	tokenPair, err := m.issueSession(ctx, *user, *profile, meta, 0)
+	// The old token was consumed by RotateSession above; the new session keeps
+	// the lifetime chosen at login (e.g. 30 days for "remember me").
+	tokenPair, err := m.issueSession(ctx, *user, *profile, meta, session.RefreshTTL)
 	if err != nil {
 		m.logger.Error(ctx, "failed to issue rotated session tokens", zap.String("user_id", user.ID), zap.String("reason", err.Error()))
 		return nil, err
@@ -670,16 +671,20 @@ func (m *userAuthModule) issueSession(ctx context.Context, user authDto.UserResp
 		return jwt.TokenPair{}, fmt.Errorf("generate token pair: %w", err)
 	}
 
+	now := time.Now().UTC()
 	if refreshTTL > 0 {
-		tokenPair.RefreshExpiresAt = time.Now().UTC().Add(refreshTTL)
+		tokenPair.RefreshExpiresAt = now.Add(refreshTTL)
+	} else {
+		refreshTTL = tokenPair.RefreshExpiresAt.Sub(now)
 	}
 
 	err = m.persistence.CreateSession(ctx, authDto.CreateSessionInput{
-		UserID:           user.ID,
-		RefreshTokenHash: jwt.HashRefreshToken(tokenPair.RefreshToken),
-		IPAddress:        meta.IPAddress,
-		UserAgent:        meta.UserAgent,
-		ExpiresAt:        tokenPair.RefreshExpiresAt,
+		UserID:            user.ID,
+		RefreshTokenHash:  jwt.HashRefreshToken(tokenPair.RefreshToken),
+		IPAddress:         meta.IPAddress,
+		UserAgent:         meta.UserAgent,
+		ExpiresAt:         tokenPair.RefreshExpiresAt,
+		RefreshTTLSeconds: int(refreshTTL.Round(time.Second).Seconds()),
 	})
 	if err != nil {
 		return jwt.TokenPair{}, err
