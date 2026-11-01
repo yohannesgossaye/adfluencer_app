@@ -1,88 +1,77 @@
 package chat
 
+// messageColumns is the column list every message query returns, in the
+// order scanMessage expects.
+const messageColumns = `
+	id,
+	conversation_id,
+	sender_user_id,
+	receiver_user_id,
+	body,
+	media_url,
+	media_type,
+	is_read,
+	read_at,
+	deleted_for_sender,
+	deleted_for_receiver,
+	is_deleted_for_everyone,
+	client_message_id,
+	created_at,
+	updated_at`
+
+// Conversations are unique per participant pair (+ campaign) thanks to
+// uq_conversations_pair_campaign; pair_low/pair_high hold the two user ids in
+// a fixed order.
 const (
-	findConversationWithCampaign = `
-		SELECT c.id 
-		FROM conversations c
-		JOIN conversation_participants p1 ON p1.conversation_id = c.id AND p1.user_id = $1
-		JOIN conversation_participants p2 ON p2.conversation_id = c.id AND p2.user_id = $2
-		WHERE c.campaign_id = $3
-		LIMIT 1
-	`
-
-	findConversationWithoutCampaign = `
-		SELECT c.id 
-		FROM conversations c
-		JOIN conversation_participants p1 ON p1.conversation_id = c.id AND p1.user_id = $1
-		JOIN conversation_participants p2 ON p2.conversation_id = c.id AND p2.user_id = $2
-		LIMIT 1
-	`
-
-	getUserRole = `
-		SELECT role FROM users WHERE id = $1
-	`
-
 	insertConversation = `
-		INSERT INTO conversations (campaign_id, status, created_at, updated_at)
-		VALUES ($1, 'active', now(), now())
+		INSERT INTO conversations (campaign_id, status, pair_low, pair_high, created_at, updated_at)
+		VALUES ($1, 'active', LEAST($2::uuid, $3::uuid), GREATEST($2::uuid, $3::uuid), now(), now())
+		ON CONFLICT (pair_low, pair_high, (COALESCE(campaign_id, '00000000-0000-0000-0000-000000000000'::uuid)))
+			WHERE pair_low IS NOT NULL
+		DO NOTHING
 		RETURNING id
+	`
+
+	findConversationByPair = `
+		SELECT id FROM conversations
+		WHERE pair_low = LEAST($1::uuid, $2::uuid)
+		  AND pair_high = GREATEST($1::uuid, $2::uuid)
+		  AND campaign_id IS NOT DISTINCT FROM $3::uuid
 	`
 
 	insertParticipant = `
 		INSERT INTO conversation_participants (conversation_id, user_id, role, created_at)
-		VALUES ($1, $2, $3, now())
+		SELECT $1, u.id, u.role::text::conversation_participant_role, now()
+		FROM users u WHERE u.id = $2
+		ON CONFLICT (conversation_id, user_id) DO NOTHING
 	`
 
-	getConversationSummary = `
-		SELECT 
+	getCampaignOwner = `
+		SELECT business_user_id FROM campaigns WHERE id = $1
+	`
+
+	conversationSelect = `
+		SELECT
 			c.id,
 			c.campaign_id,
-			cam.title as campaign_title,
+			cam.title AS campaign_title,
 			c.status,
 			c.last_message_preview,
 			c.last_message_at,
 			c.created_at,
-			u.id as other_user_id,
-			u.role as other_user_role,
-			COALESCE(bp.business_name, ip.creator_name, u.email) as other_user_name,
-			COALESCE(bp.logo_url, ip.profile_image_url) as other_user_avatar,
+			u.id AS other_user_id,
+			u.role AS other_user_role,
+			COALESCE(bp.business_name, ip.creator_name, 'Adfluence user') AS other_user_name,
+			COALESCE(bp.logo_url, ip.profile_image_url) AS other_user_avatar,
 			(
-				SELECT COUNT(*) 
-				FROM messages m 
-				WHERE m.conversation_id = c.id 
-				  AND m.receiver_user_id = $2 
+				SELECT COUNT(*)
+				FROM messages m
+				WHERE m.conversation_id = c.id
+				  AND m.receiver_user_id = $1
 				  AND m.is_read = false
-			) as unread_count
-		FROM conversations c
-		LEFT JOIN campaigns cam ON cam.id = c.campaign_id
-		JOIN conversation_participants other_p ON other_p.conversation_id = c.id AND other_p.user_id <> $2
-		JOIN users u ON u.id = other_p.user_id
-		LEFT JOIN business_profiles bp ON bp.user_id = u.id
-		LEFT JOIN influencer_profiles ip ON ip.user_id = u.id
-		WHERE c.id = $1
-		LIMIT 1
-	`
-
-	listConversationsByUser = `
-		SELECT 
-			c.id,
-			c.campaign_id,
-			cam.title as campaign_title,
-			c.status,
-			c.last_message_preview,
-			c.last_message_at,
-			c.created_at,
-			u.id as other_user_id,
-			u.role as other_user_role,
-			COALESCE(bp.business_name, ip.creator_name, u.email) as other_user_name,
-			COALESCE(bp.logo_url, ip.profile_image_url) as other_user_avatar,
-			(
-				SELECT COUNT(*) 
-				FROM messages m 
-				WHERE m.conversation_id = c.id 
-				  AND m.receiver_user_id = $1 
-				  AND m.is_read = false
-			) as unread_count
+				  AND NOT m.is_deleted_for_everyone
+				  AND NOT m.deleted_for_receiver
+			) AS unread_count
 		FROM conversations c
 		JOIN conversation_participants my_p ON my_p.conversation_id = c.id AND my_p.user_id = $1
 		JOIN conversation_participants other_p ON other_p.conversation_id = c.id AND other_p.user_id <> $1
@@ -90,98 +79,91 @@ const (
 		LEFT JOIN business_profiles bp ON bp.user_id = u.id
 		LEFT JOIN influencer_profiles ip ON ip.user_id = u.id
 		LEFT JOIN campaigns cam ON cam.id = c.campaign_id
-		ORDER BY COALESCE(c.last_message_at, c.created_at) DESC
+	`
+
+	getConversationSummary = conversationSelect + `
+		WHERE c.id = $2
+	`
+
+	listConversationsByUser = conversationSelect + `
+		ORDER BY COALESCE(c.last_message_at, c.created_at) DESC, c.id DESC
 		LIMIT $2 OFFSET $3
 	`
 
 	checkParticipantExists = `
 		SELECT EXISTS (
-			SELECT 1 FROM conversation_participants 
+			SELECT 1 FROM conversation_participants
 			WHERE conversation_id = $1 AND user_id = $2
 		)
 	`
 
 	getOtherParticipant = `
-		SELECT user_id 
-		FROM conversation_participants 
-		WHERE conversation_id = $1 AND user_id <> $2 
+		SELECT user_id
+		FROM conversation_participants
+		WHERE conversation_id = $1 AND user_id <> $2
 		LIMIT 1
 	`
 
+	// A repeated client_message_id from the same sender inserts nothing; the
+	// caller then loads the original message.
 	insertMessage = `
 		INSERT INTO messages (
-			conversation_id,
-			sender_user_id,
-			receiver_user_id,
-			body,
-			media_url,
-			media_type,
-			is_read,
-			deleted_for_sender,
-			deleted_for_receiver,
-			is_deleted_for_everyone,
-			created_at,
-			updated_at
+			conversation_id, sender_user_id, receiver_user_id, body, media_url, media_type,
+			client_message_id, is_read, deleted_for_sender, deleted_for_receiver,
+			is_deleted_for_everyone, created_at, updated_at
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, false, false, false, false, now(), now())
-		RETURNING 
-			id,
-			conversation_id,
-			sender_user_id,
-			receiver_user_id,
-			body,
-			media_url,
-			media_type,
-			is_read,
-			read_at,
-			deleted_for_sender,
-			deleted_for_receiver,
-			is_deleted_for_everyone,
-			created_at,
-			updated_at
+		VALUES ($1, $2, $3, $4, $5, $6, $7, false, false, false, false, now(), now())
+		ON CONFLICT (sender_user_id, client_message_id) WHERE client_message_id IS NOT NULL
+		DO NOTHING
+		RETURNING ` + messageColumns
+
+	getMessageByClientID = `
+		SELECT ` + messageColumns + `
+		FROM messages
+		WHERE sender_user_id = $1 AND client_message_id = $2
 	`
 
 	updateConversationLastMessage = `
-		UPDATE conversations 
+		UPDATE conversations
 		SET last_message_preview = $1, last_message_at = now(), updated_at = now()
 		WHERE id = $2
 	`
 
+	// Newest page first, then returned oldest→newest. (created_at, id) breaks
+	// ties so messages sharing a timestamp are never skipped. $3 is the id of
+	// the oldest message already shown (NULL for the newest page).
 	getMessagesByConversation = `
-		WITH raw_messages AS (
-			SELECT 
+		WITH page AS (
+			SELECT
 				id,
 				conversation_id,
 				sender_user_id,
 				receiver_user_id,
-				CASE 
-					WHEN is_deleted_for_everyone THEN 'This message was deleted'
-					ELSE body 
-				END as body,
-				CASE 
-					WHEN is_deleted_for_everyone THEN NULL
-					ELSE media_url 
-				END as media_url,
+				CASE WHEN is_deleted_for_everyone THEN 'This message was deleted' ELSE body END AS body,
+				CASE WHEN is_deleted_for_everyone THEN NULL ELSE media_url END AS media_url,
 				media_type,
 				is_read,
 				read_at,
 				deleted_for_sender,
 				deleted_for_receiver,
 				is_deleted_for_everyone,
+				client_message_id,
 				created_at,
 				updated_at
 			FROM messages
 			WHERE conversation_id = $1
 			  AND (
-				$3 = '' 
-				OR created_at < (SELECT created_at FROM messages WHERE id = $3::uuid)
+				$3::uuid IS NULL
+				OR (created_at, id) < (
+					SELECT created_at, id FROM messages WHERE id = $3::uuid AND conversation_id = $1
+				)
 			  )
-			  AND NOT (sender_user_id = $2 AND deleted_for_sender = true)
-			  AND NOT (receiver_user_id = $2 AND deleted_for_receiver = true)
-			ORDER BY created_at DESC
+			  AND NOT (sender_user_id = $2 AND deleted_for_sender)
+			  AND NOT (receiver_user_id = $2 AND deleted_for_receiver)
+			ORDER BY created_at DESC, id DESC
 			LIMIT $4
 		)
-		SELECT * FROM raw_messages ORDER BY created_at ASC
+		SELECT * FROM page ORDER BY created_at ASC, id ASC
 	`
 
 	markMessagesRead = `
@@ -197,52 +179,44 @@ const (
 	`
 
 	getMessageByID = `
-		SELECT 
-			id,
-			conversation_id,
-			sender_user_id,
-			receiver_user_id,
-			body,
-			media_url,
-			media_type,
-			is_read,
-			read_at,
-			deleted_for_sender,
-			deleted_for_receiver,
-			is_deleted_for_everyone,
-			created_at,
-			updated_at
+		SELECT ` + messageColumns + `
 		FROM messages
 		WHERE id = $1
 	`
 
 	deleteMessageForEveryone = `
-		UPDATE messages 
+		UPDATE messages
 		SET is_deleted_for_everyone = true, updated_at = now()
 		WHERE id = $1
-		RETURNING 
-			id, conversation_id, sender_user_id, receiver_user_id, body,
-			media_url, media_type, is_read, read_at, deleted_for_sender,
-			deleted_for_receiver, is_deleted_for_everyone, created_at, updated_at
-	`
+		RETURNING ` + messageColumns
 
 	deleteMessageForSender = `
-		UPDATE messages 
+		UPDATE messages
 		SET deleted_for_sender = true, updated_at = now()
 		WHERE id = $1
-		RETURNING 
-			id, conversation_id, sender_user_id, receiver_user_id, body,
-			media_url, media_type, is_read, read_at, deleted_for_sender,
-			deleted_for_receiver, is_deleted_for_everyone, created_at, updated_at
-	`
+		RETURNING ` + messageColumns
 
 	deleteMessageForReceiver = `
-		UPDATE messages 
+		UPDATE messages
 		SET deleted_for_receiver = true, updated_at = now()
 		WHERE id = $1
-		RETURNING 
-			id, conversation_id, sender_user_id, receiver_user_id, body,
-			media_url, media_type, is_read, read_at, deleted_for_sender,
-			deleted_for_receiver, is_deleted_for_everyone, created_at, updated_at
+		RETURNING ` + messageColumns
+
+	// After a delete-for-everyone the list must not keep showing the text.
+	refreshConversationPreview = `
+		UPDATE conversations c
+		SET last_message_preview = (
+				SELECT CASE
+					WHEN m.body = '' AND m.media_url IS NOT NULL THEN 'Attachment: ' || m.media_type
+					WHEN char_length(m.body) > 100 THEN left(m.body, 97) || '...'
+					ELSE m.body
+				END
+				FROM messages m
+				WHERE m.conversation_id = c.id AND NOT m.is_deleted_for_everyone
+				ORDER BY m.created_at DESC, m.id DESC
+				LIMIT 1
+			),
+			updated_at = now()
+		WHERE c.id = $1
 	`
 )

@@ -15,6 +15,13 @@ type chatPersistence struct {
 	log utils.Logger
 }
 
+const (
+	defaultConversationLimit = 30
+	maxConversationLimit     = 50
+	defaultMessageLimit      = 50
+	maxMessageLimit          = 100
+)
+
 func InitChatPersistence(db *sql.DB, log utils.Logger) storage.ChatPersistence {
 	return &chatPersistence{
 		db:  db,
@@ -22,63 +29,38 @@ func InitChatPersistence(db *sql.DB, log utils.Logger) storage.ChatPersistence {
 	}
 }
 
-func (p *chatPersistence) GetOrCreateConversation(ctx context.Context, userOneID, userTwoID string, campaignID *string) (*dto.ConversationItem, error) {
-	var existingID string
-	var query string
-	var args []interface{}
-
-	if campaignID != nil && *campaignID != "" {
-		query = findConversationWithCampaign
-		args = []interface{}{userOneID, userTwoID, *campaignID}
-	} else {
-		query = findConversationWithoutCampaign
-		args = []interface{}{userOneID, userTwoID}
-	}
-
-	err := p.db.QueryRowContext(ctx, query, args...).Scan(&existingID)
-	if err == nil && existingID != "" {
-		return p.GetConversationSummary(ctx, existingID, userOneID)
-	}
-
-	var userOneRole, userTwoRole string
-	err = p.db.QueryRowContext(ctx, getUserRole, userOneID).Scan(&userOneRole)
-	if err != nil {
-		return nil, fmt.Errorf("user one not found: %w", err)
-	}
-	err = p.db.QueryRowContext(ctx, getUserRole, userTwoID).Scan(&userTwoRole)
-	if err != nil {
-		return nil, fmt.Errorf("user two not found: %w", err)
-	}
-
-	tx, err := p.db.BeginTx(ctx, nil)
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback()
-
-	var newConvID string
-	err = tx.QueryRowContext(ctx, insertConversation, campaignID).Scan(&newConvID)
-	if err != nil {
-		return nil, fmt.Errorf("insert conversation: %w", err)
-	}
-
-	if _, err := tx.ExecContext(ctx, insertParticipant, newConvID, userOneID, userOneRole); err != nil {
-		return nil, fmt.Errorf("insert participant 1: %w", err)
-	}
-	if _, err := tx.ExecContext(ctx, insertParticipant, newConvID, userTwoID, userTwoRole); err != nil {
-		return nil, fmt.Errorf("insert participant 2: %w", err)
-	}
-
-	if err := tx.Commit(); err != nil {
-		return nil, err
-	}
-
-	return p.GetConversationSummary(ctx, newConvID, userOneID)
+type rowScanner interface {
+	Scan(dest ...any) error
 }
 
-func (p *chatPersistence) GetConversationSummary(ctx context.Context, conversationID, currentUserID string) (*dto.ConversationItem, error) {
+func scanMessage(row rowScanner) (*dto.Message, error) {
+	var msg dto.Message
+	err := row.Scan(
+		&msg.ID,
+		&msg.ConversationID,
+		&msg.SenderUserID,
+		&msg.ReceiverUserID,
+		&msg.Body,
+		&msg.MediaURL,
+		&msg.MediaType,
+		&msg.IsRead,
+		&msg.ReadAt,
+		&msg.DeletedForSender,
+		&msg.DeletedForReceiver,
+		&msg.IsDeletedForEveryone,
+		&msg.ClientMessageID,
+		&msg.CreatedAt,
+		&msg.UpdatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return &msg, nil
+}
+
+func scanConversation(row rowScanner) (*dto.ConversationItem, error) {
 	var item dto.ConversationItem
-	err := p.db.QueryRowContext(ctx, getConversationSummary, conversationID, currentUserID).Scan(
+	err := row.Scan(
 		&item.ID,
 		&item.CampaignID,
 		&item.CampaignTitle,
@@ -93,18 +75,81 @@ func (p *chatPersistence) GetConversationSummary(ctx context.Context, conversati
 		&item.UnreadCount,
 	)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, errors.New("conversation not found")
-		}
 		return nil, err
 	}
-
 	return &item, nil
+}
+
+// GetOrCreateConversation returns the conversation between the two users (for
+// the campaign, if given), creating it when needed. created reports whether a
+// new conversation was made. Safe under concurrent calls: the unique index
+// makes the second insert a no-op and both callers get the same row.
+func (p *chatPersistence) GetOrCreateConversation(ctx context.Context, userOneID, userTwoID string, campaignID *string) (*dto.ConversationItem, bool, error) {
+	tx, err := p.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, false, fmt.Errorf("begin conversation tx: %w", err)
+	}
+	defer tx.Rollback()
+
+	created := true
+	var convID string
+	err = tx.QueryRowContext(ctx, insertConversation, campaignID, userOneID, userTwoID).Scan(&convID)
+	if errors.Is(err, sql.ErrNoRows) {
+		created = false
+		err = tx.QueryRowContext(ctx, findConversationByPair, userOneID, userTwoID, campaignID).Scan(&convID)
+	}
+	if err != nil {
+		return nil, false, fmt.Errorf("get or create conversation: %w", err)
+	}
+
+	if created {
+		for _, userID := range []string{userOneID, userTwoID} {
+			if _, err := tx.ExecContext(ctx, insertParticipant, convID, userID); err != nil {
+				return nil, false, fmt.Errorf("insert participant: %w", err)
+			}
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, false, fmt.Errorf("commit conversation: %w", err)
+	}
+
+	item, err := p.GetConversationSummary(ctx, convID, userOneID)
+	if err != nil {
+		return nil, false, err
+	}
+	return item, created, nil
+}
+
+func (p *chatPersistence) GetCampaignOwner(ctx context.Context, campaignID string) (string, error) {
+	var ownerID string
+	err := p.db.QueryRowContext(ctx, getCampaignOwner, campaignID).Scan(&ownerID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", dto.ErrCampaignNotFound
+	}
+	if err != nil {
+		return "", fmt.Errorf("get campaign owner: %w", err)
+	}
+	return ownerID, nil
+}
+
+func (p *chatPersistence) GetConversationSummary(ctx context.Context, conversationID, currentUserID string) (*dto.ConversationItem, error) {
+	item, err := scanConversation(p.db.QueryRowContext(ctx, getConversationSummary, currentUserID, conversationID))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, dto.ErrConversationNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("get conversation summary: %w", err)
+	}
+	return item, nil
 }
 
 func (p *chatPersistence) ListConversationsByUserID(ctx context.Context, userID string, limit, offset int) ([]dto.ConversationItem, error) {
 	if limit <= 0 {
-		limit = 30
+		limit = defaultConversationLimit
+	}
+	if limit > maxConversationLimit {
+		limit = maxConversationLimit
 	}
 	if offset < 0 {
 		offset = 0
@@ -112,31 +157,17 @@ func (p *chatPersistence) ListConversationsByUserID(ctx context.Context, userID 
 
 	rows, err := p.db.QueryContext(ctx, listConversationsByUser, userID, limit, offset)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("list conversations: %w", err)
 	}
 	defer rows.Close()
 
 	items := make([]dto.ConversationItem, 0)
 	for rows.Next() {
-		var item dto.ConversationItem
-		err := rows.Scan(
-			&item.ID,
-			&item.CampaignID,
-			&item.CampaignTitle,
-			&item.Status,
-			&item.LastMessagePreview,
-			&item.LastMessageAt,
-			&item.CreatedAt,
-			&item.OtherUserID,
-			&item.OtherUserRole,
-			&item.OtherUserName,
-			&item.OtherUserAvatar,
-			&item.UnreadCount,
-		)
+		item, err := scanConversation(rows)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("scan conversation: %w", err)
 		}
-		items = append(items, item)
+		items = append(items, *item)
 	}
 
 	return items, rows.Err()
@@ -144,26 +175,31 @@ func (p *chatPersistence) ListConversationsByUserID(ctx context.Context, userID 
 
 func (p *chatPersistence) IsConversationParticipant(ctx context.Context, conversationID, userID string) (bool, error) {
 	var exists bool
-	err := p.db.QueryRowContext(ctx, checkParticipantExists, conversationID, userID).Scan(&exists)
-	return exists, err
+	if err := p.db.QueryRowContext(ctx, checkParticipantExists, conversationID, userID).Scan(&exists); err != nil {
+		return false, fmt.Errorf("check participant: %w", err)
+	}
+	return exists, nil
 }
 
 func (p *chatPersistence) GetOtherParticipantID(ctx context.Context, conversationID, currentUserID string) (string, error) {
 	var otherID string
 	err := p.db.QueryRowContext(ctx, getOtherParticipant, conversationID, currentUserID).Scan(&otherID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", dto.ErrConversationNotFound
+	}
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return "", errors.New("participant not found")
-		}
-		return "", err
+		return "", fmt.Errorf("get other participant: %w", err)
 	}
 	return otherID, nil
 }
 
-func (p *chatPersistence) InsertMessage(ctx context.Context, req dto.SendMessageRequest, senderUserID string) (*dto.Message, error) {
+// InsertMessage stores a message and updates the conversation preview.
+// created is false when the sender already sent a message with the same
+// client_message_id; the original message is returned unchanged.
+func (p *chatPersistence) InsertMessage(ctx context.Context, req dto.SendMessageRequest, senderUserID string) (*dto.Message, bool, error) {
 	tx, err := p.db.BeginTx(ctx, nil)
 	if err != nil {
-		return nil, err
+		return nil, false, fmt.Errorf("begin message tx: %w", err)
 	}
 	defer tx.Rollback()
 
@@ -172,32 +208,24 @@ func (p *chatPersistence) InsertMessage(ctx context.Context, req dto.SendMessage
 		mediaType = req.MediaType
 	}
 
-	var msg dto.Message
-	err = tx.QueryRowContext(ctx, insertMessage,
+	msg, err := scanMessage(tx.QueryRowContext(ctx, insertMessage,
 		req.ConversationID,
 		senderUserID,
 		req.ReceiverUserID,
 		req.Body,
 		req.MediaURL,
 		mediaType,
-	).Scan(
-		&msg.ID,
-		&msg.ConversationID,
-		&msg.SenderUserID,
-		&msg.ReceiverUserID,
-		&msg.Body,
-		&msg.MediaURL,
-		&msg.MediaType,
-		&msg.IsRead,
-		&msg.ReadAt,
-		&msg.DeletedForSender,
-		&msg.DeletedForReceiver,
-		&msg.IsDeletedForEveryone,
-		&msg.CreatedAt,
-		&msg.UpdatedAt,
-	)
+		req.ClientMessageID,
+	))
+	if errors.Is(err, sql.ErrNoRows) {
+		existing, err := scanMessage(tx.QueryRowContext(ctx, getMessageByClientID, senderUserID, req.ClientMessageID))
+		if err != nil {
+			return nil, false, fmt.Errorf("load duplicate message: %w", err)
+		}
+		return existing, false, nil
+	}
 	if err != nil {
-		return nil, fmt.Errorf("insert message: %w", err)
+		return nil, false, fmt.Errorf("insert message: %w", err)
 	}
 
 	preview := messagePreview(req.Body)
@@ -206,87 +234,88 @@ func (p *chatPersistence) InsertMessage(ctx context.Context, req dto.SendMessage
 	}
 
 	if _, err := tx.ExecContext(ctx, updateConversationLastMessage, preview, req.ConversationID); err != nil {
-		return nil, fmt.Errorf("update conversation last message: %w", err)
+		return nil, false, fmt.Errorf("update conversation last message: %w", err)
 	}
 
 	if err := tx.Commit(); err != nil {
-		return nil, err
+		return nil, false, fmt.Errorf("commit message: %w", err)
 	}
 
-	return &msg, nil
+	return msg, true, nil
 }
 
 func (p *chatPersistence) GetMessages(ctx context.Context, conversationID, currentUserID, cursor string, limit int) ([]dto.Message, *dto.CursorPaginationMeta, error) {
-	if limit <= 0 || limit > 100 {
-		limit = 50
+	if limit <= 0 {
+		limit = defaultMessageLimit
+	}
+	if limit > maxMessageLimit {
+		limit = maxMessageLimit
 	}
 
-	rows, err := p.db.QueryContext(ctx, getMessagesByConversation, conversationID, currentUserID, cursor, limit)
+	var cursorArg sql.NullString
+	if cursor != "" {
+		cursorArg = sql.NullString{String: cursor, Valid: true}
+	}
+
+	// Fetch one extra row to learn whether older messages exist.
+	rows, err := p.db.QueryContext(ctx, getMessagesByConversation, conversationID, currentUserID, cursorArg, limit+1)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("get messages: %w", err)
 	}
 	defer rows.Close()
 
-	messages := make([]dto.Message, 0)
+	messages := make([]dto.Message, 0, limit+1)
 	for rows.Next() {
-		var msg dto.Message
-		err := rows.Scan(
-			&msg.ID,
-			&msg.ConversationID,
-			&msg.SenderUserID,
-			&msg.ReceiverUserID,
-			&msg.Body,
-			&msg.MediaURL,
-			&msg.MediaType,
-			&msg.IsRead,
-			&msg.ReadAt,
-			&msg.DeletedForSender,
-			&msg.DeletedForReceiver,
-			&msg.IsDeletedForEveryone,
-			&msg.CreatedAt,
-			&msg.UpdatedAt,
-		)
+		msg, err := scanMessage(rows)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, fmt.Errorf("scan message: %w", err)
 		}
-		messages = append(messages, msg)
+		messages = append(messages, *msg)
 	}
-
 	if err := rows.Err(); err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("iterate messages: %w", err)
 	}
 
-	var nextCursor string
-	hasMore := len(messages) == limit
-	if len(messages) > 0 && hasMore {
-		nextCursor = messages[0].ID
+	hasMore := len(messages) > limit
+	if hasMore {
+		// Rows are oldest→newest; the extra row is the oldest one.
+		messages = messages[1:]
 	}
 
-	meta := &dto.CursorPaginationMeta{
-		NextCursor: nextCursor,
-		HasMore:    hasMore,
-		Limit:      limit,
+	meta := &dto.CursorPaginationMeta{HasMore: hasMore, Limit: limit}
+	if hasMore && len(messages) > 0 {
+		meta.NextCursor = messages[0].ID
 	}
 
 	return messages, meta, nil
 }
 
-func (p *chatPersistence) MarkMessagesAsRead(ctx context.Context, conversationID, currentUserID string) error {
+// MarkMessagesAsRead marks every unread message for the user in the
+// conversation as read and returns how many changed.
+func (p *chatPersistence) MarkMessagesAsRead(ctx context.Context, conversationID, currentUserID string) (int, error) {
 	tx, err := p.db.BeginTx(ctx, nil)
 	if err != nil {
-		return err
+		return 0, fmt.Errorf("begin mark read tx: %w", err)
 	}
 	defer tx.Rollback()
 
-	if _, err := tx.ExecContext(ctx, markMessagesRead, conversationID, currentUserID); err != nil {
-		return err
+	result, err := tx.ExecContext(ctx, markMessagesRead, conversationID, currentUserID)
+	if err != nil {
+		return 0, fmt.Errorf("mark messages read: %w", err)
+	}
+	n, _ := result.RowsAffected()
+	if n == 0 {
+		return 0, nil
 	}
 
 	if _, err := tx.ExecContext(ctx, updateParticipantLastRead, conversationID, currentUserID); err != nil {
-		return err
+		return 0, fmt.Errorf("update last read: %w", err)
 	}
 
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return 0, fmt.Errorf("commit mark read: %w", err)
+	}
+	return int(n), nil
 }
 
 func (p *chatPersistence) DeleteMessage(ctx context.Context, messageID, currentUserID, deleteType string) (*dto.Message, error) {
@@ -296,71 +325,51 @@ func (p *chatPersistence) DeleteMessage(ctx context.Context, messageID, currentU
 	}
 
 	if msg.SenderUserID != currentUserID && msg.ReceiverUserID != currentUserID {
-		return nil, errors.New("unauthorized to delete this message")
+		return nil, dto.ErrMessageNotFound
 	}
 
 	var updateQuery string
-	if deleteType == "everyone" {
-		if msg.SenderUserID != currentUserID {
-			return nil, errors.New("only sender can delete for everyone")
-		}
+	switch {
+	case deleteType == "everyone" && msg.SenderUserID != currentUserID:
+		return nil, dto.ErrDeleteNotAllowed
+	case deleteType == "everyone":
 		updateQuery = deleteMessageForEveryone
-	} else {
-		if msg.SenderUserID == currentUserID {
-			updateQuery = deleteMessageForSender
-		} else {
-			updateQuery = deleteMessageForReceiver
+	case msg.SenderUserID == currentUserID:
+		updateQuery = deleteMessageForSender
+	default:
+		updateQuery = deleteMessageForReceiver
+	}
+
+	tx, err := p.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, fmt.Errorf("begin delete tx: %w", err)
+	}
+	defer tx.Rollback()
+
+	updated, err := scanMessage(tx.QueryRowContext(ctx, updateQuery, messageID))
+	if err != nil {
+		return nil, fmt.Errorf("delete message: %w", err)
+	}
+
+	if deleteType == "everyone" {
+		if _, err := tx.ExecContext(ctx, refreshConversationPreview, updated.ConversationID); err != nil {
+			return nil, fmt.Errorf("refresh conversation preview: %w", err)
 		}
 	}
 
-	var updated dto.Message
-	err = p.db.QueryRowContext(ctx, updateQuery, messageID).Scan(
-		&updated.ID,
-		&updated.ConversationID,
-		&updated.SenderUserID,
-		&updated.ReceiverUserID,
-		&updated.Body,
-		&updated.MediaURL,
-		&updated.MediaType,
-		&updated.IsRead,
-		&updated.ReadAt,
-		&updated.DeletedForSender,
-		&updated.DeletedForReceiver,
-		&updated.IsDeletedForEveryone,
-		&updated.CreatedAt,
-		&updated.UpdatedAt,
-	)
-	if err != nil {
-		return nil, err
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("commit delete: %w", err)
 	}
-
-	return &updated, nil
+	return updated, nil
 }
 
 func (p *chatPersistence) GetMessageByID(ctx context.Context, messageID string) (*dto.Message, error) {
-	var msg dto.Message
-	err := p.db.QueryRowContext(ctx, getMessageByID, messageID).Scan(
-		&msg.ID,
-		&msg.ConversationID,
-		&msg.SenderUserID,
-		&msg.ReceiverUserID,
-		&msg.Body,
-		&msg.MediaURL,
-		&msg.MediaType,
-		&msg.IsRead,
-		&msg.ReadAt,
-		&msg.DeletedForSender,
-		&msg.DeletedForReceiver,
-		&msg.IsDeletedForEveryone,
-		&msg.CreatedAt,
-		&msg.UpdatedAt,
-	)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, errors.New("message not found")
-		}
-		return nil, err
+	msg, err := scanMessage(p.db.QueryRowContext(ctx, getMessageByID, messageID))
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, dto.ErrMessageNotFound
 	}
-
-	return &msg, nil
+	if err != nil {
+		return nil, fmt.Errorf("get message: %w", err)
+	}
+	return msg, nil
 }

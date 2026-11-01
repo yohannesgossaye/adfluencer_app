@@ -20,13 +20,13 @@ type handlers struct {
 	marketplace handler.MarketplaceHandler
 }
 
-func InitHandler(mo modules, tokens *jwt.TokenManager, log utils.Logger) handlers {
+func InitHandler(mo modules, tokens *jwt.TokenManager, allowedOrigins []string, log utils.Logger) handlers {
 	return handlers{
 		auth:       auth.InitAuthHandler(mo.auth, log),
 		influencer: influencerHTTP.InitInfluencerHandler(mo.influencer, log),
 		business:   businessHTTP.InitBusinessHandler(mo.business, log),
 		admin:      adminHTTP.InitAdminHandler(mo.admin, log),
-		chat:       chatHTTP.InitChatHandler(mo.chat, tokens, log),
+		chat:       chatHTTP.InitChatHandler(mo.chat, tokens, allowedOrigins, log),
 	}
 }
 

@@ -107,7 +107,7 @@ func Initiator(ctx context.Context) {
 		RememberMeRefreshTokenTTL: cfg.JWT.RememberMeRefreshTokenTTL,
 	})
 	service := InitModules(postgresRepo, tokens, emailClient, smsClient, fileStorage, cfg.FrontendURL, cfg.IsDevelopment(), logger)
-	handler := InitHandler(service, tokens, logger)
+	handler := InitHandler(service, tokens, cfg.CORSOrigins, logger)
 	authMW := middleware.InitAuthMiddleware(tokens)
 	InitRoute(r, handler, authMW)
 
@@ -115,6 +115,9 @@ func Initiator(ctx context.Context) {
 		Addr:    ":" + cfg.Port,
 		Handler: r,
 	}
+	// WebSockets are hijacked connections that Shutdown does not wait for;
+	// tell chat clients to reconnect instead of dropping them silently.
+	server.RegisterOnShutdown(service.chat.GetHub().CloseAll)
 
 	go func() {
 		logger.Info(ctx, "🚀 service started", zap.String("port", cfg.Port))

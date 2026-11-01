@@ -70,7 +70,7 @@ func MarketPlaceRoutes(router chi.Router, chatHandler handler.ChatHandler, authM
 				},
 			},
 			{
-				// WebSocket endpoint handles token validation internally via query param or header
+				// WebSocket endpoint validates the access token itself (Authorization header or subprotocol)
 				Method:  http.MethodGet,
 				Path:    "/ws",
 				Handler: chatHandler.WebSocket,

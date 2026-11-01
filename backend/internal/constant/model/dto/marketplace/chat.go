@@ -15,6 +15,7 @@ type Message struct {
 	DeletedForSender     bool       `json:"deleted_for_sender"`
 	DeletedForReceiver   bool       `json:"deleted_for_receiver"`
 	IsDeletedForEveryone bool       `json:"is_deleted_for_everyone"`
+	ClientMessageID      *string    `json:"client_message_id,omitempty"`
 	CreatedAt            time.Time  `json:"created_at"`
 	UpdatedAt            time.Time  `json:"updated_at"`
 }
@@ -47,10 +48,19 @@ type CreateConversationRequest struct {
 
 type SendMessageRequest struct {
 	ConversationID string  `json:"conversation_id"`
-	ReceiverUserID string  `json:"receiver_user_id"`
 	Body           string  `json:"body"`
 	MediaURL       *string `json:"media_url,omitempty"`
 	MediaType      string  `json:"media_type,omitempty"`
+	// ClientMessageID is an optional client-generated UUID. Sending the same
+	// value again returns the original message instead of a duplicate.
+	ClientMessageID *string `json:"client_message_id,omitempty"`
+	// ReceiverUserID is derived from the conversation, never taken from input.
+	ReceiverUserID string `json:"-"`
+}
+
+type MarkReadResponse struct {
+	ConversationID string `json:"conversation_id"`
+	ReadCount      int    `json:"read_count"`
 }
 
 type MarkReadRequest struct {
@@ -62,14 +72,14 @@ type DeleteMessageRequest struct {
 }
 
 type WSIncomingMessage struct {
-	Type           string  `json:"type"` // "send_message", "mark_read", "delete_message"
-	ConversationID string  `json:"conversation_id"`
-	ReceiverUserID string  `json:"receiver_user_id,omitempty"`
-	Body           string  `json:"body,omitempty"`
-	MediaURL       *string `json:"media_url,omitempty"`
-	MediaType      string  `json:"media_type,omitempty"`
-	MessageID      string  `json:"message_id,omitempty"`
-	DeleteType     string  `json:"delete_type,omitempty"`
+	Type            string  `json:"type"` // "send_message", "mark_read", "delete_message"
+	ConversationID  string  `json:"conversation_id"`
+	ClientMessageID *string `json:"client_message_id,omitempty"`
+	Body            string  `json:"body,omitempty"`
+	MediaURL        *string `json:"media_url,omitempty"`
+	MediaType       string  `json:"media_type,omitempty"`
+	MessageID       string  `json:"message_id,omitempty"`
+	DeleteType      string  `json:"delete_type,omitempty"`
 }
 
 type WSOutgoingMessage struct {
@@ -80,7 +90,15 @@ type WSOutgoingMessage struct {
 type WSReadEvent struct {
 	ConversationID string    `json:"conversation_id"`
 	ReadByUserID   string    `json:"read_by_user_id"`
+	ReadCount      int       `json:"read_count"`
 	ReadAt         time.Time `json:"read_at"`
+}
+
+// WSErrorEvent is sent over the socket when an action from the client fails.
+type WSErrorEvent struct {
+	Code            string  `json:"code"`
+	Message         string  `json:"message"`
+	ClientMessageID *string `json:"client_message_id,omitempty"`
 }
 
 type WSDeleteEvent struct {
