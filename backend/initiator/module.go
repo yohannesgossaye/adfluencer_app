@@ -9,6 +9,7 @@ import (
 	chatModule "adinfluence_service_app/internal/module/marketplace/chat"
 	"adinfluence_service_app/platform/jwt"
 	"adinfluence_service_app/platform/mail"
+	"adinfluence_service_app/platform/notify"
 	"adinfluence_service_app/platform/sms"
 	platformStorage "adinfluence_service_app/platform/storage"
 	"adinfluence_service_app/platform/utils"
@@ -22,9 +23,9 @@ type modules struct {
 	chat       module.ChatService
 }
 
-func InitModules(persistence persistence, tokens *jwt.TokenManager, email *mail.Client, smsClient *sms.Client, files platformStorage.Service, frontendURL string, logSecrets bool, log utils.Logger) modules {
+func InitModules(persistence persistence, tokens *jwt.TokenManager, email *mail.Client, smsClient *sms.Client, dispatcher *notify.Dispatcher, files platformStorage.Service, frontendURL string, logSecrets bool, log utils.Logger) modules {
 	return modules{
-		auth:       auth.InitAuthModule(persistence.auth, tokens, email, smsClient, frontendURL, logSecrets, log),
+		auth:       auth.InitAuthModule(persistence.auth, tokens, email, smsClient, dispatcher, frontendURL, logSecrets, log),
 		influencer: influencer.InitInfluencerModule(persistence.influencer, persistence.contract, persistence.support, persistence.auth, files, log),
 		business:   businessModule.InitBusinessModule(persistence.business, persistence.influencer, persistence.contract, persistence.support, persistence.auth, files, log),
 		admin:      adminModule.InitAdminModule(persistence.admin, persistence.influencer, persistence.support, log),

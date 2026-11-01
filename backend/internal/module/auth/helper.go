@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"adinfluence_service_app/platform/notify"
+
 	customErr "adinfluence_service_app/internal/constant/errors"
 	"adinfluence_service_app/internal/constant/model"
 	authDto "adinfluence_service_app/internal/constant/model/dto/auth"
@@ -123,4 +125,13 @@ func (m *userAuthModule) recordLoginFailure(ctx context.Context, email string) e
 	}
 
 	return nil
+}
+
+// sendEmail queues an email for background delivery; the result is logged.
+func (m *userAuthModule) sendEmail(to, subject, body, purpose string) {
+	m.notify.Submit(notify.Job{
+		Kind:   "email",
+		Fields: []zap.Field{zap.String("purpose", purpose), zap.String("email", to)},
+		Send:   func() error { return m.mail.Send(to, subject, body) },
+	})
 }

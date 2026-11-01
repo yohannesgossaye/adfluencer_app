@@ -13,6 +13,7 @@ import (
 	"adinfluence_service_app/internal/handler/middleware"
 	"adinfluence_service_app/platform/jwt"
 	"adinfluence_service_app/platform/mail"
+	"adinfluence_service_app/platform/notify"
 	"adinfluence_service_app/platform/sms"
 
 	"github.com/go-chi/chi/v5"
@@ -70,7 +71,7 @@ func Initiator(ctx context.Context) {
 	if smsClient.Enabled() {
 		logger.Info(ctx, "sms service ready (Africa's Talking)")
 	} else {
-		logger.Warn(ctx, "sms not configured — phone OTP logged to console until SMS_USERNAME + SMS_API_KEY are set")
+		logger.Warn(ctx, "sms not configured — phone verification codes are not delivered until SMS_USERNAME + SMS_API_KEY are set")
 	}
 
 	fileStorage := initFileStorage(ctx, cfg.S3, cfg.Port, logger)
@@ -93,6 +94,7 @@ func Initiator(ctx context.Context) {
 	r.Use(chimiddleware.RealIP)
 	r.Use(chimiddleware.Logger)
 	r.Use(chimiddleware.Recoverer)
+	r.Use(requestTimeout(requestTimeoutDefault, requestTimeoutUpload))
 
 	// Serve uploaded files statically (files only — directory listings are disabled)
 	workDir, _ := os.Getwd()
@@ -106,14 +108,20 @@ func Initiator(ctx context.Context) {
 		RefreshTokenTTL:           cfg.JWT.RefreshTokenTTL,
 		RememberMeRefreshTokenTTL: cfg.JWT.RememberMeRefreshTokenTTL,
 	})
-	service := InitModules(postgresRepo, tokens, emailClient, smsClient, fileStorage, cfg.FrontendURL, cfg.IsDevelopment(), logger)
+	dispatcher := notify.New(logger)
+	service := InitModules(postgresRepo, tokens, emailClient, smsClient, dispatcher, fileStorage, cfg.FrontendURL, cfg.IsDevelopment(), logger)
 	handler := InitHandler(service, tokens, cfg.CORSOrigins, logger)
 	authMW := middleware.InitAuthMiddleware(tokens)
 	InitRoute(r, handler, authMW)
 
+	// No server-wide ReadTimeout/WriteTimeout: they would also cut long-lived
+	// chat WebSockets and slow uploads. Per-request limits live in requestTimeout.
 	server := &http.Server{
-		Addr:    ":" + cfg.Port,
-		Handler: r,
+		Addr:              ":" + cfg.Port,
+		Handler:           r,
+		ReadHeaderTimeout: 10 * time.Second,
+		IdleTimeout:       120 * time.Second,
+		MaxHeaderBytes:    1 << 20,
 	}
 	// WebSockets are hijacked connections that Shutdown does not wait for;
 	// tell chat clients to reconnect instead of dropping them silently.
@@ -138,8 +146,9 @@ func Initiator(ctx context.Context) {
 
 	if err := server.Shutdown(shutdownCtx); err != nil {
 		logger.Error(ctx, "server shutdown failed", zap.Error(err))
-		return
 	}
+	// Let queued verification emails go out before the process exits.
+	dispatcher.Close(shutdownCtx)
 
 	logger.Info(ctx, "server stopped gracefully")
 }
