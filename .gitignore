@@ -1,0 +1,7 @@
+# Local docs (contain deployment credentials) — do not commit
+docs/
+
+# Environment files (secrets) — do not commit
+.env
+.env.*
+!.env.example
