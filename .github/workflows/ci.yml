@@ -1,0 +1,89 @@
+# Runs on every pull request and every push to main.
+# A red check means: don't merge until it is fixed.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend (vet, tests, migrations)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      # Same major version as production; used by the migration tests.
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+      - name: Check formatting of changed Go files
+        if: github.event_name == 'pull_request'
+        run: |
+          git fetch --no-tags --depth=1 origin "${{ github.base_ref }}"
+          files=$(git diff --relative --name-only --diff-filter=AM "origin/${{ github.base_ref }}" -- '*.go')
+          if [ -n "$files" ]; then
+            bad=$(gofmt -l $files)
+            if [ -n "$bad" ]; then echo "Run gofmt on:"; echo "$bad"; exit 1; fi
+          fi
+      - name: go vet
+        run: go vet ./...
+      - name: go test
+        env:
+          MIGRATION_TEST_DSN: postgres://ci:ci@localhost:5432/ci?sslmode=disable
+        run: go test -race -count=1 ./...
+      - name: go build
+        run: go build -o /dev/null ./cmd/main.go
+
+  frontend:
+    name: Frontend (types, build, lint)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Type check
+        run: pnpm exec tsc --noEmit
+      - name: Build
+        env:
+          NEXT_PUBLIC_API_URL: https://13-49-175-98.sslip.io
+          NEXT_TELEMETRY_DISABLED: "1"
+        run: pnpm build
+      # Existing lint findings are cleaned up in Phase 4; until then lint is
+      # reported but does not block merging.
+      - name: Lint (report only)
+        continue-on-error: true
+        run: pnpm exec eslint .
