@@ -9,6 +9,7 @@ import (
 	"adinfluence_service_app/internal/storage"
 	"adinfluence_service_app/platform/jwt"
 	"adinfluence_service_app/platform/mail"
+	"adinfluence_service_app/platform/notify"
 	"adinfluence_service_app/platform/otp"
 	"adinfluence_service_app/platform/ratelimit"
 	"adinfluence_service_app/platform/sms"
@@ -27,6 +28,7 @@ type userAuthModule struct {
 	tokens      *jwt.TokenManager
 	mail        *mail.Client
 	sms         *sms.Client
+	notify      *notify.Dispatcher
 	frontendURL string
 	logSecrets  bool
 	logger      utils.Logger
@@ -34,12 +36,13 @@ type userAuthModule struct {
 
 // logSecrets allows OTPs and reset links to be written to the log when no
 // email/SMS provider is configured. Enable it only for local development.
-func InitAuthModule(p storage.AuthPersisitence, tokens *jwt.TokenManager, email *mail.Client, smsClient *sms.Client, frontendURL string, logSecrets bool, log utils.Logger) module.AuthService {
+func InitAuthModule(p storage.AuthPersisitence, tokens *jwt.TokenManager, email *mail.Client, smsClient *sms.Client, dispatcher *notify.Dispatcher, frontendURL string, logSecrets bool, log utils.Logger) module.AuthService {
 	return &userAuthModule{
 		persistence: p,
 		tokens:      tokens,
 		mail:        email,
 		sms:         smsClient,
+		notify:      dispatcher,
 		frontendURL: strings.TrimRight(frontendURL, "/"),
 		logSecrets:  logSecrets,
 		logger:      log,
@@ -379,14 +382,7 @@ func (m *userAuthModule) ForgotPassword(ctx context.Context, req authDto.ForgotP
 	body := fmt.Sprintf("Reset your Adfluence password using this link:\n\n%s\n\nThis link expires in 1 hour.", resetLink)
 
 	if m.mail != nil && m.mail.Enabled() {
-		if err := m.mail.Send(cred.Email, "Reset your Adfluence password", body); err != nil {
-			m.logger.Warn(ctx, "failed to send password reset email",
-				zap.String("email", cred.Email),
-				zap.String("reason", err.Error()),
-			)
-		} else {
-			m.logger.Info(ctx, "password reset email dispatched", zap.String("email", cred.Email))
-		}
+		m.sendEmail(cred.Email, "Reset your Adfluence password", body, "password_reset")
 		return nil
 	}
 
@@ -480,14 +476,7 @@ func (m *userAuthModule) SendVerifyEmail(ctx context.Context, userID string) err
 	subject := "Verify your Adfluence email"
 
 	if m.mail != nil && m.mail.Enabled() {
-		if err := m.mail.Send(user.Email, subject, body); err != nil {
-			m.logger.Warn(ctx, "failed to send verification email",
-				zap.String("email", user.Email),
-				zap.String("reason", err.Error()),
-			)
-		} else {
-			m.logger.Info(ctx, "verification email dispatched", zap.String("email", user.Email))
-		}
+		m.sendEmail(user.Email, subject, body, "verify_email")
 		return nil
 	}
 
@@ -602,14 +591,11 @@ func (m *userAuthModule) SendVerifyPhone(ctx context.Context, userID string) err
 
 	message := fmt.Sprintf("Your Adfluence phone verification code is %s. Valid for 5 minutes.", code)
 	if m.sms != nil && m.sms.Enabled() {
-		if err := m.sms.Send(phone, message); err != nil {
-			m.logger.Warn(ctx, "failed to send SMS OTP",
-				zap.String("phone", phone),
-				zap.String("reason", err.Error()),
-			)
-		} else {
-			m.logger.Info(ctx, "phone verification SMS sent", zap.String("phone", phone))
-		}
+		m.notify.Submit(notify.Job{
+			Kind:   "sms",
+			Fields: []zap.Field{zap.String("purpose", "verify_phone"), zap.String("phone", phone)},
+			Send:   func() error { return m.sms.Send(phone, message) },
+		})
 		return nil
 	}
 

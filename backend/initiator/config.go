@@ -3,6 +3,7 @@ package initiator
 import (
 	"log"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -15,6 +16,7 @@ type Config struct {
 	FrontendURL string
 	AppEnv      string
 	CORSOrigins []string
+	DB          DBConfig
 	JWT         JWTConfig
 	SMTP        SMTPConfig
 	SMS         SMSConfig
@@ -29,6 +31,15 @@ type S3Config struct {
 	Bucket       string
 	PublicURL    string
 	UsePathStyle bool
+}
+
+// DBConfig bounds the connection pool so a traffic spike queues requests
+// instead of exhausting Postgres max_connections.
+type DBConfig struct {
+	MaxOpenConns    int
+	MaxIdleConns    int
+	ConnMaxLifetime time.Duration
+	ConnMaxIdleTime time.Duration
 }
 
 type SMSConfig struct {
@@ -61,6 +72,7 @@ func Load() *Config {
 		FrontendURL: Getenv("FRONTEND_URL", "http://localhost:3000"),
 		AppEnv:      Getenv("APP_ENV", "production"),
 		CORSOrigins: parseList(Getenv("CORS_ORIGINS", defaultCORSOrigins)),
+		DB:          loadDBConfig(),
 		JWT:         loadJWTConfig(),
 		SMTP:        loadSMTPConfig(),
 		SMS:         loadSMSConfig(),
@@ -133,6 +145,15 @@ func loadS3Config() S3Config {
 	}
 }
 
+func loadDBConfig() DBConfig {
+	return DBConfig{
+		MaxOpenConns:    parseInt(Getenv("DB_MAX_OPEN_CONNS", "25"), 25),
+		MaxIdleConns:    parseInt(Getenv("DB_MAX_IDLE_CONNS", "10"), 10),
+		ConnMaxLifetime: parseDuration(Getenv("DB_CONN_MAX_LIFETIME", "30m"), 30*time.Minute),
+		ConnMaxIdleTime: parseDuration(Getenv("DB_CONN_MAX_IDLE_TIME", "5m"), 5*time.Minute),
+	}
+}
+
 func loadJWTConfig() JWTConfig {
 	secret := os.Getenv("JWT_SECRET")
 
@@ -161,4 +182,12 @@ func parseDuration(raw string, fallback time.Duration) time.Duration {
 		return fallback
 	}
 	return d
+}
+
+func parseInt(raw string, fallback int) int {
+	n, err := strconv.Atoi(strings.TrimSpace(raw))
+	if err != nil || n <= 0 {
+		return fallback
+	}
+	return n
 }

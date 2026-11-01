@@ -6,7 +6,10 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 )
+
+var httpClient = &http.Client{Timeout: 15 * time.Second}
 
 type Config struct {
 	Username string
@@ -51,7 +54,7 @@ func (c *Client) Send(to, message string) error {
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Accept", "application/json")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("send sms: %w", err)
 	}
