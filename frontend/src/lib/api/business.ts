@@ -45,10 +45,22 @@ export type DashboardRecommendationRow = {
   campaign_title: string;
 };
 
+export type VerificationStatus = "unsubmitted" | "pending" | "verified" | "rejected";
+
 export type MarketplaceAccessResponse = {
   visible_in_marketplace: boolean;
   can_create_contracts: boolean;
+  can_publish_campaigns: boolean;
+  verification_status: VerificationStatus;
   message?: string;
+};
+
+export type BusinessVerificationInfo = {
+  status: VerificationStatus;
+  /** Reason from the Adfluence team when rejected or re-review is needed. */
+  note?: string;
+  submitted_at?: string;
+  verified_at?: string;
 };
 
 export type DashboardSummaryResponse = {
@@ -87,6 +99,7 @@ export type BusinessProfileDetail = {
   preferred_platforms: string[];
   monthly_marketing_budget?: number;
   is_verified: boolean;
+  verification: BusinessVerificationInfo;
 };
 
 export type BusinessCompleteness = {
@@ -101,6 +114,7 @@ export type BusinessProfileResponse = {
     email: string;
     phone_number?: string;
     status: string;
+    status_reason?: string;
     email_verified: boolean;
     phone_verified: boolean;
   };
@@ -383,8 +397,9 @@ export const businessApi = {
     return res.data;
   },
 
-  completeProfile: async (): Promise<ApiResponse<{ status: string; message: string; is_verified: boolean }>> => {
-    const res = await apiClient.post<ApiResponse<{ status: string; message: string; is_verified: boolean }>>(
+  /** Submits (or re-submits after a rejection) the profile for admin verification. */
+  completeProfile: async (): Promise<ApiResponse<{ status: string; message: string; is_verified: boolean; completed_at: string }>> => {
+    const res = await apiClient.post<ApiResponse<{ status: string; message: string; is_verified: boolean; completed_at: string }>>(
       "/api/v1/business/profile/complete"
     );
     return res.data;

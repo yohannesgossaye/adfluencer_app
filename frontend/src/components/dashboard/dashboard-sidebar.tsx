@@ -12,6 +12,7 @@ import {
   IconMessageCircle,
   IconReceipt2,
   IconRosetteDiscountCheck,
+  IconShieldCheck,
   IconSparkles,
   IconTags,
   IconUserCircle,
@@ -37,6 +38,7 @@ const iconMap = {
   disputes: IconAlertTriangle,
   categories: IconTags,
   support: IconHeadset,
+  verification: IconShieldCheck,
 } as const;
 
 export function DashboardSidebar({

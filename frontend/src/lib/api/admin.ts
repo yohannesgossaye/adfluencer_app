@@ -113,6 +113,20 @@ export type InfluencerApplicationDetail = {
 };
 
 // --- Business Verification Types ---
+/** Pagination block returned by backend list endpoints. */
+export type ListPagination = {
+  total_docs: number;
+  limit: number;
+  total_pages: number;
+  page: number;
+  has_prev_page: boolean;
+  has_next_page: boolean;
+  next_page?: number;
+};
+
+export type BusinessVerificationStatus = "pending" | "verified" | "rejected";
+export type BusinessVerificationFilter = BusinessVerificationStatus | "all";
+
 export type BusinessVerificationItem = {
   user_id: string;
   business_name: string;
@@ -122,22 +136,45 @@ export type BusinessVerificationItem = {
   logo_url?: string;
   email: string;
   is_verified: boolean;
+  verification_status: BusinessVerificationStatus;
+  submitted_at?: string;
   registered_at: string;
 };
 
 export type BusinessVerificationDetail = {
   user_id: string;
   email: string;
+  email_verified: boolean;
   phone_number?: string;
+  phone_verified: boolean;
   status: string;
   business_name: string;
+  legal_business_name?: string;
   owner_full_name: string;
+  tin_number?: string;
   industry?: string;
+  business_type?: string;
+  business_size?: string;
   city?: string;
+  region?: string;
+  address?: string;
+  website_url?: string;
+  social_links: { instagram?: string; tiktok?: string; facebook?: string; linkedin?: string };
   description?: string;
   logo_url?: string;
   is_verified: boolean;
+  verification_status: BusinessVerificationStatus | "unsubmitted";
+  verification_note?: string;
+  submitted_at?: string;
+  verified_at?: string;
   registered_at: string;
+};
+
+export type BusinessVerificationDecision = {
+  user_id: string;
+  is_verified: boolean;
+  verification_status: string;
+  reason?: string;
 };
 
 // --- User Governance Types ---
@@ -345,12 +382,12 @@ export const adminApi = {
 
   // 3. Business Verifications
   listBusinessVerifications: async (params?: {
-    status?: string;
+    status?: BusinessVerificationFilter;
     search?: string;
     page?: number;
     limit?: number;
-  }): Promise<ApiResponse<{ items: BusinessVerificationItem[]; pagination: { total: number; page: number; limit: number } }>> => {
-    const res = await apiClient.get<ApiResponse<{ items: BusinessVerificationItem[]; pagination: { total: number; page: number; limit: number } }>>(
+  }): Promise<ApiResponse<{ items: BusinessVerificationItem[]; pagination: ListPagination }>> => {
+    const res = await apiClient.get<ApiResponse<{ items: BusinessVerificationItem[]; pagination: ListPagination }>>(
       "/api/v1/admin/businesses/verifications",
       { params }
     );
@@ -367,19 +404,32 @@ export const adminApi = {
   verifyBusiness: async (
     userId: string,
     data?: { admin_note?: string }
-  ): Promise<ApiResponse<{ user_id: string; is_verified: boolean; verified_at: string }>> => {
-    const res = await apiClient.post<ApiResponse<{ user_id: string; is_verified: boolean; verified_at: string }>>(
+  ): Promise<ApiResponse<{ user_id: string; is_verified: boolean; verification_status: string; verified_at: string }>> => {
+    const res = await apiClient.post<ApiResponse<{ user_id: string; is_verified: boolean; verification_status: string; verified_at: string }>>(
       `/api/v1/admin/businesses/verifications/${userId}/verify`,
+      data ?? {}
+    );
+    return res.data;
+  },
+
+  /** Rejects a pending business. The reason (5–1000 chars) is shown to the business. */
+  rejectBusinessVerification: async (
+    userId: string,
+    data: { reason: string }
+  ): Promise<ApiResponse<BusinessVerificationDecision>> => {
+    const res = await apiClient.post<ApiResponse<BusinessVerificationDecision>>(
+      `/api/v1/admin/businesses/verifications/${userId}/reject`,
       data
     );
     return res.data;
   },
 
+  /** Removes verification from a verified business. The reason is shown to the business. */
   revokeBusinessVerification: async (
     userId: string,
-    data?: { reason?: string }
-  ): Promise<ApiResponse<{ user_id: string; is_verified: boolean }>> => {
-    const res = await apiClient.post<ApiResponse<{ user_id: string; is_verified: boolean }>>(
+    data: { reason: string }
+  ): Promise<ApiResponse<BusinessVerificationDecision>> => {
+    const res = await apiClient.post<ApiResponse<BusinessVerificationDecision>>(
       `/api/v1/admin/businesses/verifications/${userId}/revoke`,
       data
     );
