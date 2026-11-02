@@ -22,10 +22,14 @@ export function InfluencerProfile({ influencerId }: InfluencerProfileProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const urlCampaignId = searchParams.get("campaign_id") || undefined;
-  // Without ?campaign_id the business picks one of its live campaigns.
+  // Invites go to a live campaign only. A campaign_id from a link is preselected
+  // when it is live; otherwise the business picks one.
   const [pickedCampaignId, setPickedCampaignId] = useState("");
   const [liveCampaigns, setLiveCampaigns] = useState<Array<{ id: string; title: string }>>([]);
-  const campaignId = urlCampaignId || pickedCampaignId || undefined;
+  const urlIsLive = Boolean(urlCampaignId && liveCampaigns.some((c) => c.id === urlCampaignId));
+  const campaignId = pickedCampaignId || (urlIsLive ? urlCampaignId : undefined);
+  // An invite this creator already has for the chosen campaign (pending or accepted).
+  const [existingInvite, setExistingInvite] = useState<{ campaignId: string; status: string } | null>(null);
 
   const [creator, setCreator] = useState<InfluencerViewDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -53,12 +57,29 @@ export function InfluencerProfile({ influencerId }: InfluencerProfileProps) {
   }, [influencerId, urlCampaignId]);
 
   useEffect(() => {
-    if (urlCampaignId) return;
     businessApi
       .listCampaigns({ status: "active", page: 1, limit: 50 })
       .then((res) => setLiveCampaigns((res.data?.items ?? []).map((c) => ({ id: c.id, title: c.title }))))
       .catch(() => setLiveCampaigns([]));
-  }, [urlCampaignId]);
+  }, []);
+
+  useEffect(() => {
+    if (!campaignId) return;
+    let cancelled = false;
+    businessApi
+      .listInvites(campaignId)
+      .then((res) => {
+        const inv = res.data?.items?.find(
+          (i) => i.influencer_user_id === influencerId && (i.status === "pending" || i.status === "accepted"),
+        );
+        if (!cancelled) setExistingInvite(inv ? { campaignId, status: inv.status } : null);
+      })
+      .catch(() => !cancelled && setExistingInvite(null));
+    return () => {
+      cancelled = true;
+    };
+  }, [campaignId, influencerId]);
+  const alreadyInvited = existingInvite && existingInvite.campaignId === campaignId ? existingInvite.status : null;
 
   const handleSendInvite = async () => {
     if (!campaignId || !creator) return;
@@ -191,18 +212,24 @@ export function InfluencerProfile({ influencerId }: InfluencerProfileProps) {
           </Button>
           <Button
             onClick={handleSendInvite}
-            disabled={!campaignId || inviteSent || isInviting}
+            disabled={!campaignId || inviteSent || isInviting || Boolean(alreadyInvited)}
             className="h-11 rounded-xl bg-[color:var(--adfluence-orange)] px-6 text-white hover:bg-[color:var(--adfluence-orange-hover)] disabled:opacity-60"
           >
             <Send className="mr-2 size-4" />
-            {isInviting ? "Sending..." : inviteSent ? "Invitation Sent" : "Invite to Campaign"}
+            {isInviting
+              ? "Sending…"
+              : inviteSent || alreadyInvited === "pending"
+                ? "Invited, waiting for reply"
+                : alreadyInvited === "accepted"
+                  ? "Accepted your invite"
+                  : "Invite to campaign"}
           </Button>
-          {!urlCampaignId ? (
+          {(
             liveCampaigns.length > 0 ? (
               <label className="w-full text-xs text-[#CBD5E1]">
                 <span className="mb-1 block">Campaign to invite them to</span>
                 <select
-                  value={pickedCampaignId}
+                  value={campaignId ?? ""}
                   onChange={(e) => {
                     setPickedCampaignId(e.target.value);
                     setInviteSent(false);
@@ -226,7 +253,7 @@ export function InfluencerProfile({ influencerId }: InfluencerProfileProps) {
                 to invite creators.
               </p>
             )
-          ) : null}
+          )}
         </div>
       </section>
 

@@ -5,7 +5,7 @@ import { ArrowLeft } from "lucide-react";
 
 import { toast } from "sonner";
 
-import { ConfirmActionDialog, type ConfirmActionRequest } from "@/components/admin/confirm-action-dialog";
+import { ConfirmActionDialog, type ConfirmActionRequest } from "@/components/common/confirm-action-dialog";
 import { ListStatus, LoadMore } from "@/components/common/list-status";
 import { Button } from "@/components/ui/button";
 import {

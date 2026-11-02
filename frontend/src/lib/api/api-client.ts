@@ -49,9 +49,10 @@ function clearSessionAndRedirect() {
   window.localStorage.removeItem(REFRESH_TOKEN_STORAGE_KEY);
   window.localStorage.removeItem(AUTH_USER_STORAGE_KEY);
   const path = `${window.location.pathname}${window.location.search}`;
-  if (!path.startsWith("/auth")) {
-    window.location.assign(`/auth/login?next=${encodeURIComponent(path)}`);
-  }
+  if (path.startsWith("/auth") || path.startsWith("/admin/login")) return;
+  // Admins sign in on their own page; everyone else on the main login.
+  const login = path.startsWith("/admin") ? "/admin/login" : "/auth/login";
+  window.location.assign(`${login}?next=${encodeURIComponent(path)}`);
 }
 
 async function requestNewTokens(): Promise<string> {

@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import axios from "axios";
 
 import { AuthPageCard } from "@/components/auth/auth-page-card";
 import { BrandLogo } from "@/components/common/brand-logo";
@@ -10,6 +9,7 @@ import { GradientButton } from "@/components/common/gradient-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { authApi } from "@/lib/api/auth";
+import { authErrorMessage } from "@/lib/api-errors";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -32,13 +32,7 @@ export default function ForgotPasswordPage() {
       const res = await authApi.forgotPassword(email.trim());
       setMessage(res.message || "Password reset instructions have been sent to your email.");
     } catch (err: unknown) {
-      if (axios.isAxiosError(err) && err.response?.data?.message) {
-        setError(err.response.data.message);
-      } else if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError("Failed to process request. Please try again.");
-      }
+      setError(authErrorMessage(err, "Failed to process request. Please try again."));
     } finally {
       setIsLoading(false);
     }
