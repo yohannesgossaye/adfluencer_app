@@ -3,11 +3,19 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Loader2, MessageSquare } from "lucide-react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { influencerApi, type InfluencerInviteItem } from "@/lib/api/influencer";
 import { chatApi } from "@/lib/api/chat";
 import { cn } from "@/lib/utils";
+
+function apiMessage(err: unknown, fallback: string) {
+  const data = (err as { response?: { data?: { message?: string; error?: { type?: string } } } })?.response?.data;
+  if (data?.error?.type === "invalid_campaign_status") return "This campaign is no longer running, so the invite can't be changed.";
+  if (data?.error?.type === "account_not_verified") return "Your profile must be approved before you can accept invites.";
+  return data?.message || fallback;
+}
 
 const tabs: Array<{ id: "all" | "pending" | "accepted" | "rejected"; label: string }> = [
   { id: "all", label: "All" },
@@ -34,7 +42,8 @@ export function InfluencerInvites() {
   const router = useRouter();
   const [invites, setInvites] = useState<InfluencerInviteItem[]>([]);
   const [tab, setTab] = useState<(typeof tabs)[number]["id"]>("all");
-  const [isLoading, setIsLoading] = useState(true);
+  const [listState, setListState] = useState<"loading" | "ready" | "error">("loading");
+  const [busyId, setBusyId] = useState<string | null>(null);
   const [startingChatId, setStartingChatId] = useState<string | null>(null);
 
   const loadInvites = async (statusFilter?: string) => {
@@ -42,30 +51,32 @@ export function InfluencerInvites() {
       const res = await influencerApi.listInvites(
         statusFilter && statusFilter !== "all" ? { status: statusFilter } : undefined
       );
-      if (res.data?.items) {
-        setInvites(res.data.items);
-      }
+      setInvites(res.data?.items ?? []);
+      setListState("ready");
     } catch {
-      // fallback
-    } finally {
-      setIsLoading(false);
+      setListState("error");
     }
   };
 
   useEffect(() => {
-    loadInvites(tab);
+    void Promise.resolve().then(() => loadInvites(tab));
   }, [tab]);
 
   const updateStatus = async (id: string, action: "accepted" | "rejected") => {
+    if (action === "rejected" && !window.confirm("Decline this invite? The business will be told.")) return;
+    setBusyId(id);
     try {
       if (action === "accepted") {
         await influencerApi.acceptInvite(id);
       } else {
         await influencerApi.rejectInvite(id);
       }
+      toast.success(action === "accepted" ? "Invite accepted. The business can now send you a contract." : "Invite declined.");
       await loadInvites(tab);
-    } catch {
-      // fallback
+    } catch (err) {
+      toast.error(apiMessage(err, "That didn't work. Please try again."));
+    } finally {
+      setBusyId(null);
     }
   };
 
@@ -84,8 +95,8 @@ export function InfluencerInvites() {
         }
       }
       router.push("/influencer/messages");
-    } catch {
-      router.push("/influencer/messages");
+    } catch (err) {
+      toast.error(apiMessage(err, "Chat could not be opened. Please try again."));
     } finally {
       setStartingChatId(null);
     }
@@ -105,7 +116,7 @@ export function InfluencerInvites() {
           <button
             key={t.id}
             type="button"
-            onClick={() => setTab(t.id)}
+            onClick={() => { setTab(t.id); setListState("loading"); }}
             className={cn(
               "rounded-full border px-4 py-2 text-sm font-medium transition-colors",
               tab === t.id
@@ -118,7 +129,18 @@ export function InfluencerInvites() {
         ))}
       </div>
 
-      {invites.length === 0 && !isLoading ? (
+      {listState === "loading" ? (
+        <p role="status" className="flex items-center gap-2 p-6 text-sm text-[#94A3B8]">
+          <Loader2 className="size-4 animate-spin" aria-hidden /> Loading invites…
+        </p>
+      ) : listState === "error" ? (
+        <div role="alert" className="rounded-2xl border border-rose-400/30 bg-rose-500/10 p-6 text-sm text-rose-100">
+          Invites could not be loaded.{" "}
+          <button type="button" className="underline" onClick={() => { setListState("loading"); void loadInvites(tab); }}>
+            Try again
+          </button>
+        </div>
+      ) : invites.length === 0 ? (
         <div className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-8 text-center">
           <p className="text-white">No campaign invites found.</p>
           <p className="mt-1 text-sm text-[#CBD5E1]">When businesses invite you to their campaigns, they will appear here.</p>
@@ -173,6 +195,7 @@ export function InfluencerInvites() {
                   <Button
                     type="button"
                     className="h-10 flex-1 rounded-xl bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)]"
+                    disabled={busyId === inv.id}
                     onClick={() => updateStatus(inv.id, "accepted")}
                   >
                     Accept
@@ -181,9 +204,10 @@ export function InfluencerInvites() {
                     type="button"
                     variant="outline"
                     className="h-10 flex-1 rounded-xl border-white/15 bg-transparent text-white hover:bg-white/10"
+                    disabled={busyId === inv.id}
                     onClick={() => updateStatus(inv.id, "rejected")}
                   >
-                    Reject
+                    Decline
                   </Button>
                 </div>
               ) : inv.status === "accepted" ? (
