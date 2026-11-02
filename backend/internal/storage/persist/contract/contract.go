@@ -314,7 +314,18 @@ func (p *contractRepo) transitionContract(ctx context.Context, updateSQL, contra
 	return tx.Commit()
 }
 
-func (p *contractRepo) StubPayContract(ctx context.Context, businessUserID, contractID, paymentID string) (*contractDto.PaymentSummary, error) {
+// FundEscrow records that the business's payment for an accepted contract
+// was received, and starts the work (accepted → active). Until real payments
+// exist only an admin calls this, after checking the money arrived;
+// reference is what the admin checked (e.g. a bank transfer number).
+func (p *contractRepo) FundEscrow(ctx context.Context, contractID, paymentID, actorUserID, reference string) (*contractDto.PaymentSummary, error) {
+	var businessUserID string
+	if err := p.db.QueryRowContext(ctx, getContractBusinessUserID, contractID).Scan(&businessUserID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, contractDto.ErrContractNotFound
+		}
+		return nil, fmt.Errorf("get contract owner: %w", err)
+	}
 	rec, err := p.GetContractForBusiness(ctx, businessUserID, contractID)
 	if err != nil {
 		return nil, err
@@ -333,7 +344,7 @@ func (p *contractRepo) StubPayContract(ctx context.Context, businessUserID, cont
 
 	tx, err := p.db.BeginTx(ctx, nil)
 	if err != nil {
-		return nil, fmt.Errorf("begin stub pay: %w", err)
+		return nil, fmt.Errorf("begin fund escrow: %w", err)
 	}
 	defer tx.Rollback()
 
@@ -349,7 +360,8 @@ func (p *contractRepo) StubPayContract(ctx context.Context, businessUserID, cont
 		fees.PlatformTotalFeeETB,
 		fees.TotalBusinessPayableETB,
 		fees.InfluencerReceivableETB,
-		contractDto.StubPaymentMethod,
+		contractDto.AdminConfirmedPaymentMethod,
+		reference,
 	); err != nil {
 		return nil, fmt.Errorf("insert payment: %w", err)
 	}
@@ -371,17 +383,37 @@ func (p *contractRepo) StubPayContract(ctx context.Context, businessUserID, cont
 		contractID,
 		"accepted",
 		"active",
-		businessUserID,
-		"business paid (escrow held)",
+		actorUserID,
+		"payment confirmed by admin (escrow held): "+reference,
 	); err != nil {
 		return nil, fmt.Errorf("insert contract status history: %w", err)
 	}
 
 	if err := tx.Commit(); err != nil {
-		return nil, fmt.Errorf("commit stub pay: %w", err)
+		return nil, fmt.Errorf("commit fund escrow: %w", err)
 	}
 
 	return p.getPaymentSummary(ctx, contractID)
+}
+
+// ListContractsAwaitingFunding returns accepted contracts whose payment an
+// admin has not confirmed yet.
+func (p *contractRepo) ListContractsAwaitingFunding(ctx context.Context) ([]contractDto.EscrowQueueItem, error) {
+	rows, err := p.db.QueryContext(ctx, listContractsAwaitingFunding)
+	if err != nil {
+		return nil, fmt.Errorf("list contracts awaiting funding: %w", err)
+	}
+	defer rows.Close()
+	items := []contractDto.EscrowQueueItem{}
+	for rows.Next() {
+		var it contractDto.EscrowQueueItem
+		if err := rows.Scan(&it.ID, &it.Title, &it.CampaignTitle, &it.BusinessName, &it.CreatorName,
+			&it.AmountETB, &it.TotalBusinessPayableETB, &it.AcceptedAt); err != nil {
+			return nil, fmt.Errorf("scan contract awaiting funding: %w", err)
+		}
+		items = append(items, it)
+	}
+	return items, rows.Err()
 }
 
 func (p *contractRepo) ApproveWork(ctx context.Context, businessUserID, contractID, payoutID string) (*contractDto.PayoutSummary, error) {

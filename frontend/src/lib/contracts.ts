@@ -21,14 +21,14 @@ type Tone = "amber" | "sky" | "emerald" | "rose" | "slate";
 const STATUS: Record<string, { label: string; business: string; influencer: string; tone: Tone }> = {
   pending_influencer: {
     label: "Waiting for creator",
-    business: "Sent to the creator. They need to accept it before you can fund escrow.",
+    business: "Sent to the creator. They need to accept it first.",
     influencer: "Review the terms and accept or decline this contract.",
     tone: "amber",
   },
   accepted: {
-    label: "Ready to fund",
-    business: "The creator accepted. Fund escrow so they can start the work.",
-    influencer: "You accepted. Waiting for the business to fund escrow before you start.",
+    label: "Awaiting payment",
+    business: "The creator accepted. Adfluence confirms your payment, then the creator starts.",
+    influencer: "You accepted. Please wait: the work starts once Adfluence confirms the business's payment.",
     tone: "sky",
   },
   active: {
@@ -59,7 +59,7 @@ const TONE_CLASS: Record<Tone, string> = {
 // Badge wording from the creator's side where it differs from the business's.
 const INFLUENCER_LABEL: Record<string, string> = {
   pending_influencer: "Needs your answer",
-  accepted: "Waiting for funding",
+  accepted: "Waiting for payment",
   rejected: "You declined",
 };
 

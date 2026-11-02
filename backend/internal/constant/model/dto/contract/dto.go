@@ -18,6 +18,9 @@ const (
 	BusinessFeePercent   = 5.0
 	InfluencerFeePercent = 5.0
 	StubPaymentMethod    = "manual_stub"
+	// AdminConfirmedPaymentMethod marks a payment an admin confirmed by hand
+	// (e.g. a bank transfer) until a payment provider is integrated.
+	AdminConfirmedPaymentMethod = "admin_confirmed"
 )
 
 type DeliverableInput struct {
@@ -35,22 +38,22 @@ type DeliverableResponse struct {
 }
 
 type FeeBreakdown struct {
-	AmountETB              float64 `json:"amount_etb"`
-	BusinessFeePercent       float64 `json:"business_fee_percent"`
-	InfluencerFeePercent     float64 `json:"influencer_fee_percent"`
-	BusinessFeeAmountETB     float64 `json:"business_fee_amount_etb"`
-	InfluencerFeeAmountETB   float64 `json:"influencer_fee_amount_etb"`
-	TotalBusinessPayableETB  float64 `json:"total_business_payable_etb"`
-	InfluencerReceivableETB  float64 `json:"influencer_receivable_etb"`
-	PlatformTotalFeeETB      float64 `json:"platform_total_fee_etb"`
+	AmountETB               float64 `json:"amount_etb"`
+	BusinessFeePercent      float64 `json:"business_fee_percent"`
+	InfluencerFeePercent    float64 `json:"influencer_fee_percent"`
+	BusinessFeeAmountETB    float64 `json:"business_fee_amount_etb"`
+	InfluencerFeeAmountETB  float64 `json:"influencer_fee_amount_etb"`
+	TotalBusinessPayableETB float64 `json:"total_business_payable_etb"`
+	InfluencerReceivableETB float64 `json:"influencer_receivable_etb"`
+	PlatformTotalFeeETB     float64 `json:"platform_total_fee_etb"`
 }
 
 type PaymentSummary struct {
-	ID                   string     `json:"id"`
-	Status               string     `json:"status"`
-	TotalPaidByBusiness  float64    `json:"total_paid_by_business_etb"`
-	PaymentMethod        string     `json:"payment_method"`
-	PaidAt               *time.Time `json:"paid_at,omitempty"`
+	ID                  string     `json:"id"`
+	Status              string     `json:"status"`
+	TotalPaidByBusiness float64    `json:"total_paid_by_business_etb"`
+	PaymentMethod       string     `json:"payment_method"`
+	PaidAt              *time.Time `json:"paid_at,omitempty"`
 }
 
 type PayoutSummary struct {
@@ -93,30 +96,42 @@ type DetailResponse struct {
 }
 
 type ListItem struct {
-	ID                    string    `json:"id"`
-	Title                 string    `json:"title"`
-	Status                string    `json:"status"`
-	AmountETB             float64   `json:"amount_etb"`
-	CampaignTitle         string    `json:"campaign_title"`
-	CounterpartyName      string    `json:"counterparty_name"`
-	TotalBusinessPayable  float64   `json:"total_business_payable_etb,omitempty"`
-	InfluencerReceivable  float64   `json:"influencer_receivable_etb,omitempty"`
-	CreatedAt             time.Time `json:"created_at"`
+	ID                   string    `json:"id"`
+	Title                string    `json:"title"`
+	Status               string    `json:"status"`
+	AmountETB            float64   `json:"amount_etb"`
+	CampaignTitle        string    `json:"campaign_title"`
+	CounterpartyName     string    `json:"counterparty_name"`
+	TotalBusinessPayable float64   `json:"total_business_payable_etb,omitempty"`
+	InfluencerReceivable float64   `json:"influencer_receivable_etb,omitempty"`
+	CreatedAt            time.Time `json:"created_at"`
+}
+
+// EscrowQueueItem is an accepted contract waiting for an admin to confirm payment.
+type EscrowQueueItem struct {
+	ID                      string    `json:"id"`
+	Title                   string    `json:"title"`
+	CampaignTitle           string    `json:"campaign_title"`
+	BusinessName            string    `json:"business_name"`
+	CreatorName             string    `json:"creator_name"`
+	AmountETB               float64   `json:"amount_etb"`
+	TotalBusinessPayableETB float64   `json:"total_business_payable_etb"`
+	AcceptedAt              time.Time `json:"accepted_at"`
 }
 
 type SaveContractInput struct {
-	ID                   string
-	InviteID             string
-	CampaignID           string
-	BusinessUserID       string
-	InfluencerUserID     string
-	Title                string
-	Description          *string
-	AmountETB            float64
-	Fees                 FeeBreakdown
-	StartDate            *time.Time
-	EndDate              *time.Time
-	Deliverables         []DeliverableInput
+	ID               string
+	InviteID         string
+	CampaignID       string
+	BusinessUserID   string
+	InfluencerUserID string
+	Title            string
+	Description      *string
+	AmountETB        float64
+	Fees             FeeBreakdown
+	StartDate        *time.Time
+	EndDate          *time.Time
+	Deliverables     []DeliverableInput
 }
 
 type Record struct {

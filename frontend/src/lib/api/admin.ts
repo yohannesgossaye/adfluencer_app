@@ -2,6 +2,17 @@ import { apiClient } from "@/lib/api/api-client";
 import type { ApiResponse } from "@/lib/api/auth";
 
 // --- Dashboard Types ---
+export type EscrowQueueItem = {
+  id: string;
+  title: string;
+  campaign_title: string;
+  business_name: string;
+  creator_name: string;
+  amount_etb: number;
+  total_business_payable_etb: number;
+  accepted_at: string;
+};
+
 export type AdminKPIs = {
   total_influencers: number;
   total_businesses: number;
@@ -397,6 +408,23 @@ export const adminApi = {
   getBusinessVerification: async (userId: string): Promise<ApiResponse<BusinessVerificationDetail>> => {
     const res = await apiClient.get<ApiResponse<BusinessVerificationDetail>>(
       `/api/v1/admin/businesses/verifications/${userId}`
+    );
+    return res.data;
+  },
+
+  /** Accepted contracts waiting for an admin to confirm the business's payment. */
+  listEscrowQueue: async (): Promise<ApiResponse<{ items: EscrowQueueItem[] }>> => {
+    const res = await apiClient.get<ApiResponse<{ items: EscrowQueueItem[] }>>("/api/v1/admin/escrow");
+    return res.data;
+  },
+
+  fundEscrow: async (
+    contractId: string,
+    reference: string
+  ): Promise<ApiResponse<{ contract_id: string; status: string }>> => {
+    const res = await apiClient.post<ApiResponse<{ contract_id: string; status: string }>>(
+      `/api/v1/admin/escrow/${contractId}/fund`,
+      { reference }
     );
     return res.data;
   },

@@ -236,6 +236,13 @@ func AdminRoutes(router chi.Router, rest handler.AdminHandler, authMiddleware mi
 			}
 			glue.RegisterRoutes(r, routes)
 		})
+		r.Route("/escrow", func(r chi.Router) {
+			auth := []func(next http.Handler) http.Handler{authMiddleware.AuthenticateToken}
+			glue.RegisterRoutes(r, []glue.Route{
+				{Method: http.MethodGet, Path: "/", Handler: rest.ListEscrowQueue, Middlewares: auth},
+				{Method: http.MethodPost, Path: "/{contract_id}/fund", Handler: rest.FundContractEscrow, Middlewares: auth},
+			})
+		})
 		r.Route("/disputes", func(r chi.Router) {
 			auth := []func(next http.Handler) http.Handler{authMiddleware.AuthenticateToken}
 			routes := []glue.Route{

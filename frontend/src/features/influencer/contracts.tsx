@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 const FILTERS = [
   { id: "", label: "All" },
   { id: "pending_influencer", label: "Needs your answer" },
-  { id: "accepted", label: "Waiting for funding" },
+  { id: "accepted", label: "Waiting for payment" },
   { id: "active", label: "In progress" },
   { id: "completed", label: "Completed" },
 ] as const;
@@ -78,7 +78,7 @@ export function InfluencerContracts() {
     try {
       if (confirm === "accept") {
         await influencerApi.acceptContract(detail.id);
-        toast.success("Contract accepted. The business will fund escrow next.");
+        toast.success("Contract accepted. The work starts once the payment is confirmed.");
       } else {
         await influencerApi.rejectContract(detail.id);
         toast.success("Contract declined.");

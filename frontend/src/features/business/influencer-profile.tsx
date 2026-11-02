@@ -5,10 +5,12 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { MessageSquare, Send, ShieldCheck } from "lucide-react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { businessApi, type InfluencerViewDetail } from "@/lib/api/business";
 import { chatApi } from "@/lib/api/chat";
+import { apiErrorType, businessErrorMessage } from "@/lib/api-errors";
 
 import { UserAvatar } from "@/components/common/user-avatar";
 
@@ -25,7 +27,7 @@ export function InfluencerProfile({ influencerId }: InfluencerProfileProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [inviteSent, setInviteSent] = useState(false);
   const [isInviting, setIsInviting] = useState(false);
-  const [statusMessage, setStatusMessage] = useState("");
+  const [loadError, setLoadError] = useState<"not_verified" | "not_found" | "failed" | null>(null);
 
   useEffect(() => {
     async function loadCreator() {
@@ -34,8 +36,11 @@ export function InfluencerProfile({ influencerId }: InfluencerProfileProps) {
         if (res.data) {
           setCreator(res.data);
         }
-      } catch {
-        // Fallback
+      } catch (err) {
+        const type = apiErrorType(err);
+        setLoadError(
+          type === "account_not_verified" ? "not_verified" : type === "creator_not_found" ? "not_found" : "failed",
+        );
       } finally {
         setIsLoading(false);
       }
@@ -52,11 +57,9 @@ export function InfluencerProfile({ influencerId }: InfluencerProfileProps) {
         message: `Hello ${creator.creator_name}, we'd love to invite you to collaborate with us!`,
       });
       setInviteSent(true);
-      setStatusMessage("Invitation sent successfully!");
-      setTimeout(() => setStatusMessage(""), 3500);
-    } catch {
-      setStatusMessage("Failed to send invitation. You may have already invited this creator.");
-      setTimeout(() => setStatusMessage(""), 3500);
+      toast.success(`Invitation sent to ${creator.creator_name}.`);
+    } catch (err) {
+      toast.error(businessErrorMessage(err, "The invitation could not be sent."));
     } finally {
       setIsInviting(false);
     }
@@ -74,8 +77,8 @@ export function InfluencerProfile({ influencerId }: InfluencerProfileProps) {
         return;
       }
       router.push("/business/messages");
-    } catch {
-      router.push("/business/messages");
+    } catch (err) {
+      toast.error(businessErrorMessage(err, "The chat could not be opened."));
     }
   };
 
@@ -87,16 +90,36 @@ export function InfluencerProfile({ influencerId }: InfluencerProfileProps) {
     );
   }
 
+  if (loadError === "not_verified") {
+    return (
+      <div className="rounded-2xl border border-amber-400/30 bg-amber-500/10 p-8 text-center text-white">
+        <p className="text-lg font-semibold">Creator profiles open once your business is verified</p>
+        <p className="mt-1 text-sm text-amber-100/90">
+          Adfluence checks every business before it can view and contact creators.
+        </p>
+        <Button asChild className="mt-4 bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)]">
+          <Link href="/business/profile">Check my verification status</Link>
+        </Button>
+      </div>
+    );
+  }
+
+  if (loadError === "failed") {
+    return (
+      <div role="alert" className="rounded-2xl border border-rose-400/30 bg-rose-500/10 p-8 text-center text-sm text-rose-100">
+        This creator&apos;s profile could not be loaded. Please try again.
+      </div>
+    );
+  }
+
   if (!creator) {
     return (
       <div className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-8 text-center text-white">
         <p className="text-lg font-semibold">Creator Not Found</p>
         <p className="mt-1 text-sm text-[#CBD5E1]">The creator profile you are looking for does not exist or has been removed.</p>
-        <Link href="/business/recommendations">
-          <Button className="mt-4 bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)]">
-            Back to Recommendations
-          </Button>
-        </Link>
+        <Button asChild className="mt-4 bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)]">
+          <Link href="/business/recommendations">Back to Recommendations</Link>
+        </Button>
       </div>
     );
   }
@@ -117,12 +140,6 @@ export function InfluencerProfile({ influencerId }: InfluencerProfileProps) {
 
   return (
     <div className="space-y-6 text-white">
-      {statusMessage ? (
-        <p className="rounded-xl border border-emerald-400/30 bg-emerald-500/10 p-3 text-sm text-emerald-200">
-          {statusMessage}
-        </p>
-      ) : null}
-
       <section className="flex flex-col gap-6 rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-6 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
           <UserAvatar
@@ -162,12 +179,17 @@ export function InfluencerProfile({ influencerId }: InfluencerProfileProps) {
           </Button>
           <Button
             onClick={handleSendInvite}
-            disabled={inviteSent || isInviting}
+            disabled={!campaignId || inviteSent || isInviting}
             className="h-11 rounded-xl bg-[color:var(--adfluence-orange)] px-6 text-white hover:bg-[color:var(--adfluence-orange-hover)] disabled:opacity-60"
           >
             <Send className="mr-2 size-4" />
             {isInviting ? "Sending..." : inviteSent ? "Invitation Sent" : "Invite to Campaign"}
           </Button>
+          {!campaignId ? (
+            <p className="w-full text-xs text-[#94A3B8]">
+              To invite, open this creator from a live campaign&apos;s recommendations.
+            </p>
+          ) : null}
         </div>
       </section>
 

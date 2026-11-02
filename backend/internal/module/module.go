@@ -1,8 +1,8 @@
 package module
 
 import (
-	authDto "adinfluence_service_app/internal/constant/model/dto/auth"
 	adminDto "adinfluence_service_app/internal/constant/model/dto/admin"
+	authDto "adinfluence_service_app/internal/constant/model/dto/auth"
 	businessDto "adinfluence_service_app/internal/constant/model/dto/business"
 	commonDto "adinfluence_service_app/internal/constant/model/dto/common"
 	contractDto "adinfluence_service_app/internal/constant/model/dto/contract"
@@ -80,6 +80,8 @@ type AdminService interface {
 	CompleteAdminCampaign(ctx context.Context, adminUserID, campaignID string, meta authDto.SessionMeta) (*adminDto.ModerateCampaignResponse, error)
 	FlagAdminCampaign(ctx context.Context, adminUserID, campaignID string, meta authDto.SessionMeta) (*adminDto.ModerateCampaignResponse, error)
 	ResumeAdminCampaign(ctx context.Context, adminUserID, campaignID string, meta authDto.SessionMeta) (*adminDto.ModerateCampaignResponse, error)
+	ListEscrowQueue(ctx context.Context) (*adminDto.EscrowQueueResponse, error)
+	FundContractEscrow(ctx context.Context, adminUserID, contractID string, req adminDto.FundEscrowRequest, meta authDto.SessionMeta) (*adminDto.FundEscrowResponse, error)
 	ListAdminDisputes(ctx context.Context, query adminDto.ListAdminDisputesQuery) (*adminDto.ListAdminDisputesResponse, error)
 	GetAdminDispute(ctx context.Context, disputeID string) (*adminDto.AdminDisputeDetailResponse, error)
 	UpdateDisputeStatus(ctx context.Context, adminUserID, disputeID string, req adminDto.UpdateDisputeStatusRequest, meta authDto.SessionMeta) (*adminDto.UpdateDisputeStatusResponse, error)
@@ -106,7 +108,6 @@ type BusinessService interface {
 	CreateContract(ctx context.Context, userID string, req businessDto.CreateContractRequest, meta authDto.SessionMeta) (*commonDto.CreatedIDResponse, error)
 	ListContracts(ctx context.Context, userID string, query contractDto.ListQuery) (*businessDto.ListContractsResponse, error)
 	GetContract(ctx context.Context, userID, contractID string) (*contractDto.DetailResponse, error)
-	PayContract(ctx context.Context, userID, contractID string, meta authDto.SessionMeta) (*businessDto.PayContractResponse, error)
 	ApproveWork(ctx context.Context, userID, contractID string, meta authDto.SessionMeta) (*businessDto.ApproveWorkResponse, error)
 	CancelContract(ctx context.Context, userID, contractID string, meta authDto.SessionMeta) (*businessDto.ContractMutationResponse, error)
 	GetDashboardSummary(ctx context.Context, userID string) (*businessDto.DashboardSummaryResponse, error)

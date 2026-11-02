@@ -17,7 +17,8 @@ type ContractPersistence interface {
 
 	AcceptContract(ctx context.Context, influencerUserID, contractID string) error
 	RejectContract(ctx context.Context, influencerUserID, contractID string) error
-	StubPayContract(ctx context.Context, businessUserID, contractID, paymentID string) (*contractDto.PaymentSummary, error)
+	FundEscrow(ctx context.Context, contractID, paymentID, actorUserID, reference string) (*contractDto.PaymentSummary, error)
+	ListContractsAwaitingFunding(ctx context.Context) ([]contractDto.EscrowQueueItem, error)
 	ApproveWork(ctx context.Context, businessUserID, contractID, payoutID string) (*contractDto.PayoutSummary, error)
 	CancelContract(ctx context.Context, businessUserID, contractID string) error
 }

@@ -76,24 +76,6 @@ func (h *businessHandler) GetContract(w http.ResponseWriter, r *http.Request) {
 	response.SendSuccessResponse(w, r, http.StatusOK, "contract retrieved successfully", res, nil)
 }
 
-func (h *businessHandler) PayContract(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	user, ok := h.requireBusiness(w, r)
-	if !ok {
-		return
-	}
-	userID := user.UserID
-
-	contractID := chi.URLParam(r, "contract_id")
-	res, err := h.service.PayContract(ctx, userID, contractID, sessionMetaFromRequest(r))
-	if err != nil {
-		writeError(w, err)
-		return
-	}
-
-	response.SendSuccessResponse(w, r, http.StatusOK, "contract payment recorded (escrow held)", res, nil)
-}
-
 func (h *businessHandler) ApproveWork(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	user, ok := h.requireBusiness(w, r)
