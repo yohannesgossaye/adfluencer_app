@@ -346,8 +346,8 @@ export const adminApi = {
     search?: string;
     page?: number;
     limit?: number;
-  }): Promise<ApiResponse<{ items: InfluencerApplicationItem[]; pagination: { total: number; page: number; limit: number } }>> => {
-    const res = await apiClient.get<ApiResponse<{ items: InfluencerApplicationItem[]; pagination: { total: number; page: number; limit: number } }>>(
+  }): Promise<ApiResponse<{ items: InfluencerApplicationItem[]; pagination: { total_docs: number; page: number; limit: number; total_pages: number; has_next_page: boolean } }>> => {
+    const res = await apiClient.get<ApiResponse<{ items: InfluencerApplicationItem[]; pagination: { total_docs: number; page: number; limit: number; total_pages: number; has_next_page: boolean } }>>(
       "/api/v1/admin/influencers/applications",
       { params }
     );
@@ -474,8 +474,8 @@ export const adminApi = {
     search?: string;
     page?: number;
     limit?: number;
-  }): Promise<ApiResponse<{ items: AdminUserListItem[]; stats: AdminUserStats; pagination: { total: number; page: number; limit: number } }>> => {
-    const res = await apiClient.get<ApiResponse<{ items: AdminUserListItem[]; stats: AdminUserStats; pagination: { total: number; page: number; limit: number } }>>(
+  }): Promise<ApiResponse<{ items: AdminUserListItem[]; stats: AdminUserStats; pagination: { total_docs: number; page: number; limit: number; total_pages: number; has_next_page: boolean } }>> => {
+    const res = await apiClient.get<ApiResponse<{ items: AdminUserListItem[]; stats: AdminUserStats; pagination: { total_docs: number; page: number; limit: number; total_pages: number; has_next_page: boolean } }>>(
       "/api/v1/admin/users",
       { params }
     );
@@ -560,8 +560,8 @@ export const adminApi = {
     business?: string;
     page?: number;
     limit?: number;
-  }): Promise<ApiResponse<{ items: AdminCampaignListItem[]; stats: AdminCampaignStats; pagination: { total: number; page: number; limit: number } }>> => {
-    const res = await apiClient.get<ApiResponse<{ items: AdminCampaignListItem[]; stats: AdminCampaignStats; pagination: { total: number; page: number; limit: number } }>>(
+  }): Promise<ApiResponse<{ items: AdminCampaignListItem[]; stats: AdminCampaignStats; pagination: { total_docs: number; page: number; limit: number; total_pages: number; has_next_page: boolean } }>> => {
+    const res = await apiClient.get<ApiResponse<{ items: AdminCampaignListItem[]; stats: AdminCampaignStats; pagination: { total_docs: number; page: number; limit: number; total_pages: number; has_next_page: boolean } }>>(
       "/api/v1/admin/campaigns",
       { params }
     );
@@ -607,8 +607,8 @@ export const adminApi = {
     search?: string;
     page?: number;
     limit?: number;
-  }): Promise<ApiResponse<{ items: AdminDisputeListItem[]; pagination: { total: number; page: number; limit: number } }>> => {
-    const res = await apiClient.get<ApiResponse<{ items: AdminDisputeListItem[]; pagination: { total: number; page: number; limit: number } }>>(
+  }): Promise<ApiResponse<{ items: AdminDisputeListItem[]; pagination: { total_docs: number; page: number; limit: number; total_pages: number; has_next_page: boolean } }>> => {
+    const res = await apiClient.get<ApiResponse<{ items: AdminDisputeListItem[]; pagination: { total_docs: number; page: number; limit: number; total_pages: number; has_next_page: boolean } }>>(
       "/api/v1/admin/disputes",
       { params }
     );
@@ -652,8 +652,8 @@ export const adminApi = {
     search?: string;
     page?: number;
     limit?: number;
-  }): Promise<ApiResponse<{ items: AdminSupportTicketItem[]; stats: AdminSupportTicketStats; pagination: { total: number; page: number; limit: number } }>> => {
-    const res = await apiClient.get<ApiResponse<{ items: AdminSupportTicketItem[]; stats: AdminSupportTicketStats; pagination: { total: number; page: number; limit: number } }>>(
+  }): Promise<ApiResponse<{ items: AdminSupportTicketItem[]; stats: AdminSupportTicketStats; pagination: { total_docs: number; page: number; limit: number; total_pages: number; has_next_page: boolean } }>> => {
+    const res = await apiClient.get<ApiResponse<{ items: AdminSupportTicketItem[]; stats: AdminSupportTicketStats; pagination: { total_docs: number; page: number; limit: number; total_pages: number; has_next_page: boolean } }>>(
       "/api/v1/admin/support/tickets",
       { params }
     );

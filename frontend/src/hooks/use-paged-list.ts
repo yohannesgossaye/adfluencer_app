@@ -5,7 +5,8 @@ import { toast } from "sonner";
 
 export type LoadState = "loading" | "ready" | "error";
 
-type Page = { items?: unknown[]; pagination?: { total?: number } };
+// The API's list meta (common.ListMeta) reports the count as total_docs.
+type Page = { items?: unknown[]; pagination?: { total_docs?: number } };
 type ItemOf<R extends Page> = NonNullable<R["items"]>[number];
 
 /**
@@ -36,7 +37,7 @@ export function usePagedList<R extends Page>(fetchPage: (page: number) => Promis
         if (id !== request.current) return;
         const got = (res?.items ?? []) as T[];
         setItems((prev) => (target === 1 ? got : [...prev, ...got]));
-        setTotal(res?.pagination?.total ?? null);
+        setTotal(res?.pagination?.total_docs ?? null);
         setPage(target);
         if (target === 1) setLast(res);
         setError(null);
