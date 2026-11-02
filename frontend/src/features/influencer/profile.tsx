@@ -708,7 +708,7 @@ export function InfluencerProfile() {
         type="button"
         onClick={() => void onSave()}
         disabled={isSaving || loadState !== "ready"}
-        className="h-12 w-full rounded-xl bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)] md:w-auto md:px-10"
+        className="h-12 w-full rounded-xl bg-[color:var(--adfluence-action)] text-white hover:bg-[color:var(--adfluence-action-hover)] md:w-auto md:px-10"
       >
         {isSaving ? "Saving..." : isDirty ? "Save changes" : "Save Profile"}
       </Button>

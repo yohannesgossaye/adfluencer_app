@@ -539,7 +539,7 @@ export function MessagesPage({ config }: { config: MessagesPageConfig }) {
                         {c.unread_count > 0 ? (
                           <span
                             aria-label={`${c.unread_count} unread`}
-                            className="inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-[color:var(--adfluence-orange)] px-1.5 py-0.5 text-[10px] font-semibold text-white"
+                            className="inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-[color:var(--adfluence-action)] px-1.5 py-0.5 text-[10px] font-semibold text-white"
                           >
                             {c.unread_count}
                           </span>
@@ -700,7 +700,7 @@ export function MessagesPage({ config }: { config: MessagesPageConfig }) {
                     setShowNewBelow(false);
                     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
                   }}
-                  className="absolute bottom-28 left-1/2 inline-flex -translate-x-1/2 items-center gap-1 rounded-full bg-[color:var(--adfluence-orange)] px-3 py-1.5 text-xs font-medium text-white shadow-lg"
+                  className="absolute bottom-28 left-1/2 inline-flex -translate-x-1/2 items-center gap-1 rounded-full bg-[color:var(--adfluence-action)] px-3 py-1.5 text-xs font-medium text-white shadow-lg"
                 >
                   <ArrowDown className="size-3" aria-hidden /> New messages
                 </button>
@@ -742,7 +742,7 @@ export function MessagesPage({ config }: { config: MessagesPageConfig }) {
                   <Button
                     type="submit"
                     disabled={!draft.trim()}
-                    className="h-11 shrink-0 rounded-xl bg-[color:var(--adfluence-orange)] px-4 text-white hover:bg-[color:var(--adfluence-orange-hover)]"
+                    className="h-11 shrink-0 rounded-xl bg-[color:var(--adfluence-action)] px-4 text-white hover:bg-[color:var(--adfluence-action-hover)]"
                   >
                     <Send className="size-4 md:mr-1" aria-hidden />
                     <span className="hidden md:inline">Send</span>

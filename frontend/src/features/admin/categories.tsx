@@ -110,7 +110,7 @@ export function AdminCategories() {
         <Button
           type="submit"
           disabled={adding || !newName.trim()}
-          className="h-10 rounded-xl bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)]"
+          className="h-10 rounded-xl bg-[color:var(--adfluence-action)] text-white hover:bg-[color:var(--adfluence-action-hover)]"
         >
           Add category
         </Button>

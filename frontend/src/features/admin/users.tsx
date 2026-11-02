@@ -151,7 +151,7 @@ export function AdminUsers() {
             className={cn(
               "inline-flex min-h-11 items-center rounded-full border px-4 py-2 text-sm font-medium capitalize transition-colors sm:min-h-0 sm:px-3 sm:py-1.5 sm:text-xs",
               roleFilter === r
-                ? "border-transparent bg-[color:var(--adfluence-orange)] text-white"
+                ? "border-transparent bg-[color:var(--adfluence-action)] text-white"
                 : "border-white/10 bg-white/5 text-[#CBD5E1] hover:text-white",
             )}
           >

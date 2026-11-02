@@ -307,7 +307,7 @@ export function BusinessDashboard() {
               </p>
               <Button
                 asChild
-                className="mt-4 h-10 rounded-xl bg-[color:var(--adfluence-orange)] px-5 text-white hover:bg-[color:var(--adfluence-orange-hover)]"
+                className="mt-4 h-10 rounded-xl bg-[color:var(--adfluence-action)] px-5 text-white hover:bg-[color:var(--adfluence-action-hover)]"
               >
                 <Link href="/business/campaigns/create">Create Campaign</Link>
               </Button>
@@ -349,7 +349,7 @@ export function BusinessDashboard() {
                           : "New"}
                       </p>
                       {conv.unread_count > 0 ? (
-                        <span className="mt-1 inline-flex items-center justify-center rounded-full bg-[color:var(--adfluence-orange)] px-1.5 py-0.5 text-[10px] font-bold text-white">
+                        <span className="mt-1 inline-flex items-center justify-center rounded-full bg-[color:var(--adfluence-action)] px-1.5 py-0.5 text-[10px] font-bold text-white">
                           {conv.unread_count}
                         </span>
                       ) : null}

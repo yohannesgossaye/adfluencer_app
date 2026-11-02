@@ -170,7 +170,7 @@ export function CampaignDetailPage({ campaignId }: { campaignId: string }) {
                 type="button"
                 disabled={busy}
                 onClick={() => void run()}
-                className={cn("h-10 rounded-xl text-white", confirm === "publish" ? "bg-[color:var(--adfluence-orange)] hover:bg-[color:var(--adfluence-orange-hover)]" : "bg-rose-600 hover:bg-rose-700")}
+                className={cn("h-10 rounded-xl text-white", confirm === "publish" ? "bg-[color:var(--adfluence-action)] hover:bg-[color:var(--adfluence-action-hover)]" : "bg-rose-600 hover:bg-rose-700")}
               >
                 {busy ? <Loader2 className="mr-2 size-4 animate-spin" aria-hidden /> : null}
                 {confirm === "publish" ? "Publish campaign" : "Cancel campaign"}
@@ -189,13 +189,13 @@ export function CampaignDetailPage({ campaignId }: { campaignId: string }) {
                   <Link href="/business/profile" className="underline">Check verification status</Link>
                 </p>
               ) : (
-                <Button type="button" onClick={() => setConfirm("publish")} className="h-10 rounded-xl bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)]">
+                <Button type="button" onClick={() => setConfirm("publish")} className="h-10 rounded-xl bg-[color:var(--adfluence-action)] text-white hover:bg-[color:var(--adfluence-action-hover)]">
                   Publish
                 </Button>
               )
             ) : null}
             {campaign.status === "active" ? (
-              <Button asChild className="h-10 rounded-xl bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)]">
+              <Button asChild className="h-10 rounded-xl bg-[color:var(--adfluence-action)] text-white hover:bg-[color:var(--adfluence-action-hover)]">
                 <Link href={`/business/recommendations?campaign_id=${campaign.id}`}>Find creators</Link>
               </Button>
             ) : null}
@@ -270,7 +270,7 @@ export function CampaignDetailPage({ campaignId }: { campaignId: string }) {
                     </Button>
                   )
                 ) : inv.status === "accepted" && campaign.status === "active" ? (
-                  <Button asChild size="sm" className="h-9 rounded-lg bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)]">
+                  <Button asChild size="sm" className="h-9 rounded-lg bg-[color:var(--adfluence-action)] text-white hover:bg-[color:var(--adfluence-action-hover)]">
                     <Link href={`/business/contracts?campaign_id=${campaign.id}&invite_id=${inv.id}`}>Send contract</Link>
                   </Button>
                 ) : null}

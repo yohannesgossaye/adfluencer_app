@@ -202,7 +202,7 @@ export function Recommendations() {
           ) : null}
           <Button
             asChild
-            className="h-11 rounded-xl bg-[color:var(--adfluence-orange)] px-5 text-white hover:bg-[color:var(--adfluence-orange-hover)]"
+            className="h-11 rounded-xl bg-[color:var(--adfluence-action)] px-5 text-white hover:bg-[color:var(--adfluence-action-hover)]"
           >
             <Link href="/business/campaigns/create">Create New Campaign</Link>
           </Button>
@@ -440,7 +440,7 @@ export function Recommendations() {
                       </div>
                       <div className="h-2 rounded-full bg-white/10">
                         <div
-                          className="h-2 rounded-full bg-[color:var(--adfluence-orange)]"
+                          className="h-2 rounded-full bg-[color:var(--adfluence-action)]"
                           style={{ width: `${influencer.match_score}%` }}
                         />
                       </div>
@@ -465,7 +465,7 @@ export function Recommendations() {
                         }
                         disabled={isInvited || isInvitingThis || !selectedCampaignId || isDraft}
                         title={isDraft ? "Publish this campaign to invite creators" : undefined}
-                        className="h-10 rounded-xl bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)] disabled:cursor-not-allowed disabled:opacity-60"
+                        className="h-10 rounded-xl bg-[color:var(--adfluence-action)] text-white hover:bg-[color:var(--adfluence-action-hover)] disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         {isInvitingThis
                           ? "Sending..."
@@ -499,7 +499,7 @@ export function Recommendations() {
                 <Button
                   onClick={handleGenerateRecommendations}
                   disabled={isGenerating}
-                  className="mt-4 h-11 rounded-xl bg-[color:var(--adfluence-orange)] px-5 text-white hover:bg-[color:var(--adfluence-orange-hover)]"
+                  className="mt-4 h-11 rounded-xl bg-[color:var(--adfluence-action)] px-5 text-white hover:bg-[color:var(--adfluence-action-hover)]"
                 >
                   <Sparkles className="mr-2 size-4" />
                   Generate Matches for This Campaign

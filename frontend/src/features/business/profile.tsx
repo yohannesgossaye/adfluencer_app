@@ -319,7 +319,7 @@ export function BusinessProfile() {
               type="button"
               onClick={() => void submitForVerification()}
               disabled={submitting || dirty || !data.completeness.can_complete}
-              className="h-11 rounded-xl bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)]"
+              className="h-11 rounded-xl bg-[color:var(--adfluence-action)] text-white hover:bg-[color:var(--adfluence-action-hover)]"
             >
               {submitting ? <Loader2 className="mr-2 size-4 animate-spin" aria-hidden /> : null}
               {verification.status === "rejected" ? "Resubmit for verification" : "Submit for verification"}
@@ -338,7 +338,7 @@ export function BusinessProfile() {
         <div className="min-w-0 flex-1">
           <p className="font-semibold">{data.profile.business_name || "Your business"}</p>
           <div className="mt-2 h-2 w-full max-w-sm overflow-hidden rounded-full bg-white/10" aria-hidden>
-            <div className="h-full rounded-full bg-[color:var(--adfluence-orange)]" style={{ width: `${data.completeness.percent}%` }} />
+            <div className="h-full rounded-full bg-[color:var(--adfluence-action)]" style={{ width: `${data.completeness.percent}%` }} />
           </div>
           <p className="mt-1 text-xs text-[#CBD5E1]">Profile {data.completeness.percent}% complete</p>
           {missing.length > 0 ? <p className="mt-1 text-xs text-[#94A3B8]">Still missing: {missing.join(", ")}</p> : null}
@@ -438,7 +438,7 @@ export function BusinessProfile() {
                     className={cn(
                       "min-h-11 rounded-full border px-4 text-sm transition-colors md:min-h-9",
                       on
-                        ? "border-transparent bg-[color:var(--adfluence-orange)] text-white"
+                        ? "border-transparent bg-[color:var(--adfluence-action)] text-white"
                         : "border-white/10 bg-[color:var(--adfluence-surface)] text-[#CBD5E1] hover:text-white",
                     )}
                   >
@@ -497,7 +497,7 @@ export function BusinessProfile() {
           <Button
             type="submit"
             disabled={saving || !dirty}
-            className="h-11 rounded-xl bg-[color:var(--adfluence-orange)] px-6 text-white hover:bg-[color:var(--adfluence-orange-hover)]"
+            className="h-11 rounded-xl bg-[color:var(--adfluence-action)] px-6 text-white hover:bg-[color:var(--adfluence-action-hover)]"
           >
             {saving ? <Loader2 className="mr-2 size-4 animate-spin" aria-hidden /> : null}
             {confirmIdentityChange ? "Save and re-verify" : "Save changes"}

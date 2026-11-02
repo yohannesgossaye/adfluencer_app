@@ -75,7 +75,7 @@ export function BusinessDashboardPreviewSection() {
               {[40, 65, 45, 80, 60, 90, 75].map((h, i) => (
                 <div
                   key={i}
-                  className="flex-1 rounded-t bg-[color:var(--adfluence-orange)]"
+                  className="flex-1 rounded-t bg-[color:var(--adfluence-action)]"
                   style={{ height: `${h}%` }}
                 />
               ))}

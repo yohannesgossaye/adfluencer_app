@@ -84,7 +84,7 @@ export function HowFeesWorkPage() {
       <section className="pb-16">
         <Container>
           <div className="adfluence-glass mx-auto max-w-4xl rounded-3xl border border-[color:var(--adfluence-orange)]/30 p-8 text-center md:p-12">
-            <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-[color:var(--adfluence-orange)]">
+            <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-[color:var(--adfluence-action)]">
               <Handshake className="h-8 w-8 text-white" />
             </div>
             <p className="text-sm font-medium uppercase tracking-wide text-[#CBD5E1]">

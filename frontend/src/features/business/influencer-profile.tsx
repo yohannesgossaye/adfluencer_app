@@ -130,7 +130,7 @@ export function InfluencerProfile({ influencerId }: InfluencerProfileProps) {
         <p className="mt-1 text-sm text-amber-100/90">
           Adfluence checks every business before it can view and contact creators.
         </p>
-        <Button asChild className="mt-4 bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)]">
+        <Button asChild className="mt-4 bg-[color:var(--adfluence-action)] text-white hover:bg-[color:var(--adfluence-action-hover)]">
           <Link href="/business/profile">Check my verification status</Link>
         </Button>
       </div>
@@ -150,7 +150,7 @@ export function InfluencerProfile({ influencerId }: InfluencerProfileProps) {
       <div className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-8 text-center text-white">
         <p className="text-lg font-semibold">Creator Not Found</p>
         <p className="mt-1 text-sm text-[#CBD5E1]">The creator profile you are looking for does not exist or has been removed.</p>
-        <Button asChild className="mt-4 bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)]">
+        <Button asChild className="mt-4 bg-[color:var(--adfluence-action)] text-white hover:bg-[color:var(--adfluence-action-hover)]">
           <Link href="/business/recommendations">Back to Recommendations</Link>
         </Button>
       </div>
@@ -213,7 +213,7 @@ export function InfluencerProfile({ influencerId }: InfluencerProfileProps) {
           <Button
             onClick={handleSendInvite}
             disabled={!campaignId || inviteSent || isInviting || Boolean(alreadyInvited)}
-            className="h-11 rounded-xl bg-[color:var(--adfluence-orange)] px-6 text-white hover:bg-[color:var(--adfluence-orange-hover)] disabled:opacity-60"
+            className="h-11 rounded-xl bg-[color:var(--adfluence-action)] px-6 text-white hover:bg-[color:var(--adfluence-action-hover)] disabled:opacity-60"
           >
             <Send className="mr-2 size-4" />
             {isInviting
@@ -352,7 +352,7 @@ export function InfluencerProfile({ influencerId }: InfluencerProfileProps) {
                   </div>
                   <div className="h-2 rounded-full bg-white/10">
                     <div
-                      className="h-2 rounded-full bg-[color:var(--adfluence-orange)]"
+                      className="h-2 rounded-full bg-[color:var(--adfluence-action)]"
                       style={{ width: `${Math.round((row.value / row.max) * 100)}%` }}
                     />
                   </div>

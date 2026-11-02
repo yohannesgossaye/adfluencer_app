@@ -97,7 +97,7 @@ export function DashboardSidebar({
                 className={cn(
                   "absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full opacity-0 transition-opacity",
                   active
-                    ? "bg-[color:var(--adfluence-orange)] opacity-100"
+                    ? "bg-[color:var(--adfluence-action)] opacity-100"
                     : "group-hover:bg-[color:var(--adfluence-orange)]/50 group-hover:opacity-60",
                 )}
               />
@@ -106,7 +106,7 @@ export function DashboardSidebar({
               {item.icon === "messages" && unreadMessages > 0 ? (
                 <span
                   aria-label={`${unreadMessages} unread messages`}
-                  className="ml-auto inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-[color:var(--adfluence-orange)] px-1.5 py-0.5 text-[10px] font-semibold text-white"
+                  className="ml-auto inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-[color:var(--adfluence-action)] px-1.5 py-0.5 text-[10px] font-semibold text-white"
                 >
                   {unreadMessages > 99 ? "99+" : unreadMessages}
                 </span>

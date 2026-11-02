@@ -228,7 +228,7 @@ function NewContractSheet({
             <textarea id="contract-notes" value={notes} maxLength={2000} rows={3} onChange={(e) => setNotes(e.target.value)} className="w-full rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)] px-3 py-2 text-sm text-white outline-none focus:border-[color:var(--adfluence-orange)]" />
           </label>
           {problem ? <p className="text-xs text-[#94A3B8]">{problem}</p> : null}
-          <Button type="button" disabled={!!problem || saving} onClick={() => void create()} className="h-11 w-full rounded-xl bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)]">
+          <Button type="button" disabled={!!problem || saving} onClick={() => void create()} className="h-11 w-full rounded-xl bg-[color:var(--adfluence-action)] text-white hover:bg-[color:var(--adfluence-action-hover)]">
             {saving ? <Loader2 className="mr-2 size-4 animate-spin" aria-hidden /> : null}
             Send contract to creator
           </Button>
@@ -367,7 +367,7 @@ export function BusinessContracts() {
           <h1 className="text-2xl font-semibold">Contracts</h1>
           <p className="mt-1 max-w-2xl text-sm text-[#CBD5E1]">Send terms to creators, follow payment and release payouts when the work is done.</p>
         </div>
-        <Button type="button" onClick={() => setSheetOpen(true)} className="h-11 rounded-xl bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)]">
+        <Button type="button" onClick={() => setSheetOpen(true)} className="h-11 rounded-xl bg-[color:var(--adfluence-action)] text-white hover:bg-[color:var(--adfluence-action-hover)]">
           <Plus className="mr-1 size-4" aria-hidden /> New contract
         </Button>
       </div>
@@ -382,7 +382,7 @@ export function BusinessContracts() {
             onClick={() => { setFilter(f.id); setListState("loading"); }}
             className={cn(
               "inline-flex min-h-11 items-center rounded-full border px-4 py-2 text-sm font-medium transition-colors sm:min-h-0",
-              filter === f.id ? "border-transparent bg-[color:var(--adfluence-orange)] text-white" : "border-white/10 bg-[rgba(255,255,255,0.06)] text-[#CBD5E1] hover:text-white",
+              filter === f.id ? "border-transparent bg-[color:var(--adfluence-action)] text-white" : "border-white/10 bg-[rgba(255,255,255,0.06)] text-[#CBD5E1] hover:text-white",
             )}
           >
             {f.label}

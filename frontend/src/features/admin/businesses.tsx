@@ -213,7 +213,7 @@ export function AdminBusinesses() {
             className={cn(
               "inline-flex min-h-11 items-center rounded-full border px-4 py-2 text-sm font-medium transition-colors sm:min-h-0",
               tab === t.id
-                ? "border-transparent bg-[color:var(--adfluence-orange)] text-white"
+                ? "border-transparent bg-[color:var(--adfluence-action)] text-white"
                 : "border-white/10 bg-[rgba(255,255,255,0.06)] text-[#CBD5E1] hover:text-white",
             )}
           >

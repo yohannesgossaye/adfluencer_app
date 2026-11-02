@@ -170,7 +170,7 @@ export function UserSupportPage({ role, subtitle }: { role: SupportRole; subtitl
                   onClick={() => setPriority(p.value)}
                   className={cn(
                     "min-h-11 rounded-full border px-4 text-sm md:min-h-9",
-                    priority === p.value ? "border-transparent bg-[color:var(--adfluence-orange)] text-white" : "border-white/10 text-[#CBD5E1] hover:text-white",
+                    priority === p.value ? "border-transparent bg-[color:var(--adfluence-action)] text-white" : "border-white/10 text-[#CBD5E1] hover:text-white",
                   )}
                 >
                   {p.label}
@@ -178,7 +178,7 @@ export function UserSupportPage({ role, subtitle }: { role: SupportRole; subtitl
               ))}
             </div>
           </fieldset>
-          <Button type="submit" disabled={!canSubmit} className="h-11 rounded-xl bg-[color:var(--adfluence-orange)] px-6 text-white hover:bg-[color:var(--adfluence-orange-hover)]">
+          <Button type="submit" disabled={!canSubmit} className="h-11 rounded-xl bg-[color:var(--adfluence-action)] px-6 text-white hover:bg-[color:var(--adfluence-action-hover)]">
             {submitting ? <Loader2 className="mr-2 size-4 animate-spin" aria-hidden /> : null}
             Send request
           </Button>
