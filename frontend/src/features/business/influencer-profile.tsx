@@ -21,7 +21,11 @@ type InfluencerProfileProps = {
 export function InfluencerProfile({ influencerId }: InfluencerProfileProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const campaignId = searchParams.get("campaign_id") || undefined;
+  const urlCampaignId = searchParams.get("campaign_id") || undefined;
+  // Without ?campaign_id the business picks one of its live campaigns.
+  const [pickedCampaignId, setPickedCampaignId] = useState("");
+  const [liveCampaigns, setLiveCampaigns] = useState<Array<{ id: string; title: string }>>([]);
+  const campaignId = urlCampaignId || pickedCampaignId || undefined;
 
   const [creator, setCreator] = useState<InfluencerViewDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -32,7 +36,7 @@ export function InfluencerProfile({ influencerId }: InfluencerProfileProps) {
   useEffect(() => {
     async function loadCreator() {
       try {
-        const res = await businessApi.getInfluencerForBusiness(influencerId, campaignId);
+        const res = await businessApi.getInfluencerForBusiness(influencerId, urlCampaignId);
         if (res.data) {
           setCreator(res.data);
         }
@@ -46,7 +50,15 @@ export function InfluencerProfile({ influencerId }: InfluencerProfileProps) {
       }
     }
     loadCreator();
-  }, [influencerId, campaignId]);
+  }, [influencerId, urlCampaignId]);
+
+  useEffect(() => {
+    if (urlCampaignId) return;
+    businessApi
+      .listCampaigns({ status: "active", page: 1, limit: 50 })
+      .then((res) => setLiveCampaigns((res.data?.items ?? []).map((c) => ({ id: c.id, title: c.title }))))
+      .catch(() => setLiveCampaigns([]));
+  }, [urlCampaignId]);
 
   const handleSendInvite = async () => {
     if (!campaignId || !creator) return;
@@ -185,10 +197,35 @@ export function InfluencerProfile({ influencerId }: InfluencerProfileProps) {
             <Send className="mr-2 size-4" />
             {isInviting ? "Sending..." : inviteSent ? "Invitation Sent" : "Invite to Campaign"}
           </Button>
-          {!campaignId ? (
-            <p className="w-full text-xs text-[#94A3B8]">
-              To invite, open this creator from a live campaign&apos;s recommendations.
-            </p>
+          {!urlCampaignId ? (
+            liveCampaigns.length > 0 ? (
+              <label className="w-full text-xs text-[#CBD5E1]">
+                <span className="mb-1 block">Campaign to invite them to</span>
+                <select
+                  value={pickedCampaignId}
+                  onChange={(e) => {
+                    setPickedCampaignId(e.target.value);
+                    setInviteSent(false);
+                  }}
+                  className="h-11 w-full max-w-sm rounded-xl border border-white/10 bg-[#06111F] px-3 text-sm text-white"
+                >
+                  <option value="">Choose a live campaign…</option>
+                  {liveCampaigns.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.title}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : (
+              <p className="w-full text-xs text-[#94A3B8]">
+                You have no live campaigns.{" "}
+                <Link href="/business/campaigns" className="underline">
+                  Publish a campaign
+                </Link>{" "}
+                to invite creators.
+              </p>
+            )
           ) : null}
         </div>
       </section>

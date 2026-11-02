@@ -102,11 +102,13 @@ function campaignToForm(c: CampaignDetail): CampaignFormState {
   const chosen = (Object.entries(DELIVERABLE_TO_API) as Array<[string, string]>)
     .filter(([, api]) => c.deliverables.some((d) => d.type === api))
     .map(([label]) => label);
+  // The server stores notes inside the description (MergeDescription); split them back out.
+  const [description, notes = ""] = (c.description ?? "").split("\n\nAdditional notes:\n");
   return {
     title: c.title,
     goal: c.goal ?? "",
-    description: c.description,
-    niche: c.category?.slug ?? "",
+    description,
+    niche: c.category?.name ?? "",
     targetAudience: c.target_audience ?? "",
     location: c.city ?? "",
     platforms: c.platforms.map((p) => platforms.find((x) => x.toLowerCase() === p) ?? p),
@@ -116,7 +118,7 @@ function campaignToForm(c: CampaignDetail): CampaignFormState {
     deliverables: chosen,
     startDate: c.start_date?.slice(0, 10) ?? "",
     endDate: c.end_date?.slice(0, 10) ?? "",
-    additionalNotes: "",
+    additionalNotes: notes,
   };
 }
 
@@ -205,6 +207,15 @@ export function CreateCampaign({ campaignId }: { campaignId?: string } = {}) {
       setError("Campaign end date must be on or after the start date.");
       return;
     }
+    const creators = Number(form.creatorsNeeded || "1");
+    if (!Number.isInteger(creators) || creators < 1 || creators > 50) {
+      setError("Number of creators needed must be between 1 and 50.");
+      return;
+    }
+    if (form.deliverables.length === 0) {
+      setError("Please choose at least one deliverable (e.g. TikTok video).");
+      return;
+    }
 
     setError("");
     setIsLoading(true);
@@ -216,14 +227,6 @@ export function CreateCampaign({ campaignId }: { campaignId?: string } = {}) {
       quantity: 1,
       description: d,
     }));
-
-    if (campaignDeliverables.length === 0) {
-      campaignDeliverables.push({
-        type: "post",
-        quantity: 1,
-        description: "Standard campaign post",
-      });
-    }
 
     const payload = {
       title: form.title.trim(),
@@ -434,7 +437,8 @@ export function CreateCampaign({ campaignId }: { campaignId?: string } = {}) {
                   <option value="" disabled>
                     Select location
                   </option>
-                  {locations.map((location) => (
+                  {/* Keep a saved city that isn't in the preset list selectable when editing. */}
+                  {[...locations, ...(form.location && !(locations as readonly string[]).includes(form.location) ? [form.location] : [])].map((location) => (
                     <option key={location} value={location} className="bg-[color:var(--adfluence-surface)]">
                       {location}
                     </option>
@@ -514,6 +518,8 @@ export function CreateCampaign({ campaignId }: { campaignId?: string } = {}) {
                 <Input
                   type="number"
                   min={1}
+                  max={50}
+                  inputMode="numeric"
                   value={form.creatorsNeeded}
                   onChange={(e) =>
                     setForm((prev) => ({ ...prev, creatorsNeeded: e.target.value }))

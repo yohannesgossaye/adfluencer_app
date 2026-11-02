@@ -238,7 +238,11 @@ export function CampaignDetailPage({ campaignId }: { campaignId: string }) {
         </div>
         {invites.length === 0 ? (
           <p className="text-sm text-[#CBD5E1]">
-            {campaign.status === "active" ? "No invites yet. Use Find creators to invite matched creators." : "Invites can be sent once the campaign is live."}
+            {campaign.status === "active"
+              ? "No invites yet. Use Find creators to invite matched creators."
+              : campaign.status === "draft"
+                ? "Invites can be sent once the campaign is published."
+                : "No creators were invited to this campaign."}
           </p>
         ) : (
           <ul className="space-y-2">
@@ -265,6 +269,10 @@ export function CampaignDetailPage({ campaignId }: { campaignId: string }) {
                       Withdraw
                     </Button>
                   )
+                ) : inv.status === "accepted" && campaign.status === "active" ? (
+                  <Button asChild size="sm" className="h-9 rounded-lg bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)]">
+                    <Link href={`/business/contracts?campaign_id=${campaign.id}&invite_id=${inv.id}`}>Send contract</Link>
+                  </Button>
                 ) : null}
               </li>
             ))}

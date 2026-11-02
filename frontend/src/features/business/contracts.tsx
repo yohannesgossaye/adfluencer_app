@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import axios from "axios";
 import { ArrowLeft, Loader2, Plus } from "lucide-react";
 import { toast } from "sonner";
@@ -51,7 +52,18 @@ const inputClass =
 const selectClass =
   "h-11 w-full rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)] px-3 text-sm text-white outline-none focus:border-[color:var(--adfluence-orange)] focus:ring-2 focus:ring-[color:var(--adfluence-orange)]/25";
 
-function NewContractSheet({ open, onOpenChange, onCreated }: { open: boolean; onOpenChange: (v: boolean) => void; onCreated: (id: string) => void }) {
+function NewContractSheet({
+  open,
+  onOpenChange,
+  onCreated,
+  preset,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  onCreated: (id: string) => void;
+  /** Campaign and accepted invite to preselect, e.g. from "Send contract". */
+  preset?: { campaignId: string; inviteId: string };
+}) {
   const [campaigns, setCampaigns] = useState<CampaignListItem[]>([]);
   const [invites, setInvites] = useState<InviteResponse[]>([]);
   const [campaignId, setCampaignId] = useState("");
@@ -70,7 +82,13 @@ function NewContractSheet({ open, onOpenChange, onCreated }: { open: boolean; on
       .listCampaigns({ status: "active", page: 1, limit: 50 })
       .then((res) => setCampaigns(res.data?.items ?? []))
       .catch(() => setCampaigns([]));
-  }, [open]);
+    if (preset) {
+      void Promise.resolve().then(() => {
+        setCampaignId(preset.campaignId);
+        setInviteId(preset.inviteId);
+      });
+    }
+  }, [open, preset]);
 
   useEffect(() => {
     if (!campaignId) return;
@@ -228,7 +246,14 @@ export function BusinessContracts() {
   const [detail, setDetail] = useState<ContractDetail | null>(null);
   const [detailError, setDetailError] = useState<string | null>(null);
   const [mobileShowDetail, setMobileShowDetail] = useState(false);
-  const [sheetOpen, setSheetOpen] = useState(false);
+  const searchParams = useSearchParams();
+  // "Send contract" on an accepted invite links here with both ids.
+  const preset = useMemo(() => {
+    const campaignId = searchParams.get("campaign_id");
+    const inviteId = searchParams.get("invite_id");
+    return campaignId && inviteId ? { campaignId, inviteId } : undefined;
+  }, [searchParams]);
+  const [sheetOpen, setSheetOpen] = useState(Boolean(preset));
   const [confirm, setConfirm] = useState<Confirm>(null);
   const [busy, setBusy] = useState(false);
 
@@ -424,6 +449,7 @@ export function BusinessContracts() {
 
       <NewContractSheet
         open={sheetOpen}
+        preset={preset}
         onOpenChange={setSheetOpen}
         onCreated={(id) => {
           setFilter("");
