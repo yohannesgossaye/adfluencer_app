@@ -90,7 +90,7 @@ export function Recommendations() {
   // 2. Matches for the selected campaign, filtered and sorted by the server.
   const fetchPage = useCallback(
     async (page: number) => {
-      if (!selectedCampaignId) return { items: [] as RecommendationItem[], pagination: { total: 0 } };
+      if (!selectedCampaignId) return { items: [] as RecommendationItem[], pagination: { total_docs: 0 } };
       const params = {
         search: query || undefined,
         niche: nicheFilter === "All niches" ? undefined : nicheFilter,

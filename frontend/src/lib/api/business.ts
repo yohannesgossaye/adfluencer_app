@@ -438,8 +438,8 @@ export const businessApi = {
     status?: string;
     page?: number;
     limit?: number;
-  }): Promise<ApiResponse<{ items: CampaignListItem[]; pagination: { total: number; page: number; limit: number; total_pages: number } }>> => {
-    const res = await apiClient.get<ApiResponse<{ items: CampaignListItem[]; pagination: { total: number; page: number; limit: number; total_pages: number } }>>(
+  }): Promise<ApiResponse<{ items: CampaignListItem[]; pagination: { total_docs: number; page: number; limit: number; total_pages: number; has_next_page: boolean } }>> => {
+    const res = await apiClient.get<ApiResponse<{ items: CampaignListItem[]; pagination: { total_docs: number; page: number; limit: number; total_pages: number; has_next_page: boolean } }>>(
       "/api/v1/business/campaigns",
       { params }
     );
@@ -500,8 +500,8 @@ export const businessApi = {
       page?: number;
       limit?: number;
     }
-  ): Promise<ApiResponse<{ items: RecommendationItem[]; pagination: { total: number; page: number; limit: number } }>> => {
-    const res = await apiClient.get<ApiResponse<{ items: RecommendationItem[]; pagination: { total: number; page: number; limit: number } }>>(
+  ): Promise<ApiResponse<{ items: RecommendationItem[]; pagination: { total_docs: number; page: number; limit: number; total_pages: number; has_next_page: boolean } }>> => {
+    const res = await apiClient.get<ApiResponse<{ items: RecommendationItem[]; pagination: { total_docs: number; page: number; limit: number; total_pages: number; has_next_page: boolean } }>>(
       `/api/v1/business/campaigns/${campaignId}/recommendations`,
       { params }
     );
