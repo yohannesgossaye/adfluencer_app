@@ -1,12 +1,14 @@
 "use client";
 
-import axios from "axios";
 import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Sparkles, Users, RefreshCw } from "lucide-react";
 
+import { toast } from "sonner";
+
+import { ListStatus, LoadMore } from "@/components/common/list-status";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -15,6 +17,8 @@ import {
   type RecommendationItem,
   type InviteResponse,
 } from "@/lib/api/business";
+import { usePagedList, type LoadState } from "@/hooks/use-paged-list";
+import { apiErrorType, businessErrorMessage } from "@/lib/api-errors";
 import { getInitials } from "@/lib/utils";
 
 const platformOptions = ["All platforms", "TikTok", "Instagram", "YouTube", "Telegram"] as const;
@@ -26,6 +30,15 @@ const sortOptions = [
   "Price high to low",
 ] as const;
 
+// Filters run on the server so they cover every match, not just the first page.
+const MIN_SCORE: Record<string, number | undefined> = { "80+": 80, "85+": 85, "90+": 90, "95+": 95 };
+const SORT: Record<string, string> = {
+  "Best match": "match",
+  Followers: "followers",
+  "Price low to high": "price_low",
+  "Price high to low": "price_high",
+};
+
 export function Recommendations() {
   const searchParams = useSearchParams();
   const initialCampaignId = searchParams.get("campaign_id");
@@ -33,97 +46,85 @@ export function Recommendations() {
   const [campaigns, setCampaigns] = useState<CampaignListItem[]>([]);
   const [categories, setCategories] = useState<Array<{ id: string; name: string; slug: string }>>([]);
   const [selectedCampaignId, setSelectedCampaignId] = useState<string>(initialCampaignId || "");
-  const [recommendations, setRecommendations] = useState<RecommendationItem[]>([]);
   const [invites, setInvites] = useState<InviteResponse[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [campaignsState, setCampaignsState] = useState<LoadState>("loading");
   const [isGenerating, setIsGenerating] = useState(false);
   const [invitingId, setInvitingId] = useState<string | null>(null);
-  const [inviteMessage, setInviteMessage] = useState("");
-  const [accessError, setAccessError] = useState("");
 
   const [search, setSearch] = useState("");
+  const [query, setQuery] = useState("");
   const [nicheFilter, setNicheFilter] = useState("All niches");
   const [platformFilter, setPlatformFilter] = useState("All platforms");
   const [scoreFilter, setScoreFilter] = useState("Any score");
   const [sortBy, setSortBy] = useState("Best match");
 
-  // 1. Fetch campaigns and active categories on mount
-  useEffect(() => {
-    async function loadInitialData() {
-      try {
-        const [campRes, catRes] = await Promise.allSettled([
-          businessApi.listCampaigns({ page: 1, limit: 50 }),
-          businessApi.listCategories(),
-        ]);
-
-        if (catRes.status === "fulfilled" && catRes.value.data?.items) {
-          setCategories(catRes.value.data.items);
-        }
-
-        if (campRes.status === "fulfilled" && campRes.value.data?.items) {
-          // Only drafts (preview) and live campaigns can have recommendations.
-          const items = campRes.value.data.items.filter((c) => c.status === "draft" || c.status === "active");
-          setCampaigns(items);
-          if (!selectedCampaignId && items.length > 0) {
-            setSelectedCampaignId(items[0].id);
-          }
-        }
-      } catch {
-        // Fallback
-      } finally {
-        setIsLoading(false);
-      }
+  // 1. Campaigns (for the picker) and categories (for the niche filter).
+  const loadInitialData = useCallback(async () => {
+    const [campRes, catRes] = await Promise.allSettled([
+      businessApi.listCampaigns({ page: 1, limit: 50 }),
+      businessApi.listCategories(),
+    ]);
+    if (catRes.status === "fulfilled" && catRes.value.data?.items) {
+      setCategories(catRes.value.data.items);
     }
-    loadInitialData();
+    if (campRes.status === "rejected") {
+      setCampaignsState("error");
+      return;
+    }
+    // Only drafts (preview) and live campaigns can have recommendations.
+    const items = (campRes.value.data?.items ?? []).filter((c) => c.status === "draft" || c.status === "active");
+    setCampaigns(items);
+    setSelectedCampaignId((current) => current || items[0]?.id || "");
+    setCampaignsState("ready");
   }, []);
 
-  // 2. Fetch recommendations & invites for selected campaign
+  useEffect(() => {
+    void Promise.resolve().then(loadInitialData);
+  }, [loadInitialData]);
+
+  useEffect(() => {
+    const t = setTimeout(() => setQuery(search.trim()), 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  // 2. Matches for the selected campaign, filtered and sorted by the server.
+  const fetchPage = useCallback(
+    async (page: number) => {
+      if (!selectedCampaignId) return { items: [] as RecommendationItem[], pagination: { total: 0 } };
+      const params = {
+        search: query || undefined,
+        niche: nicheFilter === "All niches" ? undefined : nicheFilter,
+        platform: platformFilter === "All platforms" ? undefined : platformFilter.toLowerCase(),
+        min_score: MIN_SCORE[scoreFilter],
+        sort: SORT[sortBy],
+        page,
+      };
+      let res = (await businessApi.listRecommendations(selectedCampaignId, params)).data;
+      const filtered = Boolean(params.search || params.niche || params.platform || params.min_score);
+      // A new campaign has no matches yet: generate them once, then list again.
+      if (page === 1 && !filtered && (res?.items?.length ?? 0) === 0) {
+        await businessApi.generateRecommendations(selectedCampaignId);
+        res = (await businessApi.listRecommendations(selectedCampaignId, params)).data;
+      }
+      return res;
+    },
+    [selectedCampaignId, query, nicheFilter, platformFilter, scoreFilter, sortBy],
+  );
+  const list = usePagedList(fetchPage);
+  const recommendations: RecommendationItem[] = list.items;
+  const notVerified = list.state === "error" && apiErrorType(list.error) === "account_not_verified";
+
+  // 3. Invites already sent for this campaign (to mark "Invited").
   useEffect(() => {
     if (!selectedCampaignId) return;
-
-    async function loadData() {
-      setIsLoading(true);
-      try {
-        const [recRes, invRes] = await Promise.allSettled([
-          businessApi.listRecommendations(selectedCampaignId),
-          businessApi.listInvites(selectedCampaignId),
-        ]);
-
-        if (recRes.status === "fulfilled" && recRes.value.data?.items) {
-          let items = recRes.value.data.items;
-          // If no recommendations exist yet, try to auto-generate
-          if (items.length === 0) {
-            await businessApi.generateRecommendations(selectedCampaignId);
-            const genRec = await businessApi.listRecommendations(selectedCampaignId);
-            items = genRec.data?.items || [];
-          }
-          setRecommendations(items);
-          setAccessError("");
-        } else {
-          setRecommendations([]);
-          const reason = recRes.status === "rejected" && axios.isAxiosError(recRes.reason)
-            ? (recRes.reason.response?.data as { error?: { type?: string } } | undefined)?.error?.type
-            : undefined;
-          setAccessError(
-            reason === "account_not_verified"
-              ? "Recommended creators appear once your business is verified. Check your business profile for the status."
-              : "Could not load recommendations. Please try again.",
-          );
-        }
-
-        if (invRes.status === "fulfilled" && invRes.value.data?.items) {
-          setInvites(invRes.value.data.items);
-        } else {
-          setInvites([]);
-        }
-      } catch {
-        setRecommendations([]);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    loadData();
+    let cancelled = false;
+    businessApi
+      .listInvites(selectedCampaignId)
+      .then((res) => !cancelled && setInvites(res.data?.items ?? []))
+      .catch(() => !cancelled && setInvites([]));
+    return () => {
+      cancelled = true;
+    };
   }, [selectedCampaignId]);
 
   const handleGenerateRecommendations = async () => {
@@ -131,13 +132,10 @@ export function Recommendations() {
     setIsGenerating(true);
     try {
       await businessApi.generateRecommendations(selectedCampaignId);
-      const recRes = await businessApi.listRecommendations(selectedCampaignId);
-      setRecommendations(recRes.data?.items || []);
-      setInviteMessage("AI recommendations refreshed successfully!");
-      setTimeout(() => setInviteMessage(""), 3000);
-    } catch {
-      setInviteMessage("Could not generate recommendations for this campaign.");
-      setTimeout(() => setInviteMessage(""), 3000);
+      await list.reload();
+      toast.success("Matches refreshed.");
+    } catch (err) {
+      toast.error(businessErrorMessage(err, "Could not refresh matches for this campaign."));
     } finally {
       setIsGenerating(false);
     }
@@ -158,50 +156,6 @@ export function Recommendations() {
   );
   const isDraft = selectedCampaign?.status === "draft";
 
-  const filteredInfluencers = useMemo(() => {
-    const minScore =
-      scoreFilter === "80+"
-        ? 80
-        : scoreFilter === "85+"
-          ? 85
-          : scoreFilter === "90+"
-            ? 90
-            : scoreFilter === "95+"
-              ? 95
-              : 0;
-
-    const searched = recommendations.filter((influencer) => {
-      const bySearch = (influencer.creator_name || "")
-        .toLowerCase()
-        .includes(search.toLowerCase().trim());
-      const byNiche =
-        nicheFilter === "All niches" ||
-        (influencer.primary_niche &&
-          influencer.primary_niche.toLowerCase() === nicheFilter.toLowerCase());
-      const byPlatform =
-        platformFilter === "All platforms" ||
-        (influencer.platforms &&
-          influencer.platforms.some(
-            (p) => p.toLowerCase() === platformFilter.toLowerCase(),
-          ));
-      const byScore = influencer.match_score >= minScore;
-      return bySearch && byNiche && byPlatform && byScore;
-    });
-
-    const sorted = [...searched];
-    if (sortBy === "Followers") {
-      sorted.sort((a, b) => (b.total_followers || 0) - (a.total_followers || 0));
-    } else if (sortBy === "Price low to high") {
-      sorted.sort((a, b) => (a.min_price_etb || 0) - (b.min_price_etb || 0));
-    } else if (sortBy === "Price high to low") {
-      sorted.sort((a, b) => (b.max_price_etb || 0) - (a.max_price_etb || 0));
-    } else {
-      sorted.sort((a, b) => b.match_score - a.match_score);
-    }
-
-    return sorted;
-  }, [recommendations, search, nicheFilter, platformFilter, scoreFilter, sortBy]);
-
   const onInvite = async (influencerId: string, name: string) => {
     if (!selectedCampaignId || invitedInfluencerIds.has(influencerId)) return;
     setInvitingId(influencerId);
@@ -213,21 +167,10 @@ export function Recommendations() {
       if (res.data?.id) {
         const inv = await businessApi.listInvites(selectedCampaignId);
         setInvites(inv.data?.items ?? []);
-        setInviteMessage(`Invitation sent to ${name}!`);
-        setTimeout(() => setInviteMessage(""), 3000);
+        toast.success(`Invitation sent to ${name}.`);
       }
     } catch (err) {
-      const data = axios.isAxiosError(err) ? (err.response?.data as { error?: { type?: string }; message?: string } | undefined) : undefined;
-      const reason =
-        data?.error?.type === "invalid_campaign_status"
-          ? "Publish this campaign before inviting creators."
-          : data?.error?.type === "account_not_verified"
-            ? "Your business must be verified before inviting creators."
-            : data?.error?.type === "invite_already_exists"
-              ? `${name} already has an open invite for this campaign.`
-              : data?.message || `Could not send the invitation to ${name}.`;
-      setInviteMessage(reason);
-      setTimeout(() => setInviteMessage(""), 5000);
+      toast.error(businessErrorMessage(err, `Could not send the invitation to ${name}.`));
     } finally {
       setInvitingId(null);
     }
@@ -335,6 +278,7 @@ export function Recommendations() {
       <section className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-4 md:p-5">
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
           <Input
+            aria-label="Search creator name"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search creator name"
@@ -394,23 +338,46 @@ export function Recommendations() {
         </div>
       </section>
 
-      {accessError ? (
-        <p role="alert" className="rounded-xl border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-100">
-          {accessError}{" "}
-          <Link href="/business/profile" className="underline">Business profile</Link>
-        </p>
-      ) : null}
-      {inviteMessage ? (
-        <p role="status" className="rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm text-white">
-          {inviteMessage}
+      {campaignsState === "error" ? (
+        <p role="alert" className="rounded-xl border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-100">
+          Your campaigns could not be loaded.{" "}
+          <button
+            type="button"
+            className="underline"
+            onClick={() => {
+              setCampaignsState("loading");
+              void loadInitialData();
+            }}
+          >
+            Try again
+          </button>
         </p>
       ) : null}
 
       <section className="flex flex-col gap-6 2xl:grid 2xl:grid-cols-[minmax(0,1fr)_320px]">
         <div className="order-2 2xl:order-1">
-          {filteredInfluencers.length > 0 ? (
+          {notVerified ? (
+            <p role="alert" className="rounded-xl border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-100">
+              Recommended creators appear once your business is verified. Check your{" "}
+              <Link href="/business/profile" className="underline">
+                business profile
+              </Link>{" "}
+              for the status.
+            </p>
+          ) : list.state !== "ready" || campaignsState === "loading" ? (
+            <ListStatus
+              state={campaignsState === "loading" ? "loading" : list.state}
+              isEmpty={false}
+              emptyText=""
+              errorText="Matches could not be loaded."
+              onRetry={list.retry}
+            >
+              {null}
+            </ListStatus>
+          ) : recommendations.length > 0 ? (
+            <>
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              {filteredInfluencers.map((influencer) => {
+              {recommendations.map((influencer) => {
                 const isInvited = invitedInfluencerIds.has(influencer.influencer_user_id);
                 const isInvitingThis = invitingId === influencer.influencer_user_id;
 
@@ -508,6 +475,14 @@ export function Recommendations() {
                 );
               })}
             </div>
+            <LoadMore
+              shown={recommendations.length}
+              total={list.total}
+              hasMore={list.hasMore}
+              loading={list.loadingMore}
+              onLoadMore={list.loadMore}
+            />
+            </>
           ) : (
             <div className="rounded-2xl border border-white/10 bg-white/5 p-12 text-center">
               <Users className="mx-auto size-12 text-[#CBD5E1]/40" />

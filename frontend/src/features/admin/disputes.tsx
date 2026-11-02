@@ -6,6 +6,7 @@ import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 
 import { ConfirmActionDialog, type ConfirmActionRequest } from "@/components/admin/confirm-action-dialog";
+import { ListStatus, LoadMore } from "@/components/common/list-status";
 import { Button } from "@/components/ui/button";
 import {
   adminApi,
@@ -13,6 +14,7 @@ import {
   type AdminDisputeDetail,
 } from "@/lib/api/admin";
 import { adminErrorMessage } from "@/lib/api-errors";
+import { usePagedList } from "@/hooks/use-paged-list";
 import { cn } from "@/lib/utils";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -35,34 +37,20 @@ function sev(s: string) {
 }
 
 export function AdminDisputes() {
-  const [rows, setRows] = useState<AdminDisputeListItem[]>([]);
   const [tab, setTab] = useState<"open" | "resolved">("open");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [pickedId, setPickedId] = useState<string | null>(null);
   const [selectedDetail, setSelectedDetail] = useState<AdminDisputeDetail | null>(null);
   const [mobileShowDetail, setMobileShowDetail] = useState(false);
   const [adminNoteDraft, setAdminNoteDraft] = useState("");
   const [resolutionNoteDraft, setResolutionNoteDraft] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
 
-  const loadDisputes = async () => {
-    try {
-      const res = await adminApi.listDisputes({ tab });
-      if (res.data?.items) {
-        setRows(res.data.items);
-        if (!selectedId && res.data.items[0]) {
-          setSelectedId(res.data.items[0].id);
-        }
-      }
-    } catch {
-      // fallback
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadDisputes();
-  }, [tab]);
+  const fetchPage = useCallback(async (page: number) => (await adminApi.listDisputes({ tab, page })).data, [tab]);
+  const list = usePagedList(fetchPage);
+  const rows: AdminDisputeListItem[] = list.items;
+  const loadDisputes = list.reload;
+  // The selection follows the list: a dispute from the other tab is never shown.
+  const selectedId = rows.some((r) => r.id === pickedId) ? pickedId : (rows[0]?.id ?? null);
+  const shownDetail = selectedDetail?.id === selectedId ? selectedDetail : null;
 
   useEffect(() => {
     if (!selectedId) return;
@@ -74,8 +62,8 @@ export function AdminDisputes() {
           setAdminNoteDraft(res.data.admin_note || "");
           setResolutionNoteDraft(res.data.resolution_note || "");
         }
-      } catch {
-        // fallback
+      } catch (err) {
+        toast.error(adminErrorMessage(err, "This dispute could not be opened."));
       }
     }
     loadItem();
@@ -160,7 +148,7 @@ export function AdminDisputes() {
   };
 
   const selectDispute = useCallback((id: string) => {
-    setSelectedId(id);
+    setPickedId(id);
     if (typeof window !== "undefined" && window.matchMedia("(max-width: 1279px)").matches) {
       setMobileShowDetail(true);
     }
@@ -194,13 +182,15 @@ export function AdminDisputes() {
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_400px]">
-        <div className={cn("space-y-3", mobileShowDetail && "hidden xl:block")}>
-          {rows.length === 0 && !isLoading ? (
-            <div className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-8 text-center">
-              <p className="text-white">No disputes found.</p>
-            </div>
-          ) : (
-            rows.map((d) => (
+        <div className={cn("space-y-3", mobileShowDetail && shownDetail && "hidden xl:block")}>
+          <ListStatus
+            state={list.state}
+            isEmpty={rows.length === 0}
+            emptyText={tab === "open" ? "No open disputes." : "No resolved disputes yet."}
+            errorText="Disputes could not be loaded."
+            onRetry={list.retry}
+          >
+            {rows.map((d) => (
               <button
                 key={d.id}
                 type="button"
@@ -222,11 +212,18 @@ export function AdminDisputes() {
                 </p>
                 <p className="mt-2 line-clamp-2 text-xs text-[#CBD5E1]">{d.preview}</p>
               </button>
-            ))
-          )}
+            ))}
+            <LoadMore
+              shown={rows.length}
+              total={list.total}
+              hasMore={list.hasMore}
+              loading={list.loadingMore}
+              onLoadMore={list.loadMore}
+            />
+          </ListStatus>
         </div>
 
-        {selectedDetail ? (
+        {shownDetail ? (
           <aside
             className={cn(
               "space-y-4 rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-5 xl:sticky xl:top-4",
@@ -245,27 +242,27 @@ export function AdminDisputes() {
                 <ArrowLeft className="size-5" />
               </Button>
             </div>
-            <h2 className="text-lg font-semibold text-white">{selectedDetail.title}</h2>
+            <h2 className="text-lg font-semibold text-white">{shownDetail.title}</h2>
             <p className="text-xs text-[#CBD5E1]">
-              Status: <span className="text-white">{STATUS_LABEL[selectedDetail.status] ?? selectedDetail.status}</span>
+              Status: <span className="text-white">{STATUS_LABEL[shownDetail.status] ?? shownDetail.status}</span>
             </p>
             <p className="text-xs text-[#CBD5E1]">
-              Between <span className="text-white">{selectedDetail.business_name}</span> (business) and{" "}
-              <span className="text-white">{selectedDetail.influencer_name}</span> (creator)
-              {selectedDetail.against_user_id ? (
+              Between <span className="text-white">{shownDetail.business_name}</span> (business) and{" "}
+              <span className="text-white">{shownDetail.influencer_name}</span> (creator)
+              {shownDetail.against_user_id ? (
                 <>
                   {" "}· reported:{" "}
                   <span className="text-white">
-                    {selectedDetail.against_user_id === selectedDetail.business_user_id
-                      ? selectedDetail.business_name
-                      : selectedDetail.influencer_name}
+                    {shownDetail.against_user_id === shownDetail.business_user_id
+                      ? shownDetail.business_name
+                      : shownDetail.influencer_name}
                   </span>
                 </>
               ) : null}
             </p>
             <div className="rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)] p-3">
               <p className="text-xs font-medium uppercase text-[#94A3B8]">Description & preview</p>
-              <p className="mt-2 text-sm text-[#CBD5E1]">{selectedDetail.description || selectedDetail.preview}</p>
+              <p className="mt-2 text-sm text-[#CBD5E1]">{shownDetail.description || shownDetail.preview}</p>
             </div>
             <label className="block text-xs">
               <span className="text-[#CBD5E1]">Admin internal note</span>
@@ -296,7 +293,7 @@ export function AdminDisputes() {
               {savingNotes ? "Saving…" : "Save notes"}
             </Button>
             <div className="flex flex-col gap-2 pt-2">
-              {isFinished(selectedDetail.status) ? (
+              {isFinished(shownDetail.status) ? (
                 <Button
                   type="button"
                   size="sm"
@@ -306,7 +303,7 @@ export function AdminDisputes() {
                       title: "Reopen this dispute?",
                       description: "It moves back to Open & under review.",
                       confirmLabel: "Reopen",
-                      onConfirm: () => setStatus(selectedDetail.id, "under_review", "Dispute reopened."),
+                      onConfirm: () => setStatus(shownDetail.id, "under_review", "Dispute reopened."),
                     })
                   }
                 >
@@ -314,13 +311,13 @@ export function AdminDisputes() {
                 </Button>
               ) : (
                 <>
-                  {selectedDetail.status !== "under_review" ? (
+                  {shownDetail.status !== "under_review" ? (
                     <Button
                       type="button"
                       size="sm"
                       className="h-11 bg-white/10 text-white sm:h-9"
                       onClick={() =>
-                        void setStatus(selectedDetail.id, "under_review", "Marked as under review.").catch(() => {})
+                        void setStatus(shownDetail.id, "under_review", "Marked as under review.").catch(() => {})
                       }
                     >
                       Mark under review
@@ -330,7 +327,7 @@ export function AdminDisputes() {
                     type="button"
                     size="sm"
                     className="h-11 bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)] sm:h-9"
-                    onClick={() => askResolve(selectedDetail)}
+                    onClick={() => askResolve(shownDetail)}
                   >
                     Resolve dispute…
                   </Button>
@@ -342,7 +339,7 @@ export function AdminDisputes() {
                   size="sm"
                   variant="outline"
                   className="h-11 border-rose-400/40 text-rose-200 sm:h-9"
-                  onClick={() => askBlock("business", selectedDetail)}
+                  onClick={() => askBlock("business", shownDetail)}
                 >
                   Block business…
                 </Button>
@@ -351,7 +348,7 @@ export function AdminDisputes() {
                   size="sm"
                   variant="outline"
                   className="h-11 border-rose-400/40 text-rose-200 sm:h-9"
-                  onClick={() => askBlock("creator", selectedDetail)}
+                  onClick={() => askBlock("creator", shownDetail)}
                 >
                   Block creator…
                 </Button>

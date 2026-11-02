@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback } from "react";
 
+import { ListStatus, LoadMore } from "@/components/common/list-status";
 import { Button } from "@/components/ui/button";
+import { usePagedList } from "@/hooks/use-paged-list";
 import { businessApi, type CampaignListItem } from "@/lib/api/business";
 
 function getStatusBadge(status: string) {
@@ -24,24 +26,9 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 export function CampaignsList() {
-  const [campaigns, setCampaigns] = useState<CampaignListItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    async function load() {
-      try {
-        const res = await businessApi.listCampaigns();
-        if (res.data?.items) {
-          setCampaigns(res.data.items);
-        }
-      } catch {
-        // Fallback
-      } finally {
-        setIsLoading(false);
-      }
-    }
-    load();
-  }, []);
+  const fetchPage = useCallback(async (page: number) => (await businessApi.listCampaigns({ page })).data, []);
+  const list = usePagedList(fetchPage);
+  const campaigns: CampaignListItem[] = list.items;
 
   return (
     <div className="space-y-6 text-white">
@@ -60,84 +47,97 @@ export function CampaignsList() {
         </Button>
       </section>
 
-      {campaigns.length === 0 && !isLoading ? (
-        <div className="adfluence-glass rounded-2xl border border-white/10 p-8 text-center">
-          <p className="text-base text-white">No campaigns found.</p>
-          <p className="mt-1 text-sm text-[#CBD5E1]">Create a new campaign to start finding matched creators.</p>
-          <Button
-            asChild
-            className="mt-4 h-11 rounded-xl bg-[color:var(--adfluence-orange)] px-5 text-white hover:bg-[color:var(--adfluence-orange-hover)]"
-          >
-            <Link href="/business/campaigns/create">Create Campaign</Link>
-          </Button>
-        </div>
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2">
-          {campaigns.map((campaign) => (
-            <article
-              key={campaign.id}
-              className="adfluence-glass rounded-2xl border border-white/10 p-5"
+      <ListStatus
+        state={list.state}
+        isEmpty={campaigns.length === 0}
+        errorText="Your campaigns could not be loaded."
+        onRetry={list.retry}
+        emptyText={
+          <>
+            <p className="text-base text-white">No campaigns yet.</p>
+            <p className="mt-1 text-sm text-[#CBD5E1]">Create a new campaign to start finding matched creators.</p>
+            <Button
+              asChild
+              className="mt-4 h-11 rounded-xl bg-[color:var(--adfluence-orange)] px-5 text-white hover:bg-[color:var(--adfluence-orange-hover)]"
             >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <h2 className="text-lg font-semibold text-white">
-                    <Link href={`/business/campaigns/${campaign.id}`} className="hover:underline">
-                      {campaign.title}
+              <Link href="/business/campaigns/create">Create Campaign</Link>
+            </Button>
+          </>
+        }
+      >
+          <div className="grid gap-4 md:grid-cols-2">
+            {campaigns.map((campaign) => (
+              <article
+                key={campaign.id}
+                className="adfluence-glass rounded-2xl border border-white/10 p-5"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <h2 className="text-lg font-semibold text-white">
+                      <Link href={`/business/campaigns/${campaign.id}`} className="hover:underline">
+                        {campaign.title}
+                      </Link>
+                    </h2>
+                    <p className="mt-1 text-sm text-[#CBD5E1]">{campaign.business_name}</p>
+                  </div>
+                  <span
+                    className={`shrink-0 rounded-full px-3 py-1 text-xs ${getStatusBadge(campaign.status)}`}
+                  >
+                    {STATUS_LABEL[campaign.status] ?? campaign.status}
+                  </span>
+                </div>
+
+                <div className="mt-4 grid grid-cols-2 gap-3 text-sm text-[#CBD5E1]">
+                  <p>Platform: <span className="text-white capitalize">{campaign.primary_platform || "Multi"}</span></p>
+                  <p>Budget: <span className="text-white">{campaign.budget_summary || "Flexible"}</span></p>
+                </div>
+
+                <div className="mt-4">
+                  <div className="mb-2 flex items-center justify-between text-xs text-[#CBD5E1]">
+                    <span>Creators Accepted</span>
+                    <span className="text-white">{campaign.invites_accepted} / {campaign.creators_needed}</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-white/10">
+                    <div
+                      className="h-2 rounded-full bg-[color:var(--adfluence-orange)]"
+                      style={{
+                        width: `${Math.min(
+                          100,
+                          campaign.creators_needed > 0
+                            ? Math.round((campaign.invites_accepted / campaign.creators_needed) * 100)
+                            : 0
+                        )}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-5 flex flex-wrap items-center justify-end gap-2">
+                  {campaign.status === "active" ? (
+                    <Button asChild className="h-10 rounded-xl bg-white/10 text-white hover:bg-white/15">
+                      <Link href={`/business/recommendations?campaign_id=${campaign.id}`}>Find creators</Link>
+                    </Button>
+                  ) : null}
+                  <Button
+                    asChild
+                    className="h-10 rounded-xl bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)]"
+                  >
+                    <Link href={`/business/campaigns/${campaign.id}`}>
+                      {campaign.status === "draft" ? "Review & publish" : "Open campaign"}
                     </Link>
-                  </h2>
-                  <p className="mt-1 text-sm text-[#CBD5E1]">{campaign.business_name}</p>
-                </div>
-                <span
-                  className={`shrink-0 rounded-full px-3 py-1 text-xs ${getStatusBadge(campaign.status)}`}
-                >
-                  {STATUS_LABEL[campaign.status] ?? campaign.status}
-                </span>
-              </div>
-
-              <div className="mt-4 grid grid-cols-2 gap-3 text-sm text-[#CBD5E1]">
-                <p>Platform: <span className="text-white capitalize">{campaign.primary_platform || "Multi"}</span></p>
-                <p>Budget: <span className="text-white">{campaign.budget_summary || "Flexible"}</span></p>
-              </div>
-
-              <div className="mt-4">
-                <div className="mb-2 flex items-center justify-between text-xs text-[#CBD5E1]">
-                  <span>Creators Accepted</span>
-                  <span className="text-white">{campaign.invites_accepted} / {campaign.creators_needed}</span>
-                </div>
-                <div className="h-2 rounded-full bg-white/10">
-                  <div
-                    className="h-2 rounded-full bg-[color:var(--adfluence-orange)]"
-                    style={{
-                      width: `${Math.min(
-                        100,
-                        campaign.creators_needed > 0
-                          ? Math.round((campaign.invites_accepted / campaign.creators_needed) * 100)
-                          : 0
-                      )}%`,
-                    }}
-                  />
-                </div>
-              </div>
-
-              <div className="mt-5 flex flex-wrap items-center justify-end gap-2">
-                {campaign.status === "active" ? (
-                  <Button asChild className="h-10 rounded-xl bg-white/10 text-white hover:bg-white/15">
-                    <Link href={`/business/recommendations?campaign_id=${campaign.id}`}>Find creators</Link>
                   </Button>
-                ) : null}
-                <Button
-                  asChild
-                  className="h-10 rounded-xl bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)]"
-                >
-                  <Link href={`/business/campaigns/${campaign.id}`}>
-                    {campaign.status === "draft" ? "Review & publish" : "Open campaign"}
-                  </Link>
-                </Button>
-              </div>
-            </article>
-          ))}
-        </div>
-      )}
+                </div>
+              </article>
+            ))}
+          </div>
+        <LoadMore
+          shown={campaigns.length}
+          total={list.total}
+          hasMore={list.hasMore}
+          loading={list.loadingMore}
+          onLoadMore={list.loadMore}
+        />
+      </ListStatus>
     </div>
   );
 }

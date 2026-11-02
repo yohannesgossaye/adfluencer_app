@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { toast } from "sonner";
 
 import { ConfirmActionDialog, type ConfirmActionRequest } from "@/components/admin/confirm-action-dialog";
+import { ListStatus, LoadMore } from "@/components/common/list-status";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -12,6 +13,7 @@ import {
   type AdminUserListItem,
   type AdminUserStats,
 } from "@/lib/api/admin";
+import { usePagedList } from "@/hooks/use-paged-list";
 import { adminErrorMessage } from "@/lib/api-errors";
 import { cn } from "@/lib/utils";
 
@@ -37,41 +39,32 @@ function statusStyle(s: string) {
 }
 
 export function AdminUsers() {
-  const [users, setUsers] = useState<AdminUserListItem[]>([]);
-  const [stats, setStats] = useState<AdminUserStats>({
-    total: 0,
-    active: 0,
-    blocked: 0,
-    pending: 0,
-  });
   const [roleFilter, setRoleFilter] = useState<"all" | "business" | "influencer" | "admin">("all");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "pending" | "blocked" | "removed">("all");
   const [search, setSearch] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
-
-  const loadUsers = async () => {
-    try {
-      const res = await adminApi.listUsers({
-        role: roleFilter === "all" ? undefined : roleFilter,
-        status: statusFilter === "all" ? undefined : statusFilter,
-        search: search.trim() || undefined,
-      });
-      if (res.data?.items) {
-        setUsers(res.data.items);
-      }
-      if (res.data?.stats) {
-        setStats(res.data.stats);
-      }
-    } catch {
-      // fallback
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const [query, setQuery] = useState("");
 
   useEffect(() => {
-    loadUsers();
-  }, [roleFilter, statusFilter, search]);
+    const t = setTimeout(() => setQuery(search.trim()), 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  const fetchPage = useCallback(
+    async (page: number) =>
+      (
+        await adminApi.listUsers({
+          role: roleFilter === "all" ? undefined : roleFilter,
+          status: statusFilter === "all" ? undefined : statusFilter,
+          search: query || undefined,
+          page,
+        })
+      ).data,
+    [roleFilter, statusFilter, query],
+  );
+  const list = usePagedList(fetchPage);
+  const users = list.items;
+  const stats: AdminUserStats = list.last?.stats ?? { total: 0, active: 0, blocked: 0, pending: 0 };
+  const loadUsers = list.reload;
 
   const [confirm, setConfirm] = useState<ConfirmActionRequest | null>(null);
 
@@ -132,10 +125,10 @@ export function AdminUsers() {
 
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {[
-          { label: "Total users", value: String(stats.total) },
-          { label: "Active", value: String(stats.active) },
-          { label: "Blocked", value: String(stats.blocked) },
-          { label: "Pending", value: String(stats.pending) },
+          { label: "Total users", value: list.state === "ready" ? String(stats.total) : "—" },
+          { label: "Active", value: list.state === "ready" ? String(stats.active) : "—" },
+          { label: "Blocked", value: list.state === "ready" ? String(stats.blocked) : "—" },
+          { label: "Pending", value: list.state === "ready" ? String(stats.pending) : "—" },
         ].map((s) => (
           <article
             key={s.label}
@@ -183,6 +176,7 @@ export function AdminUsers() {
       </div>
 
       <Input
+        aria-label="Search users"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         placeholder="Search name or email"
@@ -190,12 +184,14 @@ export function AdminUsers() {
       />
 
       <div className="space-y-3 min-w-0">
-        {users.length === 0 && !isLoading ? (
-          <div className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-8 text-center">
-            <p className="text-white">No users found.</p>
-          </div>
-        ) : (
-          users.map((u) => (
+        <ListStatus
+          state={list.state}
+          isEmpty={users.length === 0}
+          emptyText="No users match these filters."
+          errorText="Users could not be loaded."
+          onRetry={list.retry}
+        >
+          {users.map((u) => (
             <article
               key={u.user_id}
               className="w-full min-w-0 rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-4"
@@ -258,8 +254,15 @@ export function AdminUsers() {
                 </div>
               )}
             </article>
-          ))
-        )}
+          ))}
+          <LoadMore
+            shown={users.length}
+            total={list.total}
+            hasMore={list.hasMore}
+            loading={list.loadingMore}
+            onLoadMore={list.loadMore}
+          />
+        </ListStatus>
       </div>
 
       <ConfirmActionDialog request={confirm} onClose={() => setConfirm(null)} />
