@@ -136,10 +136,11 @@ export function BusinessDashboard() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-lg font-semibold">Campaign Performance</h2>
             <Button
+              asChild
               variant="outline"
               className="h-10 rounded-xl border-white/15 bg-transparent px-4 text-white hover:bg-white/10"
             >
-              Overview
+              <Link href="/business/campaigns">All campaigns</Link>
             </Button>
           </div>
           <div className="mt-4 grid gap-3 sm:grid-cols-3">
@@ -211,8 +212,15 @@ export function BusinessDashboard() {
                         </td>
                         <td className="py-3">
                           <Button asChild className="h-9 rounded-xl bg-white/10 text-white hover:bg-white/15">
-                            <Link href={`/business/recommendations?campaign_id=${row.id}`}>
-                              Matched Creators
+                            {/* Only drafts and live campaigns have matches; others open the campaign. */}
+                            <Link
+                              href={
+                                row.status === "draft" || row.status === "active"
+                                  ? `/business/recommendations?campaign_id=${row.id}`
+                                  : `/business/campaigns/${row.id}`
+                              }
+                            >
+                              {row.status === "draft" || row.status === "active" ? "Matched creators" : "Open campaign"}
                             </Link>
                           </Button>
                         </td>
@@ -245,8 +253,15 @@ export function BusinessDashboard() {
                       <span>{row.accepted_creators} / {row.creators_needed}</span>
                     </div>
                     <Button asChild className="mt-3 h-11 w-full rounded-xl bg-white/10 text-white hover:bg-white/15">
-                      <Link href={`/business/recommendations?campaign_id=${row.id}`}>
-                        Matched Creators
+                      {/* Only drafts and live campaigns have matches; others open the campaign. */}
+                      <Link
+                        href={
+                          row.status === "draft" || row.status === "active"
+                            ? `/business/recommendations?campaign_id=${row.id}`
+                            : `/business/campaigns/${row.id}`
+                        }
+                      >
+                        {row.status === "draft" || row.status === "active" ? "Matched creators" : "Open campaign"}
                       </Link>
                     </Button>
                   </article>

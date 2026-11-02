@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ArrowRight, MessageSquare } from "lucide-react";
-import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -69,21 +68,6 @@ export function InfluencerDashboard() {
   const greetingName = summary?.greeting?.creator_name || "Creator";
 
   const activeContracts = contracts.filter((c) => c.status.toLowerCase() === "active");
-
-  const setInviteStatus = async (id: string, status: "accepted" | "rejected") => {
-    try {
-      if (status === "accepted") {
-        await influencerApi.acceptInvite(id);
-      } else {
-        await influencerApi.rejectInvite(id);
-      }
-      toast.success(status === "accepted" ? "Invite accepted." : "Invite declined.");
-      await loadDashboard();
-    } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      toast.error(msg || "That didn't work. Please try again.");
-    }
-  };
 
   if (loadState === "loading") {
     return <p role="status" className="p-6 text-sm text-[#94A3B8]">Loading your dashboard…</p>;
@@ -205,35 +189,16 @@ export function InfluencerDashboard() {
                     Deadline: {new Date(inv.end_date).toLocaleDateString()}
                   </p>
                 ) : null}
-                <span className="mt-2 inline-flex w-fit rounded-full border border-amber-400/30 bg-amber-500/10 px-2 py-0.5 text-xs capitalize text-amber-200">
-                  {inv.status}
+                <span className="mt-2 inline-flex w-fit rounded-full border border-amber-400/30 bg-amber-500/10 px-2 py-0.5 text-xs text-amber-200">
+                  Waiting for your reply
                 </span>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <Button
-                    type="button"
-                    size="sm"
-                    className="h-9 flex-1 rounded-xl bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)]"
-                    onClick={() => setInviteStatus(inv.id, "accepted")}
-                  >
-                    Accept
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    className="h-9 flex-1 rounded-xl border-white/15 bg-transparent text-white hover:bg-white/10"
-                    onClick={() => setInviteStatus(inv.id, "rejected")}
-                  >
-                    Reject
-                  </Button>
-                  <Button
-                    asChild
-                    size="sm"
-                    className="h-9 w-full rounded-xl bg-white/10 text-white hover:bg-white/15"
-                  >
-                    <Link href="/influencer/invites">View Details</Link>
-                  </Button>
-                </div>
+                {/* Answering happens on the Invites page, which shows the full brief and confirms a decline. */}
+                <Button
+                  asChild
+                  className="mt-4 h-11 w-full rounded-xl bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)]"
+                >
+                  <Link href="/influencer/invites">Review and respond</Link>
+                </Button>
               </article>
             ))
           )}

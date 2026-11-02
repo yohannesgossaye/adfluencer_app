@@ -74,7 +74,8 @@ export function Recommendations() {
     // Only drafts (preview) and live campaigns can have recommendations.
     const items = (campRes.value.data?.items ?? []).filter((c) => c.status === "draft" || c.status === "active");
     setCampaigns(items);
-    setSelectedCampaignId((current) => current || items[0]?.id || "");
+    // A campaign_id from a link is used only if it can have matches (draft or live).
+    setSelectedCampaignId((current) => (items.some((c) => c.id === current) ? current : items[0]?.id || ""));
     setCampaignsState("ready");
   }, []);
 
@@ -90,7 +91,9 @@ export function Recommendations() {
   // 2. Matches for the selected campaign, filtered and sorted by the server.
   const fetchPage = useCallback(
     async (page: number) => {
-      if (!selectedCampaignId) return { items: [] as RecommendationItem[], pagination: { total_docs: 0 } };
+      if (!selectedCampaignId || campaignsState !== "ready" || !campaigns.some((c) => c.id === selectedCampaignId)) {
+        return { items: [] as RecommendationItem[], pagination: { total_docs: 0 } };
+      }
       const params = {
         search: query || undefined,
         niche: nicheFilter === "All niches" ? undefined : nicheFilter,
@@ -108,7 +111,7 @@ export function Recommendations() {
       }
       return res;
     },
-    [selectedCampaignId, query, nicheFilter, platformFilter, scoreFilter, sortBy],
+    [selectedCampaignId, campaignsState, campaigns, query, nicheFilter, platformFilter, scoreFilter, sortBy],
   );
   const list = usePagedList(fetchPage);
   const recommendations: RecommendationItem[] = list.items;

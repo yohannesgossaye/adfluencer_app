@@ -19,7 +19,6 @@ type AuthContextValue = {
   user: AuthUser | null;
   profile: AuthProfile | null;
   isLoading: boolean;
-  setAccessToken: (token: string | null) => void;
   setSession: (
     tokens: AuthTokens | null,
     user?: AuthUser | null,
@@ -85,15 +84,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [refreshMe]);
 
-  const setAccessToken = React.useCallback((token: string | null) => {
-    setAccessTokenState(token);
-    if (token) {
-      window.localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, token);
-    } else {
-      window.localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
-    }
-  }, []);
-
   const setSession = React.useCallback(
     (
       tokens: AuthTokens | null,
@@ -144,12 +134,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       // Remove a leftover key written by an old demo login.
       localStorage.removeItem("adfluence_mock_user");
-      setAccessTokenState(null);
-      setUser(null);
-      setProfile(null);
       window.localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
       window.localStorage.removeItem(REFRESH_TOKEN_STORAGE_KEY);
       window.localStorage.removeItem(AUTH_USER_STORAGE_KEY);
+      // Go home with a fresh page load. Clearing the session first would let the
+      // portal guard send the user to that portal's login (e.g. the admin login)
+      // before any later navigation runs.
+      window.location.replace("/");
     }
   }, []);
 
@@ -159,12 +150,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user,
       profile,
       isLoading,
-      setAccessToken,
       setSession,
       logout,
       refreshMe,
     }),
-    [accessToken, user, profile, isLoading, setAccessToken, setSession, logout, refreshMe]
+    [accessToken, user, profile, isLoading, setSession, logout, refreshMe]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

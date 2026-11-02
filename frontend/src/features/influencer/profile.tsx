@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { AlertCircle, Trash2, UploadCloud } from "lucide-react";
 
+import { ConfirmActionDialog, type ConfirmActionRequest } from "@/components/common/confirm-action-dialog";
 import { useInfluencerAccount } from "@/components/influencer/account-status";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,6 +44,7 @@ export function InfluencerProfile() {
   const [savedSnapshot, setSavedSnapshot] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<NumberField, string>>>({});
   const [message, setMessage] = useState("");
+  const [confirm, setConfirm] = useState<ConfirmActionRequest | null>(null);
   const [error, setError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -387,8 +389,16 @@ export function InfluencerProfile() {
                 size="sm"
                 variant="outline"
                 disabled={isUploading}
-                onClick={onDeleteAvatar}
-                className="h-8 rounded-lg border-white/15 text-xs text-rose-200 hover:bg-rose-500/10"
+                onClick={() =>
+                  setConfirm({
+                    title: "Remove your profile photo?",
+                    description: "Businesses will see your initials instead until you upload a new photo.",
+                    confirmLabel: "Remove photo",
+                    tone: "danger",
+                    onConfirm: onDeleteAvatar,
+                  })
+                }
+                className="h-11 rounded-lg border-white/15 bg-transparent text-xs text-rose-200 hover:bg-rose-500/10 sm:h-8"
               >
                 <Trash2 className="mr-1.5 size-3.5" />
                 Remove Photo
@@ -670,11 +680,20 @@ export function InfluencerProfile() {
                       />
                     )}
                   </div>
+                  {/* Always visible: phones have no hover. */}
                   <button
                     type="button"
-                    onClick={() => onDeletePortfolio(item.id)}
-                    className="absolute right-4 top-4 rounded-lg bg-red-600/80 p-1.5 text-white opacity-0 transition-opacity hover:bg-red-600 group-hover:opacity-100"
-                    title="Delete media"
+                    onClick={() =>
+                      setConfirm({
+                        title: "Delete this sample?",
+                        description: "It is removed from your profile and businesses won't see it any more.",
+                        confirmLabel: "Delete sample",
+                        tone: "danger",
+                        onConfirm: () => onDeletePortfolio(item.id),
+                      })
+                    }
+                    className="absolute right-4 top-4 inline-flex size-11 items-center justify-center rounded-lg bg-black/60 text-white transition-colors hover:bg-red-600 sm:size-9"
+                    aria-label="Delete this sample"
                   >
                     <Trash2 className="size-4" />
                   </button>
@@ -693,6 +712,7 @@ export function InfluencerProfile() {
       >
         {isSaving ? "Saving..." : isDirty ? "Save changes" : "Save Profile"}
       </Button>
+      <ConfirmActionDialog request={confirm} onClose={() => setConfirm(null)} />
     </div>
   );
 }

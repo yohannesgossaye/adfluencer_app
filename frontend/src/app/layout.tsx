@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { cookies } from "next/headers";
 
 import { AppProviders } from "@/components/providers/app-providers";
 
@@ -7,7 +6,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Adfluence",
-  description: "Adfluence influencer marketing marketplace frontend",
+  description: "Ethiopia's creator marketplace: businesses find vetted local creators and work together with clear contracts in birr.",
   icons: {
     icon: [
       { url: "/brand/adfluence_favicon.ico" },
@@ -17,23 +16,15 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const cookieStore = await cookies();
-  const rawTheme = cookieStore.get("app_theme")?.value;
-  const defaultTheme =
-    rawTheme === "light" || rawTheme === "dark" || rawTheme === "system"
-      ? rawTheme
-      : "system";
-  const themeScale = cookieStore.get("theme_scale")?.value ?? "100";
-
   return (
-    <html lang="en" suppressHydrationWarning className="h-full antialiased">
+    <html lang="en" className="dark h-full antialiased">
       <body className="min-h-full">
-        <AppProviders defaultTheme={defaultTheme} themeScale={themeScale}>
+        <AppProviders>
           {children}
         </AppProviders>
       </body>

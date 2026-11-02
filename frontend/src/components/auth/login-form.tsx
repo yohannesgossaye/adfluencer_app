@@ -4,7 +4,6 @@ import { homeFor } from "@/lib/role-home";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
-import axios from "axios";
 
 import { BrandLogo } from "@/components/common/brand-logo";
 import { GradientButton } from "@/components/common/gradient-button";
@@ -12,6 +11,7 @@ import { useAuth } from "@/components/providers/auth-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { authApi } from "@/lib/api/auth";
+import { authErrorMessage } from "@/lib/api-errors";
 
 type LoginFormProps = {
   idPrefix?: string;
@@ -66,13 +66,7 @@ export function LoginForm({
         router.push(targetRoute);
       }
     } catch (err: unknown) {
-      if (axios.isAxiosError(err) && err.response?.data?.message) {
-        setError(err.response.data.message);
-      } else if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError("Login failed. Please check your credentials.");
-      }
+      setError(authErrorMessage(err, "Login failed. Please check your details and try again."));
     } finally {
       setIsLoading(false);
     }
@@ -105,7 +99,7 @@ export function LoginForm({
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           className="h-12 rounded-xl border-white/15 bg-[color:var(--adfluence-surface)] text-white placeholder:text-[#CBD5E1]/70"
-          placeholder="••••••••"
+          placeholder="Your password"
         />
       </div>
 
@@ -152,7 +146,7 @@ export function LoginForm({
       ) : null}
 
       <p className="text-center text-xs text-[#CBD5E1]">
-        Business, Influencer, and Admin accounts use the same login.
+        Businesses and creators use this same login.
       </p>
 
       <div className="pt-1 text-center text-sm text-[#CBD5E1]">
@@ -185,7 +179,7 @@ export function LoginFormHeader() {
       <div>
         <h2 className="text-2xl font-semibold text-white">Welcome back</h2>
         <p className="mt-2 text-sm text-[#CBD5E1]">
-          Log in to manage campaigns, creators, and collaborations.
+          Log in to your Adfluence account.
         </p>
       </div>
     </div>

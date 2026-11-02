@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
-import axios from "axios";
 
 import { AuthPageCard } from "@/components/auth/auth-page-card";
 import { BrandLogo } from "@/components/common/brand-logo";
@@ -11,6 +10,7 @@ import { GradientButton } from "@/components/common/gradient-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { authApi } from "@/lib/api/auth";
+import { authErrorMessage } from "@/lib/api-errors";
 
 export default function ResetPasswordPage() {
   const router = useRouter();
@@ -53,13 +53,7 @@ export default function ResetPasswordPage() {
         router.push("/auth/login");
       }, 1500);
     } catch (err: unknown) {
-      if (axios.isAxiosError(err) && err.response?.data?.message) {
-        setError(err.response.data.message);
-      } else if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError("Failed to reset password. The link may be expired.");
-      }
+      setError(authErrorMessage(err, "Failed to reset password. The link may be expired."));
     } finally {
       setIsLoading(false);
     }
@@ -88,7 +82,7 @@ export default function ResetPasswordPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="h-12 rounded-xl border-white/15 bg-[color:var(--adfluence-surface)] text-white placeholder:text-[#CBD5E1]/70"
-            placeholder="••••••••"
+            placeholder="New password"
           />
         </div>
 
@@ -102,7 +96,7 @@ export default function ResetPasswordPage() {
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             className="h-12 rounded-xl border-white/15 bg-[color:var(--adfluence-surface)] text-white placeholder:text-[#CBD5E1]/70"
-            placeholder="••••••••"
+            placeholder="Repeat the new password"
           />
         </div>
 

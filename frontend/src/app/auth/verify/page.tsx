@@ -4,7 +4,6 @@ import { homeFor } from "@/lib/role-home";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import axios from "axios";
 
 import { AuthPageCard } from "@/components/auth/auth-page-card";
 import { BrandLogo } from "@/components/common/brand-logo";
@@ -13,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { authApi } from "@/lib/api/auth";
 import { useAuth } from "@/components/providers/auth-provider";
+import { authErrorMessage } from "@/lib/api-errors";
 
 export default function VerifyPage() {
   const router = useRouter();
@@ -53,13 +53,7 @@ export default function VerifyPage() {
         router.push(homeFor(signedIn));
       }, 1200);
     } catch (err: unknown) {
-      if (axios.isAxiosError(err) && err.response?.data?.message) {
-        setError(err.response.data.message);
-      } else if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError("Verification failed. Please check the code or request a new one.");
-      }
+      setError(authErrorMessage(err, "Verification failed. Please check the code or request a new one."));
     } finally {
       setIsLoading(false);
     }
@@ -78,11 +72,7 @@ export default function VerifyPage() {
       }
       setMessage("A new verification code has been sent!");
     } catch (err: unknown) {
-      if (axios.isAxiosError(err) && err.response?.data?.message) {
-        setError(err.response.data.message);
-      } else {
-        setError("Failed to resend verification code.");
-      }
+      setError(authErrorMessage(err, "Failed to resend verification code."));
     } finally {
       setIsResending(false);
     }

@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import axios from "axios";
 
 import { BrandLogo } from "@/components/common/brand-logo";
 import { GradientButton } from "@/components/common/gradient-button";
@@ -13,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { authApi } from "@/lib/api/auth";
 import type { MarketingAuthRole } from "@/lib/marketing-auth-url";
+import { authErrorMessage } from "@/lib/api-errors";
 
 type SignupFormProps = {
   idPrefix?: string;
@@ -95,13 +95,7 @@ export function SignupForm({
         }, 1000);
       }
     } catch (err: unknown) {
-      if (axios.isAxiosError(err) && err.response?.data?.message) {
-        setError(err.response.data.message);
-      } else if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError("Failed to create account. Please try again.");
-      }
+      setError(authErrorMessage(err, "Failed to create account. Please try again."));
     } finally {
       setIsLoading(false);
     }

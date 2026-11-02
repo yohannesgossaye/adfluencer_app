@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import {
   IconAlertTriangle,
   IconBriefcase,
@@ -54,7 +54,6 @@ export function DashboardSidebar({
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
-  const router = useRouter();
 
   const { logout } = useAuth();
   const unreadMessages = useOptionalChat()?.totalUnread ?? 0;
@@ -62,10 +61,8 @@ export function DashboardSidebar({
   const homeHref =
     items.find((item) => item.icon === "dashboard")?.href ?? items[0]?.href ?? "/";
 
-  const onLogout = async () => {
-    await logout();
-    router.push("/");
-  };
+  // logout() itself takes the user to the home page.
+  const onLogout = () => void logout();
 
   return (
     <aside

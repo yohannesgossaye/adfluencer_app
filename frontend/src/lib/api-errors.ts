@@ -51,3 +51,33 @@ export function adminErrorMessage(err: unknown, fallback: string): string {
   if (type && ADMIN_MESSAGES[type]) return ADMIN_MESSAGES[type];
   return (err.response.data as { message?: string } | undefined)?.message || fallback;
 }
+
+/** Plain-language text for login, signup and password errors. */
+const AUTH_MESSAGES: Record<string, string> = {
+  invalid_credentials: "That email and password don't match. Check them and try again.",
+  login_locked: "Too many failed attempts. Wait a few minutes, or reset your password.",
+  account_blocked: "This account is blocked. Contact Adfluence support.",
+  account_suspended: "This account is suspended. Contact Adfluence support.",
+  account_removed: "This account has been closed. Contact Adfluence support.",
+  not_admin: "This login is for Adfluence staff. Business and creator accounts log in on the main login page.",
+  email_already_exists: "An account with this email already exists. Log in instead.",
+  phone_already_exists: "An account with this phone number already exists.",
+  invalid_email: "Enter a valid email address.",
+  invalid_phone: "Enter a valid phone number, e.g. +251 9XX XXX XXX.",
+  password_mismatch: "The passwords don't match.",
+  too_many_otp_attempts: "Too many wrong codes. Request a new code and try again.",
+  too_many_forgot_password_requests: "Too many reset requests. Wait a few minutes and try again.",
+  too_many_verify_email_requests: "Too many code requests. Wait a few minutes and try again.",
+  validation_error: "Some details are missing or invalid.",
+};
+
+/** A message for the auth screens; never shows raw technical errors such as "Network Error". */
+export function authErrorMessage(err: unknown, fallback: string): string {
+  if (!axios.isAxiosError(err)) return fallback;
+  if (!err.response) return "You appear to be offline. Check your connection and try again.";
+  if (err.response.status >= 500) return "Adfluence is having trouble right now. Please try again in a moment.";
+  const type = apiErrorType(err);
+  if (type && AUTH_MESSAGES[type]) return AUTH_MESSAGES[type];
+  const data = err.response.data as { message?: string; error?: { details?: Array<{ description?: string }> } } | undefined;
+  return data?.error?.details?.[0]?.description || data?.message || fallback;
+}

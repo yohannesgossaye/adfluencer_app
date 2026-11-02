@@ -1,8 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import axios from "axios";
 
 import { AuthPageCard } from "@/components/auth/auth-page-card";
 import { BrandLogo } from "@/components/common/brand-logo";
@@ -10,6 +10,7 @@ import { GradientButton } from "@/components/common/gradient-button";
 import { useAuth } from "@/components/providers/auth-provider";
 import { Input } from "@/components/ui/input";
 import { authApi } from "@/lib/api/auth";
+import { authErrorMessage } from "@/lib/api-errors";
 
 export function AdminLoginPageFeature() {
   const router = useRouter();
@@ -39,7 +40,7 @@ export function AdminLoginPageFeature() {
       if (res.data) {
         const { user, profile, tokens, redirect_to } = res.data;
         if (user.role !== "admin") {
-          setError("Admin access required.");
+          setError("This login is for Adfluence staff. Business and creator accounts log in on the main login page.");
           return;
         }
 
@@ -48,13 +49,7 @@ export function AdminLoginPageFeature() {
         router.push(redirect_to || "/admin/dashboard");
       }
     } catch (err: unknown) {
-      if (axios.isAxiosError(err) && err.response?.data?.message) {
-        setError(err.response.data.message);
-      } else if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError("Invalid admin credentials.");
-      }
+      setError(authErrorMessage(err, "Login failed. Please check your details and try again."));
     } finally {
       setIsLoading(false);
     }
@@ -96,18 +91,23 @@ export function AdminLoginPageFeature() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="h-12 rounded-xl border-white/15 bg-[color:var(--adfluence-surface)] text-white placeholder:text-[#CBD5E1]/70"
-              placeholder="••••••••"
             />
           </div>
-          <GradientButton className="h-12 w-full rounded-xl px-6" type="submit" disabled={isLoading}>
-            {isLoading ? "Logging in..." : "Login"}
-          </GradientButton>
           {error ? (
-            <p className="rounded-xl border border-red-400/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+            <p role="alert" className="rounded-xl border border-red-400/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
               {error}
             </p>
           ) : null}
+          <GradientButton className="h-12 w-full rounded-xl px-6" type="submit" disabled={isLoading}>
+            {isLoading ? "Logging in…" : "Log in"}
+          </GradientButton>
         </form>
+        <p className="border-t border-white/10 pt-4 text-center text-sm text-[#CBD5E1]">
+          Business or creator?{" "}
+          <Link href="/auth/login" className="font-medium text-white underline-offset-2 hover:underline">
+            Log in here
+          </Link>
+        </p>
       </AuthPageCard>
     </div>
   );

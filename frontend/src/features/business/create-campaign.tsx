@@ -44,7 +44,14 @@ const budgetRanges = [
   "50,000+ ETB",
 ] as const;
 
-const creatorSizes = ["Micro creator", "Mid-tier creator", "Large creator"] as const;
+const creatorSizes = [
+  "Any size",
+  "Nano creator",
+  "Micro creator",
+  "Mid-tier creator",
+  "Large creator",
+  "Very large creator",
+] as const;
 
 const deliverables = [
   "TikTok video",
@@ -79,10 +86,20 @@ const BUDGETS: Record<(typeof budgetRanges)[number], [number, number]> = {
 };
 
 const SIZE_TO_API: Record<(typeof creatorSizes)[number], string> = {
+  "Any size": "any",
+  "Nano creator": "nano",
   "Micro creator": "micro",
   "Mid-tier creator": "mid",
   "Large creator": "macro",
+  "Very large creator": "mega",
 };
+
+// A saved budget that matches none of the presets stays selectable as-is.
+const CUSTOM_BUDGET = "custom";
+
+function etbRange(min: number, max: number) {
+  return `ETB ${min.toLocaleString("en-US")} – ${max.toLocaleString("en-US")}`;
+}
 
 const DELIVERABLE_TO_API: Record<(typeof deliverables)[number], string> = {
   "TikTok video": "tiktok_video",
@@ -94,10 +111,10 @@ const DELIVERABLE_TO_API: Record<(typeof deliverables)[number], string> = {
 
 /** Maps a saved campaign back into the form (edit mode). */
 function campaignToForm(c: CampaignDetail): CampaignFormState {
-  const budget =
-    (Object.entries(BUDGETS) as Array<[(typeof budgetRanges)[number], [number, number]]>).find(
-      ([, [min, max]]) => min === (c.budget_min_etb ?? -1) && max === (c.budget_max_etb ?? -1),
-    )?.[0] ?? "";
+  const preset = (Object.entries(BUDGETS) as Array<[(typeof budgetRanges)[number], [number, number]]>).find(
+    ([, [min, max]]) => min === (c.budget_min_etb ?? -1) && max === (c.budget_max_etb ?? -1),
+  )?.[0];
+  const budget = preset ?? (c.budget_max_etb ? CUSTOM_BUDGET : "");
   const size = (Object.entries(SIZE_TO_API).find(([, api]) => api === c.creator_size_preference)?.[0] ?? "") as string;
   const chosen = (Object.entries(DELIVERABLE_TO_API) as Array<[string, string]>)
     .filter(([, api]) => c.deliverables.some((d) => d.type === api))
@@ -131,6 +148,11 @@ export function CreateCampaign({ campaignId }: { campaignId?: string } = {}) {
   const router = useRouter();
   const isEdit = Boolean(campaignId);
   const [form, setForm] = useState<CampaignFormState>(initialForm);
+  // What the campaign had when opened for editing, so saving never silently changes it.
+  const [saved, setSaved] = useState<{ budget: [number, number] | null; quantities: Record<string, number> }>({
+    budget: null,
+    quantities: {},
+  });
   const [loadingCampaign, setLoadingCampaign] = useState(isEdit);
   const [categories, setCategories] = useState<Array<{ id: string; name: string; slug: string }>>([]);
   const [error, setError] = useState<string>("");
@@ -155,7 +177,14 @@ export function CreateCampaign({ campaignId }: { campaignId?: string } = {}) {
     businessApi
       .getCampaign(campaignId)
       .then((res) => {
-        if (res.data) setForm(campaignToForm(res.data));
+        if (res.data) {
+          const c = res.data;
+          setForm(campaignToForm(c));
+          setSaved({
+            budget: c.budget_max_etb ? [c.budget_min_etb ?? 0, c.budget_max_etb] : null,
+            quantities: Object.fromEntries(c.deliverables.map((d) => [d.type, d.quantity ?? 1])),
+          });
+        }
       })
       .catch(() => setError("Could not load this campaign."))
       .finally(() => setLoadingCampaign(false));
@@ -220,13 +249,15 @@ export function CreateCampaign({ campaignId }: { campaignId?: string } = {}) {
     setError("");
     setIsLoading(true);
 
-    const [budgetMin, budgetMax] = BUDGETS[form.budgetRange as (typeof budgetRanges)[number]] ?? [0, 0];
+    const [budgetMin, budgetMax] =
+      form.budgetRange === CUSTOM_BUDGET && saved.budget
+        ? saved.budget
+        : (BUDGETS[form.budgetRange as (typeof budgetRanges)[number]] ?? [0, 0]);
 
-    const campaignDeliverables = form.deliverables.map((d) => ({
-      type: DELIVERABLE_TO_API[d as (typeof deliverables)[number]] ?? "other",
-      quantity: 1,
-      description: d,
-    }));
+    const campaignDeliverables = form.deliverables.map((d) => {
+      const type = DELIVERABLE_TO_API[d as (typeof deliverables)[number]] ?? "other";
+      return { type, quantity: saved.quantities[type] ?? 1, description: d };
+    });
 
     const payload = {
       title: form.title.trim(),
@@ -487,6 +518,11 @@ export function CreateCampaign({ campaignId }: { campaignId?: string } = {}) {
                   <option value="" disabled>
                     Select budget
                   </option>
+                  {form.budgetRange === CUSTOM_BUDGET && saved.budget ? (
+                    <option value={CUSTOM_BUDGET} className="bg-[color:var(--adfluence-surface)]">
+                      {etbRange(saved.budget[0], saved.budget[1])} (current)
+                    </option>
+                  ) : null}
                   {budgetRanges.map((range) => (
                     <option key={range} value={range} className="bg-[color:var(--adfluence-surface)]">
                       {range}
