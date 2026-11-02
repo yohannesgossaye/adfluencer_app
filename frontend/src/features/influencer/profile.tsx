@@ -11,9 +11,18 @@ import {
   type InfluencerPortfolioItem,
   type InfluencerProfileResponse,
 } from "@/lib/api/influencer";
+import { parseAmount } from "@/lib/numbers";
 import { getInitials } from "@/lib/utils";
 
-const platformOptions = ["TikTok", "Instagram", "YouTube"] as const;
+// Values match what the server stores (lowercase); labels are for display.
+const platformOptions = [
+  { value: "tiktok", label: "TikTok" },
+  { value: "instagram", label: "Instagram" },
+  { value: "youtube", label: "YouTube" },
+] as const;
+const platformLabel = (v: string) => platformOptions.find((o) => o.value === v.toLowerCase())?.label ?? v;
+
+type NumberField = "followers" | "engagement" | "priceMin" | "priceMax";
 
 /** Fields the server requires before a profile can be submitted (helper/completeness.go). */
 const REQUIRED_FOR_SUBMIT: Record<string, string> = {
@@ -31,7 +40,10 @@ const REQUIRED_FOR_SUBMIT: Record<string, string> = {
 export function InfluencerProfile() {
   const [profileData, setProfileData] = useState<InfluencerProfileResponse | null>(null);
   const [availableNiches, setAvailableNiches] = useState<Array<{ id: string; name: string; slug: string }>>([]);
-  const [saved, setSaved] = useState(false);
+  const [loadState, setLoadState] = useState<"loading" | "ready" | "error">("loading");
+  // The form as last loaded from the server, to detect unsaved edits.
+  const [savedSnapshot, setSavedSnapshot] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<NumberField, string>>>({});
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
@@ -60,47 +72,51 @@ export function InfluencerProfile() {
     location: "",
   });
 
-  const loadProfile = async () => {
-    try {
-      const [profRes, catRes] = await Promise.allSettled([
-        influencerApi.getProfile(),
-        influencerApi.listCategories(),
-      ]);
+  // Returns the loaded profile, or null when it could not be loaded.
+  const loadProfile = async (): Promise<InfluencerProfileResponse | null> => {
+    const [profRes, catRes] = await Promise.allSettled([
+      influencerApi.getProfile(),
+      influencerApi.listCategories(),
+    ]);
 
-      if (catRes.status === "fulfilled" && catRes.value.data?.items) {
-        setAvailableNiches(catRes.value.data.items);
-      }
-
-      if (profRes.status === "fulfilled" && profRes.value.data) {
-        const data = profRes.value.data;
-        setProfileData(data);
-        const p = data.profile;
-        setPortfolioItems(p?.portfolio_items || []);
-        if (p) {
-          setForm({
-            name: p.creator_name || p.full_name || "",
-            bio: p.bio || "",
-            niches: p.niches?.map((n) => n.name) || [],
-            platforms: p.platforms || [],
-            tiktok: p.social_links?.tiktok || "",
-            instagram: p.social_links?.instagram || "",
-            youtube: p.social_links?.youtube || "",
-            followers: p.total_followers ? String(p.total_followers) : "",
-            engagement: p.engagement_rate != null ? String(p.engagement_rate) : "",
-            priceMin: p.min_price_etb != null ? String(p.min_price_etb) : "",
-            priceMax: p.max_price_etb != null ? String(p.max_price_etb) : "",
-            languages: p.languages?.join(", ") || "",
-            location: p.city || "",
-          });
-        }
-      }
-    } catch {
-      // fallback
+    if (catRes.status === "fulfilled" && catRes.value.data?.items) {
+      setAvailableNiches(catRes.value.data.items);
     }
+
+    if (profRes.status !== "fulfilled" || !profRes.value.data) {
+      setLoadState("error");
+      return null;
+    }
+    const data = profRes.value.data;
+    setProfileData(data);
+    const p = data.profile;
+    setPortfolioItems(p?.portfolio_items || []);
+    if (p) {
+      const loaded = {
+        name: p.creator_name || p.full_name || "",
+        bio: p.bio || "",
+        niches: p.niches?.map((n) => n.name) || [],
+        platforms: (p.platforms || []).map((x) => x.toLowerCase()),
+        tiktok: p.social_links?.tiktok || "",
+        instagram: p.social_links?.instagram || "",
+        youtube: p.social_links?.youtube || "",
+        followers: p.total_followers ? String(p.total_followers) : "",
+        engagement: p.engagement_rate != null ? String(p.engagement_rate) : "",
+        priceMin: p.min_price_etb != null ? String(p.min_price_etb) : "",
+        priceMax: p.max_price_etb != null ? String(p.max_price_etb) : "",
+        languages: p.languages?.join(", ") || "",
+        location: p.city || "",
+      };
+      setForm(loaded);
+      setSavedSnapshot(JSON.stringify(loaded));
+    }
+    setLoadState("ready");
+    return data;
   };
 
   useEffect(() => {
-    loadProfile();
+    // Deferred like the other portal screens, so the effect itself sets no state.
+    void Promise.resolve().then(loadProfile);
   }, []);
 
   const toggleMulti = (key: "niches" | "platforms", value: string) => {
@@ -111,36 +127,65 @@ export function InfluencerProfile() {
     });
   };
 
-  const onSave = async () => {
+  // Checks the number fields; returns the parsed values, or null after
+  // showing an error next to each field that can't be read.
+  const readNumbers = () => {
+    const errors: Partial<Record<NumberField, string>> = {};
+    const followers = parseAmount(form.followers);
+    const engagement = parseAmount(form.engagement);
+    const priceMin = parseAmount(form.priceMin);
+    const priceMax = parseAmount(form.priceMax);
+    if (Number.isNaN(followers) || (followers !== undefined && !Number.isInteger(followers)))
+      errors.followers = "Enter a whole number, e.g. 12000 or 12k.";
+    if (Number.isNaN(engagement) || (engagement !== undefined && engagement > 100))
+      errors.engagement = "Enter a percentage between 0 and 100, e.g. 4.5.";
+    if (Number.isNaN(priceMin)) errors.priceMin = "Enter an amount in ETB, e.g. 5000 or 5k.";
+    if (Number.isNaN(priceMax)) errors.priceMax = "Enter an amount in ETB, e.g. 20000 or 20k.";
+    if (!errors.priceMin && !errors.priceMax && (priceMin === undefined) !== (priceMax === undefined))
+      errors[priceMin === undefined ? "priceMin" : "priceMax"] = "Enter both a minimum and a maximum price.";
+    if (!errors.priceMin && !errors.priceMax && priceMin !== undefined && priceMax !== undefined && priceMax < priceMin)
+      errors.priceMax = "Maximum must be at least the minimum.";
+    setFieldErrors(errors);
+    if (Object.keys(errors).length > 0) return null;
+    return { followers, engagement, priceMin, priceMax };
+  };
+
+  // Saves the form; returns true on success.
+  const onSave = async (): Promise<boolean> => {
     setError("");
     setMessage("");
+    if (loadState !== "ready") return false;
+    const nums = readNumbers();
+    if (!nums) {
+      setError("Please fix the highlighted fields.");
+      return false;
+    }
     setIsSaving(true);
-    setError("");
     try {
       await influencerApi.updateProfile({
         creator_name: form.name.trim(),
         bio: form.bio.trim(),
         niches: form.niches,
-        platforms: form.platforms.map((p) => p.toLowerCase()),
+        platforms: form.platforms,
         social_links: {
           tiktok: form.tiktok,
           instagram: form.instagram,
           youtube: form.youtube,
         },
-        followers: Number(form.followers) || undefined,
-        engagement_rate: Number(form.engagement) || undefined,
-        min_price_etb: Number(form.priceMin) || undefined,
-        max_price_etb: Number(form.priceMax) || undefined,
+        followers: nums.followers,
+        engagement_rate: nums.engagement,
+        min_price_etb: nums.priceMin,
+        max_price_etb: nums.priceMax,
         languages: form.languages.split(",").map((l) => l.trim()).filter(Boolean),
         city: form.location.trim(),
       });
-      setSaved(true);
-      setMessage("Profile saved successfully.");
+      setMessage("Profile saved.");
       await loadProfile();
-      setTimeout(() => setSaved(false), 4000);
+      return true;
     } catch (err: unknown) {
       const apiMsg = (err as { response?: { data?: { message?: string; error?: string } } })?.response?.data?.message;
       setError(apiMsg || (err instanceof Error ? err.message : "Failed to update profile."));
+      return false;
     } finally {
       setIsSaving(false);
     }
@@ -220,9 +265,19 @@ export function InfluencerProfile() {
     }
   };
 
+  // Saves unsaved edits first, so the reviewer sees what the creator sees.
   const onSubmitForReview = async () => {
-    setIsSubmitting(true);
     setError("");
+    let completeness = profileData?.completeness;
+    if (isDirty) {
+      if (!(await onSave())) return;
+      completeness = (await loadProfile())?.completeness;
+    }
+    if (!completeness?.can_submit) {
+      setError("Your profile is saved, but some required details are still missing (see the list below).");
+      return;
+    }
+    setIsSubmitting(true);
     try {
       const res = await influencerApi.submitProfile();
       if (res.data) {
@@ -238,6 +293,7 @@ export function InfluencerProfile() {
     }
   };
 
+
   const completeness = profileData?.completeness?.percent ?? 0;
   const isVerified = profileData?.profile?.is_verified ?? false;
   const isRejected = profileData?.user?.status === "rejected";
@@ -245,10 +301,22 @@ export function InfluencerProfile() {
   const canSubmit = profileData?.completeness?.can_submit ?? false;
   const userStatus = profileData?.user?.status;
   const awaitingSubmit = userStatus === "pending_profile" || isRejected;
+  const isDirty = loadState === "ready" && savedSnapshot !== "" && JSON.stringify(form) !== savedSnapshot;
   const missingRequired = (profileData?.completeness?.missing ?? []).filter((f) => f in REQUIRED_FOR_SUBMIT);
 
   return (
     <div className="space-y-6 text-white">
+      {loadState === "loading" ? (
+        <p role="status" className="text-sm text-[#94A3B8]">Loading your profile…</p>
+      ) : null}
+      {loadState === "error" ? (
+        <div role="alert" className="rounded-2xl border border-rose-400/30 bg-rose-500/10 p-4 text-sm text-rose-100">
+          Your profile could not be loaded, so editing is paused to avoid overwriting it.{" "}
+          <button type="button" className="underline" onClick={() => { setLoadState("loading"); void loadProfile(); }}>
+            Try again
+          </button>
+        </div>
+      ) : null}
       <input
         ref={avatarInputRef}
         type="file"
@@ -291,7 +359,7 @@ export function InfluencerProfile() {
         <div className="flex-1 text-center md:text-left">
           <h1 className="text-2xl font-semibold text-white">{form.name}</h1>
           <p className="mt-1 text-sm text-[#CBD5E1]">
-            {form.niches.join(", ") || "General"} · {form.platforms.join(", ")} · {form.location}
+            {form.niches.join(", ") || "General"} · {form.platforms.map(platformLabel).join(", ")} · {form.location}
           </p>
           <div className="mt-2 flex flex-wrap justify-center gap-2 md:justify-start">
             {isVerified ? (
@@ -340,13 +408,14 @@ export function InfluencerProfile() {
           </div>
         </div>
 
-        {awaitingSubmit && canSubmit ? (
+        {awaitingSubmit && (canSubmit || isDirty) ? (
           <Button
             type="button"
-            onClick={onSubmitForReview}
-            disabled={isSubmitting}
+            onClick={() => void onSubmitForReview()}
+            disabled={isSubmitting || isSaving}
             className="h-11 rounded-xl bg-emerald-600 px-5 text-white hover:bg-emerald-500"
           >
+            {isDirty ? "Save & " : ""}
             {isRejected ? "Re-apply for Verification" : "Submit for Verification"}
           </Button>
         ) : null}
@@ -413,8 +482,12 @@ export function InfluencerProfile() {
               value={form.bio}
               onChange={(e) => setForm((f) => ({ ...f, bio: e.target.value }))}
               rows={4}
+              maxLength={2000}
               className="w-full rounded-xl border border-white/10 bg-[#06111F] px-3 py-2 text-sm text-white"
             />
+            <span className={`block text-xs ${form.bio.trim().length >= 20 ? "text-[#94A3B8]" : "text-amber-200"}`}>
+              {form.bio.trim().length} characters{form.bio.trim().length < 20 ? " (at least 20 needed to submit)" : ""}
+            </span>
           </label>
           <div className="md:col-span-2">
             <p className="text-sm text-[#CBD5E1]">Niche (multi-select)</p>
@@ -440,16 +513,17 @@ export function InfluencerProfile() {
             <div className="mt-2 flex flex-wrap gap-2">
               {platformOptions.map((p) => (
                 <button
-                  key={p}
+                  key={p.value}
                   type="button"
-                  onClick={() => toggleMulti("platforms", p)}
+                  aria-pressed={form.platforms.includes(p.value)}
+                  onClick={() => toggleMulti("platforms", p.value)}
                   className={`rounded-xl border px-3 py-2 text-sm transition-colors ${
-                    form.platforms.includes(p)
+                    form.platforms.includes(p.value)
                       ? "border-[color:var(--adfluence-orange)]/50 bg-[color:var(--adfluence-orange)]/15 text-white"
                       : "border-white/10 bg-[#06111F] text-[#CBD5E1] hover:border-white/20"
                   }`}
                 >
-                  {p}
+                  {p.label}
                 </button>
               ))}
             </div>
@@ -485,36 +559,52 @@ export function InfluencerProfile() {
             <span className="text-sm text-[#CBD5E1]">Followers</span>
             <Input
               value={form.followers}
+              inputMode="numeric"
+              placeholder="e.g. 12000 or 12k"
+              aria-invalid={fieldErrors.followers ? true : undefined}
               onChange={(e) => setForm((f) => ({ ...f, followers: e.target.value }))}
               className="h-11 rounded-xl border-white/10 bg-[#06111F] text-white"
             />
+            {fieldErrors.followers ? <span className="block text-xs text-rose-300">{fieldErrors.followers}</span> : null}
           </label>
           <label className="space-y-2">
             <span className="text-sm text-[#CBD5E1]">Engagement rate (%)</span>
             <Input
               value={form.engagement}
+              inputMode="decimal"
+              placeholder="e.g. 4.5"
+              aria-invalid={fieldErrors.engagement ? true : undefined}
               onChange={(e) => setForm((f) => ({ ...f, engagement: e.target.value }))}
               className="h-11 rounded-xl border-white/10 bg-[#06111F] text-white"
             />
+            {fieldErrors.engagement ? <span className="block text-xs text-rose-300">{fieldErrors.engagement}</span> : null}
           </label>
           <label className="space-y-2">
             <span className="text-sm text-[#CBD5E1]">Price min (ETB)</span>
             <Input
               value={form.priceMin}
+              inputMode="numeric"
+              placeholder="e.g. 5000"
+              aria-invalid={fieldErrors.priceMin ? true : undefined}
               onChange={(e) => setForm((f) => ({ ...f, priceMin: e.target.value }))}
               className="h-11 rounded-xl border-white/10 bg-[#06111F] text-white"
             />
+            {fieldErrors.priceMin ? <span className="block text-xs text-rose-300">{fieldErrors.priceMin}</span> : null}
           </label>
           <label className="space-y-2">
             <span className="text-sm text-[#CBD5E1]">Price max (ETB)</span>
             <Input
               value={form.priceMax}
+              inputMode="numeric"
+              placeholder="e.g. 20000"
+              aria-invalid={fieldErrors.priceMax ? true : undefined}
               onChange={(e) => setForm((f) => ({ ...f, priceMax: e.target.value }))}
               className="h-11 rounded-xl border-white/10 bg-[#06111F] text-white"
             />
+            {fieldErrors.priceMax ? <span className="block text-xs text-rose-300">{fieldErrors.priceMax}</span> : null}
           </label>
           <label className="space-y-2 md:col-span-2">
-            <span className="text-sm text-[#CBD5E1]">Languages</span>
+            <span className="text-sm text-[#CBD5E1]">Languages (separate with commas)</span>
             <Input
               value={form.languages}
               onChange={(e) => setForm((f) => ({ ...f, languages: e.target.value }))}
@@ -522,7 +612,7 @@ export function InfluencerProfile() {
             />
           </label>
           <label className="space-y-2 md:col-span-2">
-            <span className="text-sm text-[#CBD5E1]">Location</span>
+            <span className="text-sm text-[#CBD5E1]">City</span>
             <Input
               value={form.location}
               onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))}
@@ -599,11 +689,11 @@ export function InfluencerProfile() {
 
       <Button
         type="button"
-        onClick={onSave}
-        disabled={isSaving}
+        onClick={() => void onSave()}
+        disabled={isSaving || loadState !== "ready"}
         className="h-12 w-full rounded-xl bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)] md:w-auto md:px-10"
       >
-        {isSaving ? "Saving..." : "Save Profile"}
+        {isSaving ? "Saving..." : isDirty ? "Save changes" : "Save Profile"}
       </Button>
     </div>
   );
