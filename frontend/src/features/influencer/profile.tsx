@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { AlertCircle, Trash2, UploadCloud } from "lucide-react";
 
+import { useInfluencerAccount } from "@/components/influencer/account-status";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -11,8 +12,9 @@ import {
   type InfluencerPortfolioItem,
   type InfluencerProfileResponse,
 } from "@/lib/api/influencer";
+import { CREATOR_STATUS, REQUIRED_FOR_SUBMIT } from "@/lib/influencer-profile";
 import { parseAmount } from "@/lib/numbers";
-import { getInitials } from "@/lib/utils";
+import { cn, getInitials } from "@/lib/utils";
 
 // Values match what the server stores (lowercase); labels are for display.
 const platformOptions = [
@@ -24,22 +26,18 @@ const platformLabel = (v: string) => platformOptions.find((o) => o.value === v.t
 
 type NumberField = "followers" | "engagement" | "priceMin" | "priceMax";
 
-/** Fields the server requires before a profile can be submitted (helper/completeness.go). */
-const REQUIRED_FOR_SUBMIT: Record<string, string> = {
-  creator_name: "Creator name",
-  bio: "Bio of at least 20 characters",
-  niche: "At least one niche",
-  platform: "At least one platform",
-  social_link: "A profile link for one of your platforms",
-  followers: "Follower count",
-  engagement_rate: "Engagement rate",
-  price_range: "Minimum and maximum price",
-  city: "City",
-};
+
+const STATUS_TONE = {
+  neutral: "border-white/15 bg-white/5 text-[#CBD5E1]",
+  amber: "border-amber-400/30 bg-amber-500/15 text-amber-200",
+  green: "border-emerald-400/30 bg-emerald-500/15 text-emerald-200",
+  rose: "border-rose-400/30 bg-rose-500/15 text-rose-200",
+} as const;
 
 export function InfluencerProfile() {
   const [profileData, setProfileData] = useState<InfluencerProfileResponse | null>(null);
   const [availableNiches, setAvailableNiches] = useState<Array<{ id: string; name: string; slug: string }>>([]);
+  const account = useInfluencerAccount();
   const [loadState, setLoadState] = useState<"loading" | "ready" | "error">("loading");
   // The form as last loaded from the server, to detect unsaved edits.
   const [savedSnapshot, setSavedSnapshot] = useState("");
@@ -282,7 +280,7 @@ export function InfluencerProfile() {
       const res = await influencerApi.submitProfile();
       if (res.data) {
         setMessage(res.data.message || "Profile submitted for admin verification!");
-        await loadProfile();
+        await Promise.all([loadProfile(), account.refresh()]);
         setTimeout(() => setMessage(""), 5000);
       }
     } catch (err: unknown) {
@@ -295,7 +293,6 @@ export function InfluencerProfile() {
 
 
   const completeness = profileData?.completeness?.percent ?? 0;
-  const isVerified = profileData?.profile?.is_verified ?? false;
   const isRejected = profileData?.user?.status === "rejected";
   // The server refuses submission until every required field is filled.
   const canSubmit = profileData?.completeness?.can_submit ?? false;
@@ -362,19 +359,11 @@ export function InfluencerProfile() {
             {form.niches.join(", ") || "General"} · {form.platforms.map(platformLabel).join(", ")} · {form.location}
           </p>
           <div className="mt-2 flex flex-wrap justify-center gap-2 md:justify-start">
-            {isVerified ? (
-              <span className="rounded-full border border-emerald-400/30 bg-emerald-500/15 px-2 py-0.5 text-xs text-emerald-200">
-                Verified creator
+            {userStatus ? (
+              <span className={cn("rounded-full border px-2 py-0.5 text-xs", STATUS_TONE[CREATOR_STATUS[userStatus]?.tone ?? "neutral"])}>
+                {CREATOR_STATUS[userStatus]?.label ?? userStatus}
               </span>
-            ) : isRejected ? (
-              <span className="rounded-full border border-rose-400/30 bg-rose-500/15 px-2 py-0.5 text-xs text-rose-200">
-                Changes Requested / Rejected
-              </span>
-            ) : (
-              <span className="rounded-full border border-amber-400/30 bg-amber-500/15 px-2 py-0.5 text-xs text-amber-200">
-                Pending Verification
-              </span>
-            )}
+            ) : null}
             <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-xs text-[#CBD5E1]">
               Profile {completeness}% complete
             </span>
@@ -420,6 +409,15 @@ export function InfluencerProfile() {
           </Button>
         ) : null}
       </section>
+
+      {userStatus === "pending_approval" ? (
+        <section role="status" className="rounded-2xl border border-amber-400/30 bg-amber-500/10 p-4 text-sm text-amber-50">
+          <span className="font-semibold">Your profile is under review.</span> An admin is checking it. Changes you save now are visible to the reviewer.
+        </section>
+      ) : null}
+      {userStatus === "active" ? (
+        <p className="text-xs text-[#94A3B8]">You&apos;re approved. Changes you save are shown to businesses right away.</p>
+      ) : null}
 
       {awaitingSubmit && !canSubmit && missingRequired.length > 0 ? (
         <section role="status" className="rounded-2xl border border-amber-400/30 bg-amber-500/10 p-5">

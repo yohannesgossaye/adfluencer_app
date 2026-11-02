@@ -20,7 +20,7 @@ import (
 func (m *influencerModule) ListSupportInviteOptions(ctx context.Context, userID string) (*influencerDto.ListSupportInviteOptionsResponse, error) {
 	m.logger.Info(ctx, "listing influencer support invite options", zap.String("user_id", userID))
 
-	if err := m.requireActiveInfluencer(ctx, userID); err != nil {
+	if err := m.requireSupportAccess(ctx, userID); err != nil {
 		return nil, err
 	}
 
@@ -45,7 +45,7 @@ func (m *influencerModule) ListSupportInviteOptions(ctx context.Context, userID 
 func (m *influencerModule) CreateSupportTicket(ctx context.Context, userID string, req influencerDto.CreateSupportTicketRequest, meta authDto.SessionMeta) (*commonDto.CreatedIDResponse, error) {
 	m.logger.Info(ctx, "creating influencer support ticket", zap.String("user_id", userID), zap.String("subject", req.Subject), zap.String("issue_type", req.IssueType))
 
-	if err := m.requireActiveInfluencer(ctx, userID); err != nil {
+	if err := m.requireSupportAccess(ctx, userID); err != nil {
 		return nil, err
 	}
 	if err := req.Validate(); err != nil {
@@ -100,7 +100,7 @@ func (m *influencerModule) CreateSupportTicket(ctx context.Context, userID strin
 func (m *influencerModule) ListSupportTickets(ctx context.Context, userID string) (*influencerDto.ListSupportTicketsResponse, error) {
 	m.logger.Info(ctx, "listing influencer support tickets", zap.String("user_id", userID))
 
-	if err := m.requireActiveInfluencer(ctx, userID); err != nil {
+	if err := m.requireSupportAccess(ctx, userID); err != nil {
 		return nil, err
 	}
 
@@ -121,7 +121,7 @@ func (m *influencerModule) ListSupportTickets(ctx context.Context, userID string
 func (m *influencerModule) GetSupportTicket(ctx context.Context, userID, ticketID string) (*influencerDto.SupportTicketDetailResponse, error) {
 	m.logger.Info(ctx, "fetching influencer support ticket details", zap.String("user_id", userID), zap.String("ticket_id", ticketID))
 
-	if err := m.requireActiveInfluencer(ctx, userID); err != nil {
+	if err := m.requireSupportAccess(ctx, userID); err != nil {
 		return nil, err
 	}
 

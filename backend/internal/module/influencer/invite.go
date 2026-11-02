@@ -155,6 +155,31 @@ func (m *influencerModule) requireActiveInfluencer(ctx context.Context, userID s
 	return nil
 }
 
+// requireSupportAccess lets creators who are still in review (or were asked
+// for changes) contact support; only blocked, suspended or removed accounts
+// are refused. "Profile approval" is the first support topic for creators.
+func (m *influencerModule) requireSupportAccess(ctx context.Context, userID string) error {
+	user, err := m.auth.GetUserByID(ctx, userID)
+	if err != nil {
+		if errors.Is(err, customErr.ErrUserNotFound) {
+			return customErr.ErrUnauthorized
+		}
+		return err
+	}
+	if !canUseSupport(model.UserStatus(user.Status)) {
+		return customErr.ErrAccountNotActive
+	}
+	return nil
+}
+
+func canUseSupport(status model.UserStatus) bool {
+	switch status {
+	case model.ActiveStatus, model.PendingProfileStatus, model.PendingApprovalStatus, model.RejectedStatus:
+		return true
+	}
+	return false
+}
+
 func (m *influencerModule) requireVerifiedInfluencer(ctx context.Context, userID string) error {
 	if err := m.requireActiveInfluencer(ctx, userID); err != nil {
 		return err

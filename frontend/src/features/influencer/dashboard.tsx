@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ArrowRight, MessageSquare } from "lucide-react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -11,6 +12,7 @@ import {
   type ContractListItem,
 } from "@/lib/api/influencer";
 import { chatApi, type ChatConversationItem } from "@/lib/api/chat";
+import { OPTIONAL_PROFILE_ITEMS, REQUIRED_FOR_SUBMIT } from "@/lib/influencer-profile";
 import { UserAvatar } from "@/components/common/user-avatar";
 
 function KpiCard({ label, value, hint }: { label: string; value: string; hint?: string }) {
@@ -29,7 +31,7 @@ export function InfluencerDashboard() {
   const [summary, setSummary] = useState<InfluencerDashboardSummaryResponse | null>(null);
   const [conversations, setConversations] = useState<ChatConversationItem[]>([]);
   const [contracts, setContracts] = useState<ContractListItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [loadState, setLoadState] = useState<"loading" | "ready" | "error">("loading");
 
   const loadDashboard = async () => {
     try {
@@ -39,25 +41,25 @@ export function InfluencerDashboard() {
         influencerApi.listContracts(),
       ]);
 
-      if (sumRes.status === "fulfilled" && sumRes.value.data) {
-        setSummary(sumRes.value.data);
+      if (sumRes.status !== "fulfilled" || !sumRes.value.data) {
+        setLoadState("error");
+        return;
       }
-      if (chatRes.status === "fulfilled" && chatRes.value.data) {
-        const list = (Array.isArray(chatRes.value.data) ? chatRes.value.data : (chatRes.value.data as any)?.items) || [];
-        setConversations(list);
+      setSummary(sumRes.value.data);
+      if (chatRes.status === "fulfilled") {
+        setConversations(chatRes.value.data ?? []);
       }
       if (contRes.status === "fulfilled" && contRes.value.data?.items) {
         setContracts(contRes.value.data.items);
       }
+      setLoadState("ready");
     } catch {
-      // Fallback gracefully
-    } finally {
-      setIsLoading(false);
+      setLoadState("error");
     }
   };
 
   useEffect(() => {
-    loadDashboard();
+    void Promise.resolve().then(loadDashboard);
   }, []);
 
   const kpis = summary?.kpis;
@@ -75,11 +77,27 @@ export function InfluencerDashboard() {
       } else {
         await influencerApi.rejectInvite(id);
       }
+      toast.success(status === "accepted" ? "Invite accepted." : "Invite declined.");
       await loadDashboard();
-    } catch {
-      // Fallback
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      toast.error(msg || "That didn't work. Please try again.");
     }
   };
+
+  if (loadState === "loading") {
+    return <p role="status" className="p-6 text-sm text-[#94A3B8]">Loading your dashboard…</p>;
+  }
+  if (loadState === "error") {
+    return (
+      <div role="alert" className="rounded-2xl border border-rose-400/30 bg-rose-500/10 p-6 text-sm text-rose-100">
+        Your dashboard could not be loaded.{" "}
+        <button type="button" className="underline" onClick={() => { setLoadState("loading"); void loadDashboard(); }}>
+          Try again
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 text-white">
@@ -116,15 +134,15 @@ export function InfluencerDashboard() {
         <KpiCard
           label="Profile Score"
           value={`${kpis?.profile_score_percent ?? completeness?.percent ?? 0}%`}
-          hint={completeness?.can_submit ? "Ready for verification" : "In progress"}
+          hint="Complete profiles get better matches"
         />
       </section>
 
       <section className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-5 md:p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold text-white">Profile completion</h2>
-            <p className="mt-1 text-sm text-[#CBD5E1]">Complete your profile to unlock premium brand campaigns.</p>
+            <h2 className="text-lg font-semibold text-white">Profile strength</h2>
+            <p className="mt-1 text-sm text-[#CBD5E1]">A complete profile helps businesses choose you.</p>
           </div>
           <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-sm font-semibold text-white">
             {completeness?.percent ?? 0}%
@@ -140,19 +158,20 @@ export function InfluencerDashboard() {
           <ul className="mt-4 space-y-2 text-sm text-[#CBD5E1]">
             {completeness.missing.map((item) => (
               <li key={item} className="flex items-center gap-2">
-                <span className="text-[color:var(--adfluence-orange)]">○</span> {item}
+                <span className="text-[color:var(--adfluence-orange)]">○</span>{" "}
+                {REQUIRED_FOR_SUBMIT[item] ?? OPTIONAL_PROFILE_ITEMS[item] ?? item.replace(/_/g, " ")}
               </li>
             ))}
           </ul>
         ) : (
-          <p className="mt-4 text-sm text-emerald-300">✓ All profile requirements completed!</p>
+          <p className="mt-4 text-sm text-emerald-300">✓ Your profile is complete.</p>
         )}
         <Button
           asChild
           className="mt-4 h-10 rounded-xl bg-white/10 text-white hover:bg-white/15"
         >
           <Link href="/influencer/profile">
-            {completeness?.can_submit ? "Review & Submit Profile" : "Complete Profile"}
+            {completeness?.missing?.length ? "Improve profile" : "View profile"}
           </Link>
         </Button>
       </section>

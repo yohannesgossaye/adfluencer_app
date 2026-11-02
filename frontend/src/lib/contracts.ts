@@ -56,9 +56,17 @@ const TONE_CLASS: Record<Tone, string> = {
   slate: "border-white/15 bg-white/5 text-[#CBD5E1]",
 };
 
+// Badge wording from the creator's side where it differs from the business's.
+const INFLUENCER_LABEL: Record<string, string> = {
+  pending_influencer: "Needs your answer",
+  accepted: "Waiting for funding",
+  rejected: "You declined",
+};
+
 export function contractStatus(status: string, role: "business" | "influencer") {
   const s = STATUS[status] ?? { label: status.replace(/_/g, " "), business: "", influencer: "", tone: "slate" as Tone };
-  return { label: s.label, hint: role === "business" ? s.business : s.influencer, badgeClass: TONE_CLASS[s.tone] };
+  const label = role === "influencer" ? (INFLUENCER_LABEL[status] ?? s.label) : s.label;
+  return { label, hint: role === "business" ? s.business : s.influencer, badgeClass: TONE_CLASS[s.tone] };
 }
 
 const round2 = (v: number) => Math.round(v * 100) / 100;
