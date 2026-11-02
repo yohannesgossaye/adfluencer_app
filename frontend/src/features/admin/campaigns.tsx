@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import axios from "axios";
 import { toast } from "sonner";
 
+import { ConfirmActionDialog, type ConfirmActionRequest } from "@/components/admin/confirm-action-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -11,6 +11,7 @@ import {
   type AdminCampaignListItem,
   type AdminCampaignStats,
 } from "@/lib/api/admin";
+import { adminErrorMessage } from "@/lib/api-errors";
 import { cn } from "@/lib/utils";
 
 const statuses = [
@@ -38,15 +39,6 @@ function badge(s: string) {
   }
 }
 
-type Action = "pause" | "flag" | "resume" | "complete";
-
-const ACTION_DONE: Record<Action, string> = {
-  pause: "Campaign paused. Creators can no longer accept its invites.",
-  flag: "Campaign flagged and paused.",
-  resume: "Campaign is live again.",
-  complete: "Campaign marked completed.",
-};
-
 export function AdminCampaigns() {
   const [rows, setRows] = useState<AdminCampaignListItem[]>([]);
   const [stats, setStats] = useState<AdminCampaignStats>({ active: 0, draft: 0, paused: 0 });
@@ -55,7 +47,7 @@ export function AdminCampaigns() {
   const [business, setBusiness] = useState("");
   const [filters, setFilters] = useState({ niche: "", business: "" });
   const [isLoading, setIsLoading] = useState(true);
-  const [confirmComplete, setConfirmComplete] = useState<string | null>(null);
+  const [confirm, setConfirm] = useState<ConfirmActionRequest | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -83,23 +75,41 @@ export function AdminCampaigns() {
     void Promise.resolve().then(loadCampaigns);
   }, [loadCampaigns]);
 
-  const act = async (id: string, action: Action) => {
+  const run = async (id: string, action: () => Promise<unknown>, success: string) => {
     setBusyId(id);
     try {
-      if (action === "pause") await adminApi.pauseCampaign(id);
-      else if (action === "flag") await adminApi.flagCampaign(id);
-      else if (action === "resume") await adminApi.resumeCampaign(id);
-      else await adminApi.completeCampaign(id);
-      toast.success(ACTION_DONE[action]);
-      setConfirmComplete(null);
+      await action();
+      toast.success(success);
       await loadCampaigns();
     } catch (err) {
-      const msg = axios.isAxiosError(err) ? (err.response?.data as { message?: string } | undefined)?.message : undefined;
-      toast.error(msg || "The action could not be completed.");
+      toast.error(adminErrorMessage(err, "The action could not be completed."));
+      throw err;
     } finally {
       setBusyId(null);
     }
   };
+
+  const askPause = (r: AdminCampaignListItem) =>
+    setConfirm({
+      title: `Pause "${r.title}"?`,
+      description: "Creators can no longer accept its invites until you resume it. Existing contracts are not changed.",
+      confirmLabel: "Pause campaign",
+      tone: "danger",
+      reasonLabel: "Reason (kept in the audit log)",
+      reasonPlaceholder: "e.g. Misleading product claims, reported by a creator",
+      onConfirm: (reason) =>
+        run(r.id, () => adminApi.pauseCampaign(r.id, reason), "Campaign paused. Creators can no longer accept its invites."),
+    });
+
+  const askComplete = (r: AdminCampaignListItem) =>
+    setConfirm({
+      title: `Mark "${r.title}" completed?`,
+      description: "This closes the campaign for good and can't be undone.",
+      confirmLabel: "Mark completed",
+      reasonLabel: "Reason (kept in the audit log)",
+      reasonPlaceholder: "e.g. Business asked us to close it",
+      onConfirm: (reason) => run(r.id, () => adminApi.completeCampaign(r.id, reason), "Campaign marked completed."),
+    });
 
   return (
     <div className="space-y-6 text-white">
@@ -197,34 +207,24 @@ export function AdminCampaigns() {
               <p className="mt-1 text-xs text-[#CBD5E1]">
                 Contracts: {r.contract_summary} · Payment: {r.payment_summary}
               </p>
-              {confirmComplete === r.id ? (
-                <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-white/15 bg-black/20 p-2">
-                  <span className="text-xs text-[#E2E8F0]">Mark this campaign completed? This can’t be undone.</span>
-                  <Button size="sm" disabled={busyId === r.id} className="h-11 bg-emerald-600 text-white hover:bg-emerald-700 sm:h-8" onClick={() => void act(r.id, "complete")}>
-                    Mark completed
-                  </Button>
-                  <Button size="sm" variant="ghost" className="h-11 text-white hover:bg-white/10 sm:h-8" onClick={() => setConfirmComplete(null)}>
-                    Cancel
-                  </Button>
-                </div>
-              ) : r.status === "active" || r.status === "paused" ? (
+              {r.status === "active" || r.status === "paused" ? (
                 <div className="mt-3 flex flex-wrap gap-2">
                   {r.status === "active" ? (
-                    <>
-                      <Button size="sm" variant="outline" disabled={busyId === r.id} className="h-11 border-white/15 bg-transparent text-white sm:h-8" onClick={() => void act(r.id, "pause")}>
-                        Pause
-                      </Button>
-                      <Button size="sm" disabled={busyId === r.id} className="h-11 bg-rose-500/20 text-rose-100 sm:h-8" onClick={() => void act(r.id, "flag")}>
-                        Flag
-                      </Button>
-                    </>
+                    <Button size="sm" disabled={busyId === r.id} className="h-11 bg-rose-500/20 text-rose-100 hover:bg-rose-500/30 sm:h-8" onClick={() => askPause(r)}>
+                      Pause…
+                    </Button>
                   ) : (
-                    <Button size="sm" disabled={busyId === r.id} className="h-11 bg-[color:var(--adfluence-orange)] text-white sm:h-8" onClick={() => void act(r.id, "resume")}>
+                    <Button
+                      size="sm"
+                      disabled={busyId === r.id}
+                      className="h-11 bg-[color:var(--adfluence-orange)] text-white sm:h-8"
+                      onClick={() => void run(r.id, () => adminApi.resumeCampaign(r.id), "Campaign is live again.").catch(() => {})}
+                    >
                       Resume
                     </Button>
                   )}
-                  <Button size="sm" disabled={busyId === r.id} className="h-11 bg-emerald-500/20 text-emerald-100 sm:h-8" onClick={() => setConfirmComplete(r.id)}>
-                    Mark completed
+                  <Button size="sm" variant="outline" disabled={busyId === r.id} className="h-11 border-white/15 bg-transparent text-white sm:h-8" onClick={() => askComplete(r)}>
+                    Mark completed…
                   </Button>
                 </div>
               ) : null}
@@ -232,6 +232,8 @@ export function AdminCampaigns() {
           ))
         )}
       </div>
+
+      <ConfirmActionDialog request={confirm} onClose={() => setConfirm(null)} />
     </div>
   );
 }

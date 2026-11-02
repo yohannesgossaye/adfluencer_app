@@ -65,18 +65,22 @@ const (
 	// Blocking remembers the previous status (re-blocking keeps the original).
 	blockUser = `
 	UPDATE users
-	SET previous_status = CASE WHEN status = 'blocked' THEN previous_status ELSE status END,
+	SET previous_status = CASE WHEN status IN ('blocked', 'removed', 'suspended') THEN previous_status ELSE status END,
 		status = 'blocked', status_reason = $2, updated_at = NOW()
 	WHERE id = $1 AND role <> 'admin'
 	`
 
-	// Only blocked accounts can be unblocked; they return to the status they
-	// had before (e.g. a creator still awaiting approval stays awaiting it).
+	// Blocked, removed and suspended accounts can be restored; they return to
+	// the status they had before (e.g. a creator still awaiting approval stays
+	// awaiting it). When that is unknown (locked before it was recorded), a
+	// creator goes back to review rather than straight to approved.
 	unblockUser = `
 	UPDATE users
-	SET status = COALESCE(previous_status, 'active'), previous_status = NULL,
-		status_reason = NULL, updated_at = NOW()
-	WHERE id = $1 AND role <> 'admin' AND status = 'blocked'
+	SET status = COALESCE(previous_status,
+			CASE WHEN role = 'influencer' THEN 'pending_approval' ELSE 'active' END::user_status),
+		previous_status = NULL,
+		status_reason = NULL, suspended_until = NULL, updated_at = NOW()
+	WHERE id = $1 AND role <> 'admin' AND status IN ('blocked', 'removed', 'suspended')
 	RETURNING status::text
 	`
 
@@ -88,7 +92,8 @@ const (
 
 	removeUser = `
 	UPDATE users
-	SET status = 'removed', status_reason = $2, updated_at = NOW()
+	SET previous_status = CASE WHEN status IN ('blocked', 'removed', 'suspended') THEN previous_status ELSE status END,
+		status = 'removed', status_reason = $2, updated_at = NOW()
 	WHERE id = $1 AND role <> 'admin'
 	`
 

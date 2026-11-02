@@ -199,6 +199,7 @@ export type AdminUserListItem = {
   last_active_at?: string;
   campaigns_count: number;
   contracts_count: number;
+  status_reason?: string;
 };
 
 export type AdminUserStats = {
@@ -265,6 +266,8 @@ export type AdminDisputeDetail = {
   influencer_name: string;
   influencer_email: string;
   influencer_user_id: string;
+  business_user_id: string;
+  against_user_id: string;
   campaign_title: string;
   campaign_id: string;
   contract_id: string;
@@ -572,21 +575,24 @@ export const adminApi = {
     return res.data;
   },
 
-  pauseCampaign: async (campaignId: string): Promise<ApiResponse<{ id: string; status: string }>> => {
+  /** `reason` is recorded in the audit log. */
+  pauseCampaign: async (campaignId: string, reason?: string): Promise<ApiResponse<{ id: string; status: string }>> => {
     const res = await apiClient.post<ApiResponse<{ id: string; status: string }>>(
-      `/api/v1/admin/campaigns/${campaignId}/pause`
+      `/api/v1/admin/campaigns/${campaignId}/pause`,
+      { reason }
     );
     return res.data;
   },
 
-  completeCampaign: async (campaignId: string): Promise<ApiResponse<{ id: string; status: string }>> => {
+  completeCampaign: async (campaignId: string, reason?: string): Promise<ApiResponse<{ id: string; status: string }>> => {
     const res = await apiClient.post<ApiResponse<{ id: string; status: string }>>(
-      `/api/v1/admin/campaigns/${campaignId}/complete`
+      `/api/v1/admin/campaigns/${campaignId}/complete`,
+      { reason }
     );
     return res.data;
   },
 
-  /** Puts a paused (or flagged) campaign back live. */
+  /** Puts a paused campaign back live. */
   resumeCampaign: async (campaignId: string): Promise<ApiResponse<{ id: string; status: string }>> => {
     const res = await apiClient.post<ApiResponse<{ id: string; status: string }>>(
       `/api/v1/admin/campaigns/${campaignId}/resume`
@@ -594,12 +600,6 @@ export const adminApi = {
     return res.data;
   },
 
-  flagCampaign: async (campaignId: string): Promise<ApiResponse<{ id: string; status: string }>> => {
-    const res = await apiClient.post<ApiResponse<{ id: string; status: string }>>(
-      `/api/v1/admin/campaigns/${campaignId}/flag`
-    );
-    return res.data;
-  },
 
   // 7. Dispute Resolution
   listDisputes: async (params?: {

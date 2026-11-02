@@ -50,6 +50,7 @@ export function AdminInfluencers() {
   const [rows, setRows] = useState<InfluencerApplicationItem[]>([]);
   const [tab, setTab] = useState<(typeof tabs)[number]["id"]>("all");
   const [search, setSearch] = useState("");
+  const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedDetail, setSelectedDetail] = useState<InfluencerApplicationDetail | null>(null);
   const [mobileShowDetail, setMobileShowDetail] = useState(false);
@@ -57,21 +58,34 @@ export function AdminInfluencers() {
   const [rejectFor, setRejectFor] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [savingNotes, setSavingNotes] = useState(false);
+
+  useEffect(() => {
+    const t = setTimeout(() => setQuery(search.trim()), 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  const errorText = (err: unknown, fallback: string) =>
+    (axios.isAxiosError(err) ? (err.response?.data as { message?: string } | undefined)?.message : undefined) || fallback;
 
   const loadList = async () => {
     try {
       const res = await adminApi.listInfluencerApplications({
         status: tab === "all" ? undefined : tab,
-        search: search.trim() || undefined,
+        search: query || undefined,
       });
-      if (res.data?.items) {
-        setRows(res.data.items);
-        if (!selectedId && res.data.items[0]) {
-          setSelectedId(res.data.items[0].user_id);
-        }
+      const items = res.data?.items ?? [];
+      setRows(items);
+      // Keep the selection only if it is still in this list (tabs and search change it).
+      const keep = selectedId !== null && items.some((i) => i.user_id === selectedId);
+      if (!keep) {
+        setSelectedId(items[0]?.user_id ?? null);
+        setRejectFor(null);
+        if (!items[0]) setMobileShowDetail(false);
       }
-    } catch {
-      // fallback
+    } catch (err) {
+      toast.error(errorText(err, "Applications could not be loaded."));
     } finally {
       setIsLoading(false);
     }
@@ -79,22 +93,23 @@ export function AdminInfluencers() {
 
   useEffect(() => {
     loadList();
-  }, [tab, search]);
+  }, [tab, query]);
+
+  const loadDetail = async (userId: string) => {
+    try {
+      const res = await adminApi.getInfluencerApplication(userId);
+      if (res.data) {
+        setSelectedDetail(res.data);
+        setNoteDraft(res.data.admin_note || "");
+      }
+    } catch (err) {
+      toast.error(errorText(err, "This application could not be opened."));
+    }
+  };
 
   useEffect(() => {
-    if (!selectedId) return;
-    async function loadItem() {
-      try {
-        const res = await adminApi.getInfluencerApplication(selectedId!);
-        if (res.data) {
-          setSelectedDetail(res.data);
-          setNoteDraft(res.data.admin_note || "");
-        }
-      } catch {
-        // fallback
-      }
-    }
-    loadItem();
+    if (selectedId) void Promise.resolve(selectedId).then(loadDetail);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reload only when the selection changes
   }, [selectedId]);
 
   const selected = useMemo(() => {
@@ -123,9 +138,6 @@ export function AdminInfluencers() {
     } as InfluencerApplicationDetail) : null;
   }, [selectedDetail, rows, selectedId]);
 
-  const errorText = (err: unknown, fallback: string) =>
-    (axios.isAxiosError(err) ? (err.response?.data as { message?: string } | undefined)?.message : undefined) || fallback;
-
   const setStatus = async (userId: string, status: "approved" | "rejected") => {
     if (status === "rejected") {
       // Rejection needs a reason the creator will see: open the reason box.
@@ -135,35 +147,49 @@ export function AdminInfluencers() {
       if (window.matchMedia("(max-width: 1279px)").matches) setMobileShowDetail(true);
       return;
     }
+    setBusyId(userId);
     try {
-      await adminApi.approveInfluencerApplication(userId, { admin_note: noteDraft });
+      // The notes box belongs to the selected creator; don't copy it onto another one.
+      await adminApi.approveInfluencerApplication(userId, userId === selectedId ? { admin_note: noteDraft } : {});
       toast.success("Creator approved. They can now receive invites.");
       await loadList();
+      if (userId === selectedId) await loadDetail(userId);
     } catch (err) {
       toast.error(errorText(err, "Could not approve this creator."));
+    } finally {
+      setBusyId(null);
     }
   };
 
   const sendRejection = async () => {
     if (!rejectFor || rejectReason.trim().length < 5) return;
+    const userId = rejectFor;
+    setBusyId(userId);
     try {
-      await adminApi.rejectInfluencerApplication(rejectFor, { reason: rejectReason.trim(), admin_note: noteDraft });
+      await adminApi.rejectInfluencerApplication(userId, { reason: rejectReason.trim(), admin_note: noteDraft });
       toast.success("Rejection sent. The creator will see your reason.");
       setRejectFor(null);
       setRejectReason("");
       await loadList();
+      await loadDetail(userId);
     } catch (err) {
       toast.error(errorText(err, "Could not reject this application."));
+    } finally {
+      setBusyId(null);
     }
   };
 
   const saveNotes = async () => {
     if (!selectedId) return;
+    setSavingNotes(true);
     try {
       await adminApi.updateInfluencerApplicationNotes(selectedId, { admin_note: noteDraft });
+      toast.success("Notes saved.");
       await loadList();
-    } catch {
-      // fallback
+    } catch (err) {
+      toast.error(errorText(err, "The notes could not be saved."));
+    } finally {
+      setSavingNotes(false);
     }
   };
 
@@ -202,6 +228,7 @@ export function AdminInfluencers() {
       </div>
 
       <Input
+        aria-label="Search creators"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         placeholder="Search by name, niche, or platform"
@@ -267,7 +294,7 @@ export function AdminInfluencers() {
                       type="button"
                       size="sm"
                       className="h-11 bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)] sm:h-8"
-                      disabled={!canApprove(r.status)}
+                      disabled={!canApprove(r.status) || busyId === r.user_id}
                       onClick={(e) => {
                         e.stopPropagation();
                         setStatus(r.user_id, "approved");
@@ -280,7 +307,7 @@ export function AdminInfluencers() {
                       size="sm"
                       variant="outline"
                       className="h-11 border-white/15 text-white hover:bg-white/10 sm:h-8"
-                      disabled={!canReject(r.status)}
+                      disabled={!canReject(r.status) || busyId === r.user_id}
                       onClick={(e) => {
                         e.stopPropagation();
                         setStatus(r.user_id, "rejected");
@@ -320,6 +347,36 @@ export function AdminInfluencers() {
               </Button>
             </div>
             <h2 className="text-lg font-semibold text-white">Details — {selected.profile?.creator_name || "Creator"}</h2>
+            <p className="mt-1">
+              <span className={cn("rounded-full border px-2 py-0.5 text-[10px] font-medium", statusBadge(selected.status))}>
+                {STATUS_LABEL[selected.status] ?? selected.status.replace(/_/g, " ")}
+              </span>
+            </p>
+            {canApprove(selected.status) || canReject(selected.status) ? (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {canApprove(selected.status) ? (
+                  <Button
+                    type="button"
+                    disabled={busyId === selected.user_id}
+                    className="h-11 flex-1 bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)] sm:h-9"
+                    onClick={() => void setStatus(selected.user_id, "approved")}
+                  >
+                    Approve
+                  </Button>
+                ) : null}
+                {rejectFor !== selected.user_id ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={busyId === selected.user_id}
+                    className="h-11 flex-1 border-white/15 text-white hover:bg-white/10 sm:h-9"
+                    onClick={() => void setStatus(selected.user_id, "rejected")}
+                  >
+                    {selected.status === "approved" || selected.status === "active" ? "Request changes" : "Reject"}
+                  </Button>
+                ) : null}
+              </div>
+            ) : null}
             <p className="mt-2 text-sm text-[#CBD5E1]">{selected.profile?.bio || "No bio provided."}</p>
             <div className="mt-3 space-y-1 text-xs text-[#94A3B8]">
               <p>TikTok: {selected.profile?.social_links?.tiktok || "—"}</p>
@@ -378,7 +435,7 @@ export function AdminInfluencers() {
                   <span className="text-xs text-rose-100/80">{rejectReason.trim().length}/1000 · at least 5 characters</span>
                 </label>
                 <div className="flex flex-wrap gap-2">
-                  <Button type="button" disabled={rejectReason.trim().length < 5} onClick={() => void sendRejection()} className="h-11 bg-rose-600 text-white hover:bg-rose-700 sm:h-9">
+                  <Button type="button" disabled={rejectReason.trim().length < 5 || busyId === rejectFor} onClick={() => void sendRejection()} className="h-11 bg-rose-600 text-white hover:bg-rose-700 sm:h-9">
                     Send rejection
                   </Button>
                   <Button type="button" variant="ghost" onClick={() => setRejectFor(null)} className="h-11 text-white hover:bg-white/10 sm:h-9">
@@ -401,9 +458,10 @@ export function AdminInfluencers() {
               type="button"
               variant="outline"
               className="mt-2 h-11 w-full border-white/15 text-white hover:bg-white/10 sm:h-9"
+              disabled={savingNotes}
               onClick={saveNotes}
             >
-              Save notes
+              {savingNotes ? "Saving…" : "Save notes"}
             </Button>
           </aside>
         ) : null}

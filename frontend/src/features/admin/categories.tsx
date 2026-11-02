@@ -2,9 +2,13 @@
 
 import { useEffect, useState } from "react";
 
+import { toast } from "sonner";
+
+import { ConfirmActionDialog, type ConfirmActionRequest } from "@/components/admin/confirm-action-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { adminApi, type AdminCategoryItem } from "@/lib/api/admin";
+import { adminErrorMessage } from "@/lib/api-errors";
 
 export function AdminCategories() {
   const [rows, setRows] = useState<AdminCategoryItem[]>([]);
@@ -28,37 +32,66 @@ export function AdminCategories() {
     loadCategories();
   }, []);
 
-  const toggle = async (id: string, currentlyActive: boolean) => {
+  const [confirm, setConfirm] = useState<ConfirmActionRequest | null>(null);
+  const [adding, setAdding] = useState(false);
+
+  const enable = async (c: AdminCategoryItem) => {
     try {
-      if (currentlyActive) {
-        await adminApi.disableCategory(id);
-      } else {
-        await adminApi.enableCategory(id);
-      }
+      await adminApi.enableCategory(c.id);
+      toast.success(`"${c.name}" is enabled.`);
       await loadCategories();
-    } catch {
-      // fallback
+    } catch (err) {
+      toast.error(adminErrorMessage(err, "The category could not be enabled."));
     }
   };
 
-  const rename = async (id: string, name: string) => {
+  const askDisable = (c: AdminCategoryItem) =>
+    setConfirm({
+      title: `Disable "${c.name}"?`,
+      description: `It disappears from the niche lists for new profiles and campaigns. The ${c.influencer_count} creator(s) and ${c.campaign_count} campaign(s) already using it keep it. You can enable it again any time.`,
+      confirmLabel: "Disable category",
+      tone: "danger",
+      onConfirm: async () => {
+        try {
+          await adminApi.disableCategory(c.id);
+          toast.success(`"${c.name}" is disabled.`);
+          await loadCategories();
+        } catch (err) {
+          toast.error(adminErrorMessage(err, "The category could not be disabled."));
+          throw err;
+        }
+      },
+    });
+
+  const rename = async (c: AdminCategoryItem, input: HTMLInputElement) => {
+    const name = input.value.trim();
+    if (!name || name === c.name) {
+      input.value = c.name;
+      return;
+    }
     try {
-      await adminApi.updateCategory(id, { name });
+      await adminApi.updateCategory(c.id, { name });
+      toast.success(`Renamed to "${name}".`);
       await loadCategories();
-    } catch {
-      // fallback
+    } catch (err) {
+      input.value = c.name;
+      toast.error(adminErrorMessage(err, "The category could not be renamed."));
     }
   };
 
   const add = async () => {
     const n = newName.trim();
-    if (!n) return;
+    if (!n || adding) return;
+    setAdding(true);
     try {
       await adminApi.createCategory({ name: n });
       setNewName("");
+      toast.success(`"${n}" added.`);
       await loadCategories();
-    } catch {
-      // fallback
+    } catch (err) {
+      toast.error(adminErrorMessage(err, "The category could not be added."));
+    } finally {
+      setAdding(false);
     }
   };
 
@@ -71,21 +104,28 @@ export function AdminCategories() {
         </p>
       </div>
 
-      <div className="flex flex-wrap items-end gap-2 rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-4">
+      <form
+        className="flex flex-wrap items-end gap-2 rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-4"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void add();
+        }}
+      >
         <Input
+          aria-label="New category name"
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
           placeholder="New category name"
           className="h-10 max-w-xs flex-1 rounded-xl border-white/10 bg-[color:var(--adfluence-surface)] text-white"
         />
         <Button
-          type="button"
+          type="submit"
+          disabled={adding || !newName.trim()}
           className="h-10 rounded-xl bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)]"
-          onClick={add}
         >
           Add category
         </Button>
-      </div>
+      </form>
 
       <div className="space-y-3 min-w-0">
         {rows.length === 0 && !isLoading ? (
@@ -101,8 +141,12 @@ export function AdminCategories() {
               <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
                 <Input
                   key={`${c.id}-${c.name}`}
+                  aria-label={`Rename ${c.name}`}
                   defaultValue={c.name}
-                  onBlur={(e) => rename(c.id, e.target.value.trim() || c.name)}
+                  onBlur={(e) => void rename(c, e.currentTarget)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") e.currentTarget.blur();
+                  }}
                   className="h-10 max-w-[200px] rounded-xl border-white/10 bg-[color:var(--adfluence-surface)] text-white"
                 />
                 <p className="text-xs text-[#CBD5E1]">
@@ -116,7 +160,7 @@ export function AdminCategories() {
                   size="sm"
                   variant="outline"
                   className="h-11 border-white/15 text-white sm:h-8"
-                  onClick={() => toggle(c.id, c.is_active)}
+                  onClick={() => (c.is_active ? askDisable(c) : void enable(c))}
                 >
                   {c.is_active ? "Disable" : "Enable"}
                 </Button>
@@ -125,6 +169,8 @@ export function AdminCategories() {
           ))
         )}
       </div>
+
+      <ConfirmActionDialog request={confirm} onClose={() => setConfirm(null)} />
     </div>
   );
 }

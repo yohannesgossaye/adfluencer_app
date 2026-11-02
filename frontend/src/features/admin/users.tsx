@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from "react";
 
+import { toast } from "sonner";
+
+import { ConfirmActionDialog, type ConfirmActionRequest } from "@/components/admin/confirm-action-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -9,7 +12,13 @@ import {
   type AdminUserListItem,
   type AdminUserStats,
 } from "@/lib/api/admin";
+import { adminErrorMessage } from "@/lib/api-errors";
 import { cn } from "@/lib/utils";
+
+/** Accounts that can't log in and can be restored. */
+function isLocked(status: string) {
+  return status === "blocked" || status === "removed" || status === "suspended";
+}
 
 function statusStyle(s: string) {
   const lower = s.toLowerCase();
@@ -64,32 +73,53 @@ export function AdminUsers() {
     loadUsers();
   }, [roleFilter, statusFilter, search]);
 
-  const block = async (u: AdminUserListItem) => {
+  const [confirm, setConfirm] = useState<ConfirmActionRequest | null>(null);
+
+  const run = async (action: () => Promise<unknown>, success: string, failure: string) => {
     try {
-      await adminApi.blockUser(u.user_id, { reason: "Blocked by administrator" });
+      await action();
+      toast.success(success);
       await loadUsers();
-    } catch {
-      // fallback
+    } catch (err) {
+      toast.error(adminErrorMessage(err, failure));
+      throw err;
     }
   };
 
-  const unblock = async (u: AdminUserListItem) => {
-    try {
-      await adminApi.unblockUser(u.user_id);
-      await loadUsers();
-    } catch {
-      // fallback
-    }
-  };
+  const askBlock = (u: AdminUserListItem) =>
+    setConfirm({
+      title: `Block ${u.name}?`,
+      description: "They are signed out everywhere and can't log in until you unblock them. Their data is kept.",
+      confirmLabel: "Block account",
+      tone: "danger",
+      reasonLabel: "Reason (kept on the account)",
+      reasonPlaceholder: "e.g. Repeated spam messages to creators",
+      onConfirm: (reason) =>
+        run(() => adminApi.blockUser(u.user_id, { reason }), `${u.name} is blocked.`, "The account could not be blocked."),
+    });
 
-  const remove = async (u: AdminUserListItem) => {
-    try {
-      await adminApi.removeUser(u.user_id, { reason: "Purged by administrator" });
-      await loadUsers();
-    } catch {
-      // fallback
-    }
-  };
+  const askRemove = (u: AdminUserListItem) =>
+    setConfirm({
+      title: `Remove ${u.name}?`,
+      description:
+        "The account is closed and signed out everywhere. Nothing is deleted, so you can restore it later from the Removed filter.",
+      confirmLabel: "Remove account",
+      tone: "danger",
+      reasonLabel: "Reason (kept on the account)",
+      reasonPlaceholder: "e.g. Duplicate account",
+      onConfirm: (reason) =>
+        run(() => adminApi.removeUser(u.user_id, { reason }), `${u.name} is removed.`, "The account could not be removed."),
+    });
+
+  const askRestore = (u: AdminUserListItem) =>
+    setConfirm({
+      title: `Restore ${u.name}?`,
+      description:
+        "The account goes back to the status it had before (for example, a creator awaiting approval stays awaiting it) and can log in again.",
+      confirmLabel: u.status === "removed" ? "Restore account" : "Unblock account",
+      onConfirm: () =>
+        run(() => adminApi.unblockUser(u.user_id), `${u.name} is restored.`, "The account could not be restored."),
+    });
 
   return (
     <div className="space-y-6 text-white">
@@ -191,51 +221,48 @@ export function AdminUsers() {
                   {u.status}
                 </span>
               </div>
-              {u.status === "blocked" || u.status === "suspended" ? (
-                <p className="mt-2 text-xs text-rose-200">
-                  Blocked users cannot log in.
-                </p>
+              {u.status_reason && isLocked(u.status) ? (
+                <p className="mt-2 text-xs text-[#CBD5E1]">Reason: {u.status_reason}</p>
               ) : null}
-              {u.status === "removed" ? (
-                <p className="mt-2 text-xs text-amber-300">
-                  Removed account. Click &quot;Restore &amp; Activate&quot; to reverse removal and allow login.
-                </p>
-              ) : null}
-              <div className="mt-3 flex flex-wrap gap-2">
-                {u.status === "removed" || u.status === "blocked" || u.status === "suspended" ? (
-                  <Button
-                    size="sm"
-                    className="h-11 sm:h-8 bg-emerald-500/25 border border-emerald-500/40 text-emerald-100 hover:bg-emerald-500/35"
-                    onClick={() => unblock(u)}
-                  >
-                    {u.status === "removed" ? "Restore & Activate" : "Unblock & Activate"}
-                  </Button>
-                ) : null}
-                {u.status !== "blocked" ? (
-                  <Button
-                    size="sm"
-                    className="h-11 sm:h-8 bg-rose-500/20 text-rose-100 hover:bg-rose-500/30"
-                    disabled={u.status === "removed"}
-                    onClick={() => block(u)}
-                  >
-                    Block
-                  </Button>
-                ) : null}
-                {u.status !== "removed" ? (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-11 sm:h-8 border-white/15 text-white hover:bg-white/10"
-                    onClick={() => remove(u)}
-                  >
-                    Remove
-                  </Button>
-                ) : null}
-              </div>
+              {u.role === "admin" ? (
+                <p className="mt-3 text-xs text-[#94A3B8]">Admin accounts can&apos;t be blocked or removed here.</p>
+              ) : (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {isLocked(u.status) ? (
+                    <Button
+                      size="sm"
+                      className="h-11 border border-emerald-500/40 bg-emerald-500/25 text-emerald-100 hover:bg-emerald-500/35 sm:h-8"
+                      onClick={() => askRestore(u)}
+                    >
+                      {u.status === "removed" ? "Restore account" : "Unblock"}
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      className="h-11 bg-rose-500/20 text-rose-100 hover:bg-rose-500/30 sm:h-8"
+                      onClick={() => askBlock(u)}
+                    >
+                      Block…
+                    </Button>
+                  )}
+                  {u.status !== "removed" ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-11 border-white/15 text-white hover:bg-white/10 sm:h-8"
+                      onClick={() => askRemove(u)}
+                    >
+                      Remove…
+                    </Button>
+                  ) : null}
+                </div>
+              )}
             </article>
           ))
         )}
       </div>
+
+      <ConfirmActionDialog request={confirm} onClose={() => setConfirm(null)} />
     </div>
   );
 }

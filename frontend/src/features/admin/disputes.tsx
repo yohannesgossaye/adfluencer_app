@@ -3,13 +3,29 @@
 import { useCallback, useEffect, useState } from "react";
 import { ArrowLeft } from "lucide-react";
 
+import { toast } from "sonner";
+
+import { ConfirmActionDialog, type ConfirmActionRequest } from "@/components/admin/confirm-action-dialog";
 import { Button } from "@/components/ui/button";
 import {
   adminApi,
   type AdminDisputeListItem,
   type AdminDisputeDetail,
 } from "@/lib/api/admin";
+import { adminErrorMessage } from "@/lib/api-errors";
 import { cn } from "@/lib/utils";
+
+const STATUS_LABEL: Record<string, string> = {
+  open: "Open",
+  under_review: "Under review",
+  escalated: "Escalated",
+  resolved: "Resolved",
+  closed: "Closed",
+};
+
+function isFinished(status: string) {
+  return status === "resolved" || status === "closed";
+}
 
 function sev(s: string) {
   const lower = s.toLowerCase();
@@ -65,40 +81,82 @@ export function AdminDisputes() {
     loadItem();
   }, [selectedId]);
 
-  const setStatus = async (id: string, status: string) => {
+  const [confirm, setConfirm] = useState<ConfirmActionRequest | null>(null);
+  const [savingNotes, setSavingNotes] = useState(false);
+
+  const refreshSelected = async (id: string) => {
+    const res = await adminApi.getDispute(id);
+    if (res.data) setSelectedDetail(res.data);
+  };
+
+  const setStatus = async (id: string, status: string, success: string) => {
     try {
       await adminApi.updateDisputeStatus(id, { status });
+      toast.success(success);
       await loadDisputes();
-      if (selectedId === id) {
-        const res = await adminApi.getDispute(id);
-        if (res.data) setSelectedDetail(res.data);
-      }
-    } catch {
-      // fallback
+      if (selectedId === id) await refreshSelected(id);
+    } catch (err) {
+      toast.error(adminErrorMessage(err, "The dispute could not be updated."));
+      throw err;
     }
   };
 
   const saveNotes = async () => {
     if (!selectedId) return;
+    setSavingNotes(true);
     try {
       await adminApi.updateDisputeNotes(selectedId, {
         admin_note: adminNoteDraft,
         resolution_note: resolutionNoteDraft,
       });
+      toast.success("Notes saved.");
       await loadDisputes();
-    } catch {
-      // fallback
+    } catch (err) {
+      toast.error(adminErrorMessage(err, "The notes could not be saved."));
+    } finally {
+      setSavingNotes(false);
     }
   };
 
-  const blockUser = async () => {
-    if (!selectedDetail?.influencer_user_id) return;
-    try {
-      await adminApi.blockUser(selectedDetail.influencer_user_id, { reason: "Blocked during dispute resolution" });
-      window.alert("User account has been suspended.");
-    } catch {
-      // fallback
-    }
+  const askResolve = (d: AdminDisputeDetail) =>
+    setConfirm({
+      title: "Resolve this dispute?",
+      description: "Record what was decided. The dispute moves to Resolved; you can reopen it later if needed.",
+      confirmLabel: "Resolve dispute",
+      reasonLabel: "Resolution note",
+      reasonPlaceholder: "e.g. Creator re-posted the video; business confirmed. No refund.",
+      onConfirm: async (note) => {
+        try {
+          await adminApi.updateDisputeNotes(d.id, { admin_note: adminNoteDraft, resolution_note: note });
+        } catch (err) {
+          toast.error(adminErrorMessage(err, "The resolution note could not be saved."));
+          throw err;
+        }
+        setResolutionNoteDraft(note);
+        await setStatus(d.id, "resolved", "Dispute resolved.");
+      },
+    });
+
+  const askBlock = (party: "business" | "creator", d: AdminDisputeDetail) => {
+    const userId = party === "business" ? d.business_user_id : d.influencer_user_id;
+    const name = party === "business" ? d.business_name : d.influencer_name;
+    setConfirm({
+      title: `Block ${name}?`,
+      description: `The ${party} is signed out everywhere and can't log in until unblocked from Users. The dispute stays as it is.`,
+      confirmLabel: `Block ${party}`,
+      tone: "danger",
+      reasonLabel: "Reason (kept on the account)",
+      reasonPlaceholder: "e.g. Took payment without delivering (dispute)",
+      onConfirm: async (reason) => {
+        try {
+          await adminApi.blockUser(userId, { reason });
+          toast.success(`${name} is blocked.`);
+        } catch (err) {
+          toast.error(adminErrorMessage(err, "The account could not be blocked."));
+          throw err;
+        }
+      },
+    });
   };
 
   const selectDispute = useCallback((id: string) => {
@@ -159,7 +217,9 @@ export function AdminDisputes() {
                   {d.business_name} ↔ {d.influencer_name} · {d.campaign_title}
                 </p>
                 <p className="mt-1 text-xs text-[#94A3B8]">{d.issue_type_label || d.issue_type}</p>
-                <p className={cn("text-xs font-medium", sev(d.severity))}>{d.severity} severity</p>
+                <p className={cn("text-xs font-medium capitalize", sev(d.severity))}>
+                  {d.severity} severity · {STATUS_LABEL[d.status] ?? d.status}
+                </p>
                 <p className="mt-2 line-clamp-2 text-xs text-[#CBD5E1]">{d.preview}</p>
               </button>
             ))
@@ -187,7 +247,21 @@ export function AdminDisputes() {
             </div>
             <h2 className="text-lg font-semibold text-white">{selectedDetail.title}</h2>
             <p className="text-xs text-[#CBD5E1]">
-              Status: <span className="capitalize text-white">{selectedDetail.status.replace("_", " ")}</span>
+              Status: <span className="text-white">{STATUS_LABEL[selectedDetail.status] ?? selectedDetail.status}</span>
+            </p>
+            <p className="text-xs text-[#CBD5E1]">
+              Between <span className="text-white">{selectedDetail.business_name}</span> (business) and{" "}
+              <span className="text-white">{selectedDetail.influencer_name}</span> (creator)
+              {selectedDetail.against_user_id ? (
+                <>
+                  {" "}· reported:{" "}
+                  <span className="text-white">
+                    {selectedDetail.against_user_id === selectedDetail.business_user_id
+                      ? selectedDetail.business_name
+                      : selectedDetail.influencer_name}
+                  </span>
+                </>
+              ) : null}
             </p>
             <div className="rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)] p-3">
               <p className="text-xs font-medium uppercase text-[#94A3B8]">Description & preview</p>
@@ -216,42 +290,78 @@ export function AdminDisputes() {
               variant="outline"
               size="sm"
               className="h-10 w-full border-white/15 text-white"
+              disabled={savingNotes}
               onClick={saveNotes}
             >
-              Save notes
+              {savingNotes ? "Saving…" : "Save notes"}
             </Button>
             <div className="flex flex-col gap-2 pt-2">
-              <Button
-                type="button"
-                size="sm"
-                className="h-11 bg-white/10 text-white sm:h-9"
-                onClick={() => setStatus(selectedDetail.id, "under_review")}
-              >
-                Mark under review
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                className="h-11 bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)] sm:h-9"
-                onClick={() => setStatus(selectedDetail.id, "resolved")}
-              >
-                Resolve dispute
-              </Button>
-              {selectedDetail.influencer_user_id ? (
+              {isFinished(selectedDetail.status) ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  className="h-11 bg-white/10 text-white sm:h-9"
+                  onClick={() =>
+                    setConfirm({
+                      title: "Reopen this dispute?",
+                      description: "It moves back to Open & under review.",
+                      confirmLabel: "Reopen",
+                      onConfirm: () => setStatus(selectedDetail.id, "under_review", "Dispute reopened."),
+                    })
+                  }
+                >
+                  Reopen dispute
+                </Button>
+              ) : (
+                <>
+                  {selectedDetail.status !== "under_review" ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="h-11 bg-white/10 text-white sm:h-9"
+                      onClick={() =>
+                        void setStatus(selectedDetail.id, "under_review", "Marked as under review.").catch(() => {})
+                      }
+                    >
+                      Mark under review
+                    </Button>
+                  ) : null}
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="h-11 bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)] sm:h-9"
+                    onClick={() => askResolve(selectedDetail)}
+                  >
+                    Resolve dispute…
+                  </Button>
+                </>
+              )}
+              <div className="grid gap-2 sm:grid-cols-2">
                 <Button
                   type="button"
                   size="sm"
                   variant="outline"
                   className="h-11 border-rose-400/40 text-rose-200 sm:h-9"
-                  onClick={blockUser}
+                  onClick={() => askBlock("business", selectedDetail)}
                 >
-                  Block user
+                  Block business…
                 </Button>
-              ) : null}
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-11 border-rose-400/40 text-rose-200 sm:h-9"
+                  onClick={() => askBlock("creator", selectedDetail)}
+                >
+                  Block creator…
+                </Button>
+              </div>
             </div>
           </aside>
         ) : null}
       </div>
+
+      <ConfirmActionDialog request={confirm} onClose={() => setConfirm(null)} />
     </div>
   );
 }

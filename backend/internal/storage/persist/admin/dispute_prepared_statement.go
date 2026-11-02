@@ -43,6 +43,7 @@ const (
 		ip.creator_name,
 		u_inf.email,
 		ct.influencer_user_id,
+		ct.business_user_id,
 		d.against_user_id,
 		d.issue_type::text,
 		d.severity::text,

@@ -1,8 +1,8 @@
 package admin
 
 import (
-	commonDto "adinfluence_service_app/internal/constant/model/dto/common"
 	customErr "adinfluence_service_app/internal/constant/errors"
+	commonDto "adinfluence_service_app/internal/constant/model/dto/common"
 	"strings"
 	"time"
 )
@@ -35,17 +35,17 @@ func (q ListAdminDisputesQuery) Normalize() ListAdminDisputesQuery {
 }
 
 type AdminDisputeListItem struct {
-	ID              string    `json:"id"`
-	Title           string    `json:"title"`
-	BusinessName    string    `json:"business_name"`
-	InfluencerName  string    `json:"influencer_name"`
-	CampaignTitle   string    `json:"campaign_title"`
-	IssueType       string    `json:"issue_type"`
-	IssueTypeLabel  string    `json:"issue_type_label"`
-	Severity        string    `json:"severity"`
-	Status          string    `json:"status"`
-	Preview         string    `json:"preview"`
-	CreatedAt       time.Time `json:"created_at"`
+	ID             string    `json:"id"`
+	Title          string    `json:"title"`
+	BusinessName   string    `json:"business_name"`
+	InfluencerName string    `json:"influencer_name"`
+	CampaignTitle  string    `json:"campaign_title"`
+	IssueType      string    `json:"issue_type"`
+	IssueTypeLabel string    `json:"issue_type_label"`
+	Severity       string    `json:"severity"`
+	Status         string    `json:"status"`
+	Preview        string    `json:"preview"`
+	CreatedAt      time.Time `json:"created_at"`
 }
 
 type ListAdminDisputesResponse struct {
@@ -54,26 +54,29 @@ type ListAdminDisputesResponse struct {
 }
 
 type AdminDisputeDetailResponse struct {
-	ID               string    `json:"id"`
-	Title            string    `json:"title"`
-	BusinessName     string    `json:"business_name"`
-	InfluencerName   string    `json:"influencer_name"`
-	InfluencerEmail  string    `json:"influencer_email"`
-	InfluencerUserID string    `json:"influencer_user_id"`
-	CampaignTitle    string    `json:"campaign_title"`
-	CampaignID       string    `json:"campaign_id"`
-	ContractID       string    `json:"contract_id"`
-	IssueType        string    `json:"issue_type"`
-	IssueTypeLabel   string    `json:"issue_type_label"`
-	Severity         string    `json:"severity"`
-	Status           string    `json:"status"`
-	Description      string    `json:"description"`
-	Preview          string    `json:"preview"`
-	AdminNote        string    `json:"admin_note,omitempty"`
-	ResolutionNote   *string   `json:"resolution_note,omitempty"`
-	CreatedAt        time.Time `json:"created_at"`
-	UpdatedAt        time.Time `json:"updated_at"`
-	ResolvedAt       *time.Time `json:"resolved_at,omitempty"`
+	ID               string `json:"id"`
+	Title            string `json:"title"`
+	BusinessName     string `json:"business_name"`
+	InfluencerName   string `json:"influencer_name"`
+	InfluencerEmail  string `json:"influencer_email"`
+	InfluencerUserID string `json:"influencer_user_id"`
+	BusinessUserID   string `json:"business_user_id"`
+	// AgainstUserID is the party the dispute was opened against.
+	AgainstUserID  string     `json:"against_user_id"`
+	CampaignTitle  string     `json:"campaign_title"`
+	CampaignID     string     `json:"campaign_id"`
+	ContractID     string     `json:"contract_id"`
+	IssueType      string     `json:"issue_type"`
+	IssueTypeLabel string     `json:"issue_type_label"`
+	Severity       string     `json:"severity"`
+	Status         string     `json:"status"`
+	Description    string     `json:"description"`
+	Preview        string     `json:"preview"`
+	AdminNote      string     `json:"admin_note,omitempty"`
+	ResolutionNote *string    `json:"resolution_note,omitempty"`
+	CreatedAt      time.Time  `json:"created_at"`
+	UpdatedAt      time.Time  `json:"updated_at"`
+	ResolvedAt     *time.Time `json:"resolved_at,omitempty"`
 }
 
 type UpdateDisputeStatusRequest struct {
@@ -119,6 +122,7 @@ type DisputeRow struct {
 	InfluencerName   string
 	InfluencerEmail  string
 	InfluencerUserID string
+	BusinessUserID   string
 	AgainstUserID    string
 	IssueType        string
 	Severity         string

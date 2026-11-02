@@ -68,7 +68,6 @@ func (m *adminModule) GetUser(ctx context.Context, userID string) (*adminDto.Use
 	item := mapUserListItem(*row)
 	return &adminDto.UserDetailResponse{
 		UserListItem: item,
-		StatusReason: row.StatusReason,
 	}, nil
 }
 
@@ -156,6 +155,7 @@ func mapUserListItem(row adminDto.UserRow) adminDto.UserListItem {
 		LastActiveAt:   row.LastLoginAt,
 		CampaignsCount: row.CampaignsCount,
 		ContractsCount: row.ContractsCount,
+		StatusReason:   row.StatusReason,
 	}
 }
 
