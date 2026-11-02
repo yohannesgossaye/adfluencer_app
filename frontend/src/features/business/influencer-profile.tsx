@@ -101,27 +101,19 @@ export function InfluencerProfile({ influencerId }: InfluencerProfileProps) {
     );
   }
 
-  const platforms = creator.platforms || [];
-  const niches = creator.niches || [];
-  const audience = creator.audience_description || "Dynamic engaged local audience.";
-
-  const primaryNiche = creator.niches?.[0]?.name || "Creator";
-  const avgReach = Math.round((creator.total_followers || 50000) * 0.22);
-  const breakdown = creator.score_breakdown || {
-    niche: 95,
-    platform: 90,
-    budget: 85,
-    creator_size: 90,
-    verified: creator.is_verified ? 100 : 80,
-  };
-
-  const fitRows = [
-    { label: "Niche fit", value: breakdown.niche },
-    { label: "Platform fit", value: breakdown.platform },
-    { label: "Budget fit", value: breakdown.budget },
-    { label: "Audience fit", value: breakdown.creator_size },
-    { label: "Verified profile", value: breakdown.verified },
-  ];
+  const primaryNiche = creator.niches?.[0]?.name;
+  // Points per criterion as scored by the backend (helper/matching.go).
+  const breakdown = creator.score_breakdown;
+  const fitRows = breakdown
+    ? [
+        { label: "Niche fit", value: breakdown.niche, max: 40 },
+        { label: "Platform fit", value: breakdown.platform, max: 25 },
+        { label: "Budget fit", value: breakdown.budget, max: 20 },
+        { label: "Creator size fit", value: breakdown.creator_size, max: 10 },
+        { label: "Verified profile", value: breakdown.verified, max: 5 },
+      ]
+    : [];
+  const notProvided = <span className="text-base font-medium text-[#94A3B8]">Not provided</span>;
 
   return (
     <div className="space-y-6 text-white">
@@ -150,11 +142,11 @@ export function InfluencerProfile({ influencerId }: InfluencerProfileProps) {
               ) : null}
             </div>
             <p className="mt-1 text-sm text-[#CBD5E1]">
-              {primaryNiche} • {creator.platforms.join(", ")} • {creator.city || "Ethiopia"}
+              {[primaryNiche, creator.platforms.join(", "), creator.city].filter(Boolean).join(" • ")}
             </p>
             <p className="mt-1 text-xs text-[#CBD5E1]">
-              Full Name: {creator.full_name} · Languages:{" "}
-              {creator.languages?.length ? creator.languages.join(", ") : "Amharic, English"}
+              Full Name: {creator.full_name}
+              {creator.languages?.length ? ` · Languages: ${creator.languages.join(", ")}` : ""}
             </p>
           </div>
         </div>
@@ -179,7 +171,7 @@ export function InfluencerProfile({ influencerId }: InfluencerProfileProps) {
         </div>
       </section>
 
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-3 sm:grid-cols-3">
         <article className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-4">
           <p className="text-xs text-[#CBD5E1]">Total Followers</p>
           <p className="mt-2 text-2xl font-bold text-white">
@@ -189,18 +181,15 @@ export function InfluencerProfile({ influencerId }: InfluencerProfileProps) {
         <article className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-4">
           <p className="text-xs text-[#CBD5E1]">Engagement Rate</p>
           <p className="mt-2 text-2xl font-bold text-white">
-            {creator.engagement_rate ? `${creator.engagement_rate}%` : "5.8%"}
+            {creator.engagement_rate != null ? `${creator.engagement_rate}%` : notProvided}
           </p>
-        </article>
-        <article className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-4">
-          <p className="text-xs text-[#CBD5E1]">Estimated Reach</p>
-          <p className="mt-2 text-2xl font-bold text-white">{avgReach.toLocaleString()}</p>
         </article>
         <article className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-4">
           <p className="text-xs text-[#CBD5E1]">Price Range</p>
           <p className="mt-2 text-xl font-bold text-[color:var(--adfluence-orange)]">
-            ETB {(creator.min_price_etb || 15000).toLocaleString()} -{" "}
-            {(creator.max_price_etb || 30000).toLocaleString()}
+            {creator.min_price_etb != null && creator.max_price_etb != null
+              ? `ETB ${creator.min_price_etb.toLocaleString()} – ${creator.max_price_etb.toLocaleString()}`
+              : notProvided}
           </p>
         </article>
       </section>
@@ -208,8 +197,7 @@ export function InfluencerProfile({ influencerId }: InfluencerProfileProps) {
       <section className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-5">
         <h2 className="text-lg font-semibold text-white">About Creator</h2>
         <p className="mt-2 text-sm leading-relaxed text-[#CBD5E1]">
-          {creator.bio ||
-            "Creative influencer focused on authentic local brand collaborations with engaging digital storytelling."}
+          {creator.bio || "This creator hasn't written a bio yet."}
         </p>
       </section>
 
@@ -266,22 +254,30 @@ export function InfluencerProfile({ influencerId }: InfluencerProfileProps) {
       <section className="grid gap-6 xl:grid-cols-2">
         <div className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-5">
           <h2 className="text-lg font-semibold text-white">Campaign Fit Analysis</h2>
-          <div className="mt-4 space-y-3">
-            {fitRows.map((row) => (
-              <div key={row.label}>
-                <div className="mb-1 flex items-center justify-between text-xs">
-                  <span className="text-[#CBD5E1]">{row.label}</span>
-                  <span className="font-medium text-white">{row.value}%</span>
+          {fitRows.length > 0 ? (
+            <div className="mt-4 space-y-3">
+              {fitRows.map((row) => (
+                <div key={row.label}>
+                  <div className="mb-1 flex items-center justify-between text-xs">
+                    <span className="text-[#CBD5E1]">{row.label}</span>
+                    <span className="font-medium text-white">
+                      {row.value} / {row.max}
+                    </span>
+                  </div>
+                  <div className="h-2 rounded-full bg-white/10">
+                    <div
+                      className="h-2 rounded-full bg-[color:var(--adfluence-orange)]"
+                      style={{ width: `${Math.round((row.value / row.max) * 100)}%` }}
+                    />
+                  </div>
                 </div>
-                <div className="h-2 rounded-full bg-white/10">
-                  <div
-                    className="h-2 rounded-full bg-[color:var(--adfluence-orange)]"
-                    style={{ width: `${row.value}%` }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <p className="mt-3 text-sm text-[#94A3B8]">
+              Open this creator from a campaign&apos;s recommendations to see how well they match it.
+            </p>
+          )}
         </div>
 
         <div className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-5">
