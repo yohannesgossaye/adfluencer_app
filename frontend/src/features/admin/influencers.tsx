@@ -6,6 +6,7 @@ import axios from "axios";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 
+import { ListStatus, LoadMore } from "@/components/common/list-status";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -13,6 +14,7 @@ import {
   type InfluencerApplicationItem,
   type InfluencerApplicationDetail,
 } from "@/lib/api/admin";
+import { usePagedList } from "@/hooks/use-paged-list";
 import { cn } from "@/lib/utils";
 import { UserAvatar } from "@/components/common/user-avatar";
 
@@ -47,17 +49,15 @@ function statusBadge(s: string) {
 }
 
 export function AdminInfluencers() {
-  const [rows, setRows] = useState<InfluencerApplicationItem[]>([]);
   const [tab, setTab] = useState<(typeof tabs)[number]["id"]>("all");
   const [search, setSearch] = useState("");
   const [query, setQuery] = useState("");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [pickedId, setPickedId] = useState<string | null>(null);
   const [selectedDetail, setSelectedDetail] = useState<InfluencerApplicationDetail | null>(null);
   const [mobileShowDetail, setMobileShowDetail] = useState(false);
   const [noteDraft, setNoteDraft] = useState("");
   const [rejectFor, setRejectFor] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [savingNotes, setSavingNotes] = useState(false);
 
@@ -69,31 +69,22 @@ export function AdminInfluencers() {
   const errorText = (err: unknown, fallback: string) =>
     (axios.isAxiosError(err) ? (err.response?.data as { message?: string } | undefined)?.message : undefined) || fallback;
 
-  const loadList = async () => {
-    try {
-      const res = await adminApi.listInfluencerApplications({
-        status: tab === "all" ? undefined : tab,
-        search: query || undefined,
-      });
-      const items = res.data?.items ?? [];
-      setRows(items);
-      // Keep the selection only if it is still in this list (tabs and search change it).
-      const keep = selectedId !== null && items.some((i) => i.user_id === selectedId);
-      if (!keep) {
-        setSelectedId(items[0]?.user_id ?? null);
-        setRejectFor(null);
-        if (!items[0]) setMobileShowDetail(false);
-      }
-    } catch (err) {
-      toast.error(errorText(err, "Applications could not be loaded."));
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadList();
-  }, [tab, query]);
+  const fetchPage = useCallback(
+    async (page: number) =>
+      (
+        await adminApi.listInfluencerApplications({
+          status: tab === "all" ? undefined : tab,
+          search: query || undefined,
+          page,
+        })
+      ).data,
+    [tab, query],
+  );
+  const list = usePagedList(fetchPage);
+  const rows: InfluencerApplicationItem[] = list.items;
+  const loadList = list.reload;
+  // The selection follows the list: if the picked creator isn't in it (other tab or search), show the first one.
+  const selectedId = rows.some((r) => r.user_id === pickedId) ? pickedId : (rows[0]?.user_id ?? null);
 
   const loadDetail = async (userId: string) => {
     try {
@@ -141,7 +132,7 @@ export function AdminInfluencers() {
   const setStatus = async (userId: string, status: "approved" | "rejected") => {
     if (status === "rejected") {
       // Rejection needs a reason the creator will see: open the reason box.
-      setSelectedId(userId);
+      setPickedId(userId);
       setRejectFor(userId);
       setRejectReason("");
       if (window.matchMedia("(max-width: 1279px)").matches) setMobileShowDetail(true);
@@ -194,7 +185,7 @@ export function AdminInfluencers() {
   };
 
   const selectApplication = useCallback((userId: string) => {
-    setSelectedId(userId);
+    setPickedId(userId);
     if (typeof window !== "undefined" && window.matchMedia("(max-width: 1279px)").matches) {
       setMobileShowDetail(true);
     }
@@ -236,13 +227,15 @@ export function AdminInfluencers() {
       />
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
-        <div className={cn("min-w-0 space-y-3", mobileShowDetail && "hidden xl:block")}>
-          {rows.length === 0 && !isLoading ? (
-            <div className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-8 text-center">
-              <p className="text-white">No influencer applications found.</p>
-            </div>
-          ) : (
-            rows.map((r) => (
+        <div className={cn("min-w-0 space-y-3", mobileShowDetail && selected && "hidden xl:block")}>
+          <ListStatus
+            state={list.state}
+            isEmpty={rows.length === 0}
+            emptyText="No creators match this tab or search."
+            errorText="Applications could not be loaded."
+            onRetry={list.retry}
+          >
+            {rows.map((r) => (
               <div
                 key={r.user_id}
                 role="button"
@@ -323,8 +316,15 @@ export function AdminInfluencers() {
                   ) : null}
                 </div>
               </div>
-            ))
-          )}
+            ))}
+            <LoadMore
+              shown={rows.length}
+              total={list.total}
+              hasMore={list.hasMore}
+              loading={list.loadingMore}
+              onLoadMore={list.loadMore}
+            />
+          </ListStatus>
         </div>
 
         {selected ? (

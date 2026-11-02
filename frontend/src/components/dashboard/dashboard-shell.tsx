@@ -1,6 +1,7 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { Suspense, useState, type ReactNode } from "react";
+import { Loader2 } from "lucide-react";
 
 import { DashboardHeader } from "@/components/dashboard/dashboard-header";
 import { DashboardSidebar } from "@/components/dashboard/dashboard-sidebar";
@@ -22,6 +23,7 @@ export function DashboardShell({
   headerSubtitle: string;
   children: ReactNode;
 }) {
+  const [menuOpen, setMenuOpen] = useState(false);
   return (
     <div className="min-h-screen overflow-x-hidden bg-[color:var(--adfluence-bg)] text-white">
       {/* Desktop: fixed sidebar — does not scroll with page */}
@@ -36,7 +38,7 @@ export function DashboardShell({
           title={headerTitle}
           subtitle={headerSubtitle}
           leading={
-            <Sheet>
+            <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
               <SheetTrigger asChild>
                 <Button
                   variant="outline"
@@ -51,13 +53,27 @@ export function DashboardShell({
                 side="left"
                 className="flex h-full w-[min(100%,260px)] max-w-[260px] flex-col border-white/10 bg-[color:var(--adfluence-surface)] p-0 sm:max-w-[260px]"
               >
-                <DashboardSidebar title={sidebarTitle} items={navItems} variant="drawer" />
+                <DashboardSidebar
+                  title={sidebarTitle}
+                  items={navItems}
+                  variant="drawer"
+                  onNavigate={() => setMenuOpen(false)}
+                />
               </SheetContent>
             </Sheet>
           }
         />
         <main className="min-w-0 flex-1 overflow-y-auto bg-[color:var(--adfluence-bg)] p-4 md:p-6">
-          {children}
+          {/* Pages that read the URL (useSearchParams) need a Suspense boundary. */}
+          <Suspense
+            fallback={
+              <p role="status" className="flex items-center gap-2 text-sm text-[#94A3B8]">
+                <Loader2 className="size-4 animate-spin" aria-hidden /> Loading…
+              </p>
+            }
+          >
+            {children}
+          </Suspense>
         </main>
       </div>
     </div>

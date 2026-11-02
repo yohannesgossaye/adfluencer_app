@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { ConfirmActionDialog, type ConfirmActionRequest } from "@/components/admin/confirm-action-dialog";
+import { ListStatus, LoadMore } from "@/components/common/list-status";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -11,6 +12,7 @@ import {
   type AdminCampaignListItem,
   type AdminCampaignStats,
 } from "@/lib/api/admin";
+import { usePagedList } from "@/hooks/use-paged-list";
 import { adminErrorMessage } from "@/lib/api-errors";
 import { cn } from "@/lib/utils";
 
@@ -40,13 +42,10 @@ function badge(s: string) {
 }
 
 export function AdminCampaigns() {
-  const [rows, setRows] = useState<AdminCampaignListItem[]>([]);
-  const [stats, setStats] = useState<AdminCampaignStats>({ active: 0, draft: 0, paused: 0 });
   const [status, setStatus] = useState<string>("all");
   const [niche, setNiche] = useState("");
   const [business, setBusiness] = useState("");
   const [filters, setFilters] = useState({ niche: "", business: "" });
-  const [isLoading, setIsLoading] = useState(true);
   const [confirm, setConfirm] = useState<ConfirmActionRequest | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
@@ -55,25 +54,22 @@ export function AdminCampaigns() {
     return () => clearTimeout(t);
   }, [niche, business]);
 
-  const loadCampaigns = useCallback(async () => {
-    try {
-      const res = await adminApi.listCampaigns({
-        status: status === "all" ? undefined : status,
-        niche: filters.niche || undefined,
-        business: filters.business || undefined,
-      });
-      setRows(res.data?.items ?? []);
-      if (res.data?.stats) setStats(res.data.stats);
-    } catch {
-      toast.error("Could not load campaigns.");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [status, filters]);
-
-  useEffect(() => {
-    void Promise.resolve().then(loadCampaigns);
-  }, [loadCampaigns]);
+  const fetchPage = useCallback(
+    async (page: number) =>
+      (
+        await adminApi.listCampaigns({
+          status: status === "all" ? undefined : status,
+          niche: filters.niche || undefined,
+          business: filters.business || undefined,
+          page,
+        })
+      ).data,
+    [status, filters],
+  );
+  const list = usePagedList(fetchPage);
+  const rows: AdminCampaignListItem[] = list.items;
+  const stats: AdminCampaignStats = list.last?.stats ?? { active: 0, draft: 0, paused: 0 };
+  const loadCampaigns = list.reload;
 
   const run = async (id: string, action: () => Promise<unknown>, success: string) => {
     setBusyId(id);
@@ -122,9 +118,9 @@ export function AdminCampaigns() {
 
       <section className="grid gap-3 sm:grid-cols-3">
         {[
-          { label: "Live", value: stats.active },
-          { label: "Drafts", value: stats.draft },
-          { label: "Paused", value: stats.paused },
+          { label: "Live", value: list.state === "ready" ? stats.active : "—" },
+          { label: "Drafts", value: list.state === "ready" ? stats.draft : "—" },
+          { label: "Paused", value: list.state === "ready" ? stats.paused : "—" },
         ].map((s) => (
           <article
             key={s.label}
@@ -171,23 +167,27 @@ export function AdminCampaigns() {
           value={niche}
           onChange={(e) => setNiche(e.target.value)}
           placeholder="Filter niche"
+          aria-label="Filter by niche"
           className="h-11 max-w-xs rounded-xl border-white/10 bg-[color:var(--adfluence-surface)] text-white sm:h-10"
         />
         <Input
           value={business}
           onChange={(e) => setBusiness(e.target.value)}
           placeholder="Filter business"
+          aria-label="Filter by business"
           className="h-11 max-w-xs rounded-xl border-white/10 bg-[color:var(--adfluence-surface)] text-white sm:h-10"
         />
       </div>
 
       <div className="space-y-3 min-w-0">
-        {rows.length === 0 && !isLoading ? (
-          <div className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-8 text-center">
-            <p className="text-white">No campaigns found.</p>
-          </div>
-        ) : (
-          rows.map((r) => (
+        <ListStatus
+          state={list.state}
+          isEmpty={rows.length === 0}
+          emptyText="No campaigns match these filters."
+          errorText="Campaigns could not be loaded."
+          onRetry={list.retry}
+        >
+          {rows.map((r) => (
             <article
               key={r.id}
               className="w-full min-w-0 rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-4"
@@ -229,8 +229,15 @@ export function AdminCampaigns() {
                 </div>
               ) : null}
             </article>
-          ))
-        )}
+          ))}
+          <LoadMore
+            shown={rows.length}
+            total={list.total}
+            hasMore={list.hasMore}
+            loading={list.loadingMore}
+            onLoadMore={list.loadMore}
+          />
+        </ListStatus>
       </div>
 
       <ConfirmActionDialog request={confirm} onClose={() => setConfirm(null)} />

@@ -45,10 +45,13 @@ export function DashboardSidebar({
   title,
   items,
   variant = "desktop",
+  onNavigate,
 }: {
   title: string;
   items: NavItem[];
   variant?: "desktop" | "drawer";
+  /** Called when a link is picked; the phone drawer uses it to close itself. */
+  onNavigate?: () => void;
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -71,7 +74,9 @@ export function DashboardSidebar({
         variant === "drawer" && "min-h-[100dvh]",
       )}
     >
-      <BrandLogo href={homeHref} tagline={title} className="mb-6 px-1" />
+      <div onClickCapture={(e) => (e.target as HTMLElement).closest("a") && onNavigate?.()}>
+        <BrandLogo href={homeHref} tagline={title} className="mb-6 px-1" />
+      </div>
 
       <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto pr-0.5">
         {items.map((item) => {
@@ -82,6 +87,8 @@ export function DashboardSidebar({
             <Link
               key={item.href}
               href={item.href}
+              onClick={onNavigate}
+              aria-current={active ? "page" : undefined}
               className={cn(
                 "group relative flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm transition-colors",
                 active

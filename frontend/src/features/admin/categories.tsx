@@ -1,36 +1,25 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 
 import { toast } from "sonner";
 
 import { ConfirmActionDialog, type ConfirmActionRequest } from "@/components/admin/confirm-action-dialog";
+import { ListStatus } from "@/components/common/list-status";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { adminApi, type AdminCategoryItem } from "@/lib/api/admin";
+import { usePagedList } from "@/hooks/use-paged-list";
 import { adminErrorMessage } from "@/lib/api-errors";
 
 export function AdminCategories() {
-  const [rows, setRows] = useState<AdminCategoryItem[]>([]);
   const [newName, setNewName] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
 
-  const loadCategories = async () => {
-    try {
-      const res = await adminApi.listCategories();
-      if (res.data?.items) {
-        setRows(res.data.items);
-      }
-    } catch {
-      // fallback
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadCategories();
-  }, []);
+  // Categories are one short list; the hook only adds loading and error states.
+  const fetchAll = useCallback(async () => (await adminApi.listCategories()).data, []);
+  const list = usePagedList(fetchAll);
+  const rows: AdminCategoryItem[] = list.items;
+  const loadCategories = list.reload;
 
   const [confirm, setConfirm] = useState<ConfirmActionRequest | null>(null);
   const [adding, setAdding] = useState(false);
@@ -128,12 +117,14 @@ export function AdminCategories() {
       </form>
 
       <div className="space-y-3 min-w-0">
-        {rows.length === 0 && !isLoading ? (
-          <div className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-8 text-center">
-            <p className="text-white">No categories found.</p>
-          </div>
-        ) : (
-          rows.map((c) => (
+        <ListStatus
+          state={list.state}
+          isEmpty={rows.length === 0}
+          emptyText="No categories yet. Add the first one above."
+          errorText="Categories could not be loaded."
+          onRetry={list.retry}
+        >
+          {rows.map((c) => (
             <article
               key={c.id}
               className="flex w-full min-w-0 flex-col gap-3 rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-4 md:flex-row md:items-center md:justify-between"
@@ -166,8 +157,8 @@ export function AdminCategories() {
                 </Button>
               </div>
             </article>
-          ))
-        )}
+          ))}
+        </ListStatus>
       </div>
 
       <ConfirmActionDialog request={confirm} onClose={() => setConfirm(null)} />

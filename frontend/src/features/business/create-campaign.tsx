@@ -144,7 +144,7 @@ export function CreateCampaign({ campaignId }: { campaignId?: string } = {}) {
           setCategories(res.data.items);
         }
       } catch {
-        // fallback
+        setError("Niches could not be loaded. Refresh the page to try again.");
       }
     }
     loadCategories();
