@@ -23,12 +23,12 @@ import { cn } from "@/lib/utils";
 const FILTERS = [
   { id: "", label: "All" },
   { id: "pending_influencer", label: "Waiting for creator" },
-  { id: "accepted", label: "Ready to fund" },
+  { id: "accepted", label: "Awaiting payment" },
   { id: "active", label: "In progress" },
   { id: "completed", label: "Completed" },
 ] as const;
 
-type Confirm = { kind: "pay" | "approve" | "cancel" } | null;
+type Confirm = { kind: "approve" | "cancel" } | null;
 
 function apiError(err: unknown, fallback: string) {
   if (axios.isAxiosError(err)) {
@@ -136,7 +136,7 @@ function NewContractSheet({ open, onOpenChange, onCreated }: { open: boolean; on
         <SheetHeader>
           <SheetTitle className="text-white">New contract</SheetTitle>
           <SheetDescription className="text-[#94A3B8]">
-            Send terms to a creator who accepted your invite. They accept it, then you fund escrow.
+            Send terms to a creator who accepted your invite. Once they accept, Adfluence confirms your payment and the work starts.
           </SheetDescription>
         </SheetHeader>
         <div className="space-y-4 px-4 pb-6">
@@ -268,10 +268,7 @@ export function BusinessContracts() {
     if (!detail || !confirm) return;
     setBusy(true);
     try {
-      if (confirm.kind === "pay") {
-        await businessApi.payContract(detail.id);
-        toast.success("Escrow funded. The creator can start the work.");
-      } else if (confirm.kind === "approve") {
+      if (confirm.kind === "approve") {
         await businessApi.approveWork(detail.id);
         toast.success("Work approved. The creator's payout has been released.");
       } else {
@@ -289,12 +286,6 @@ export function BusinessContracts() {
 
   const confirmCopy = useMemo(() => {
     if (!detail || !confirm) return null;
-    if (confirm.kind === "pay")
-      return {
-        text: `Fund escrow with ${formatEtb(detail.fees.total_business_payable_etb)}? Online payment is not connected yet, so this records the escrow as funded.`,
-        button: "Fund escrow",
-        tone: "bg-[color:var(--adfluence-orange)] hover:bg-[color:var(--adfluence-orange-hover)]",
-      };
     if (confirm.kind === "approve")
       return {
         text: `Approve the delivered work? This releases ${formatEtb(detail.fees.influencer_receivable_etb)} to the creator and completes the contract.`,
@@ -321,9 +312,11 @@ export function BusinessContracts() {
     ) : (
       <>
         {detail.status === "accepted" ? (
-          <Button type="button" onClick={() => setConfirm({ kind: "pay" })} className="h-10 rounded-xl bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)]">
-            Fund escrow ({formatEtb(detail.fees.total_business_payable_etb)})
-          </Button>
+          <p className="w-full rounded-xl border border-amber-400/30 bg-amber-500/10 p-3 text-sm text-amber-50">
+            Waiting for Adfluence to confirm your payment of {formatEtb(detail.fees.total_business_payable_etb)}. The creator
+            starts once it is confirmed. Already paid?{" "}
+            <Link href="/business/support" className="underline">Send us the payment reference</Link>.
+          </p>
         ) : null}
         {detail.status === "active" ? (
           <Button type="button" onClick={() => setConfirm({ kind: "approve" })} className="h-10 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700">
@@ -347,7 +340,7 @@ export function BusinessContracts() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">Contracts</h1>
-          <p className="mt-1 max-w-2xl text-sm text-[#CBD5E1]">Send terms to creators, fund escrow and release payouts when the work is done.</p>
+          <p className="mt-1 max-w-2xl text-sm text-[#CBD5E1]">Send terms to creators, follow payment and release payouts when the work is done.</p>
         </div>
         <Button type="button" onClick={() => setSheetOpen(true)} className="h-11 rounded-xl bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)]">
           <Plus className="mr-1 size-4" aria-hidden /> New contract

@@ -575,17 +575,6 @@ export const businessApi = {
     return res.data;
   },
 
-  payContract: async (
-    contractId: string,
-    paymentMethod: string = "manual_stub"
-  ): Promise<ApiResponse<{ contract: ContractDetail }>> => {
-    const res = await apiClient.post<ApiResponse<{ contract: ContractDetail }>>(
-      `/api/v1/business/contracts/${contractId}/pay`,
-      { payment_method: paymentMethod }
-    );
-    return res.data;
-  },
-
   approveWork: async (contractId: string): Promise<ApiResponse<{ contract: ContractDetail }>> => {
     const res = await apiClient.post<ApiResponse<{ contract: ContractDetail }>>(
       `/api/v1/business/contracts/${contractId}/approve-work`

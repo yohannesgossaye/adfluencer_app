@@ -28,8 +28,7 @@ func InitModules(persistence persistence, tokens *jwt.TokenManager, email *mail.
 		auth:       auth.InitAuthModule(persistence.auth, tokens, email, smsClient, dispatcher, frontendURL, logSecrets, log),
 		influencer: influencer.InitInfluencerModule(persistence.influencer, persistence.contract, persistence.support, persistence.auth, files, log),
 		business:   businessModule.InitBusinessModule(persistence.business, persistence.influencer, persistence.contract, persistence.support, persistence.auth, files, log),
-		admin:      adminModule.InitAdminModule(persistence.admin, persistence.influencer, persistence.support, log),
+		admin:      adminModule.InitAdminModule(persistence.admin, persistence.influencer, persistence.support, persistence.contract, log),
 		chat:       chatModule.InitChatService(persistence.chat, persistence.auth, log),
 	}
 }
-

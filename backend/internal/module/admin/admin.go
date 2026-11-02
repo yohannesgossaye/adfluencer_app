@@ -25,14 +25,16 @@ type adminModule struct {
 	admin      storage.AdminPersistence
 	influencer storage.InfluencerPersistence
 	support    storage.SupportPersistence
+	contracts  storage.ContractPersistence
 	logger     utils.Logger
 }
 
-func InitAdminModule(admin storage.AdminPersistence, influencer storage.InfluencerPersistence, support storage.SupportPersistence, log utils.Logger) *adminModule {
+func InitAdminModule(admin storage.AdminPersistence, influencer storage.InfluencerPersistence, support storage.SupportPersistence, contracts storage.ContractPersistence, log utils.Logger) *adminModule {
 	return &adminModule{
 		admin:      admin,
 		influencer: influencer,
 		support:    support,
+		contracts:  contracts,
 		logger:     log,
 	}
 }

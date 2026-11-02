@@ -139,44 +139,6 @@ func (m *businessModule) GetContract(ctx context.Context, userID, contractID str
 	return &detail, nil
 }
 
-func (m *businessModule) PayContract(ctx context.Context, userID, contractID string, meta authDto.SessionMeta) (*businessDto.PayContractResponse, error) {
-	m.logger.Info(ctx, "funding contract escrow payment", zap.String("business_id", userID), zap.String("contract_id", contractID))
-
-	if err := m.requireVerifiedBusiness(ctx, userID); err != nil {
-		return nil, err
-	}
-
-	paymentID := utils.GenerateUUID()
-	payment, err := m.contracts.StubPayContract(ctx, userID, contractID, paymentID)
-	if err != nil {
-		m.logger.Error(ctx, "failed to execute escrow payment for contract", zap.String("contract_id", contractID), zap.String("reason", err.Error()))
-		return nil, mapContractError(err)
-	}
-
-	rec, err := m.contracts.GetContractForBusiness(ctx, userID, contractID)
-	if err != nil {
-		return nil, err
-	}
-
-	m.writeAuditAsync(authDto.CreateAuditLogInput{
-		ActorUserID:  &userID,
-		TargetUserID: &rec.InfluencerUserID,
-		Action:       string(model.PaymentStatusChangeAction),
-		EntityType:   "payment",
-		EntityID:     &paymentID,
-		Description:  "business paid contract (escrow stub)",
-		IPAddress:    meta.IPAddress,
-		UserAgent:    meta.UserAgent,
-	})
-
-	m.logger.Info(ctx, "contract escrow payment completed successfully", zap.String("contract_id", contractID), zap.String("payment_id", paymentID))
-
-	return &businessDto.PayContractResponse{
-		Contract: rec.DetailResponse,
-		Payment:  *payment,
-	}, nil
-}
-
 func (m *businessModule) ApproveWork(ctx context.Context, userID, contractID string, meta authDto.SessionMeta) (*businessDto.ApproveWorkResponse, error) {
 	m.logger.Info(ctx, "approving contract work deliverables", zap.String("business_id", userID), zap.String("contract_id", contractID))
 

@@ -56,6 +56,7 @@ export const adminNav: NavItem[] = [
   { label: "Influencers", href: "/admin/influencers", icon: "users" },
   { label: "Businesses", href: "/admin/businesses", icon: "verification" },
   { label: "Campaigns", href: "/admin/campaigns", icon: "briefcase" },
+  { label: "Payments", href: "/admin/payments", icon: "contracts" },
   { label: "Users", href: "/admin/users", icon: "building" },
   { label: "Disputes", href: "/admin/disputes", icon: "disputes" },
   { label: "Categories", href: "/admin/categories", icon: "categories" },

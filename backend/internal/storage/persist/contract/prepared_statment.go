@@ -168,13 +168,32 @@ const (
 		id, contract_id, business_user_id, influencer_user_id,
 		amount_etb, business_fee_etb, influencer_fee_etb, platform_fee_total_etb,
 		total_paid_by_business_etb, influencer_payout_etb,
-		payment_method, status, paid_at
+		payment_method, provider_reference, status, paid_at
 	) VALUES (
 		$1, $2, $3, $4,
 		$5, $6, $7, $8,
 		$9, $10,
-		$11, 'paid', NOW()
+		$11, $12, 'paid', NOW()
 	)
+	`
+
+	getContractBusinessUserID = `
+	SELECT business_user_id::text FROM contracts WHERE id = $1
+	`
+
+	// Contracts the creator accepted that still wait for the business's
+	// payment to be confirmed by an admin; oldest first.
+	listContractsAwaitingFunding = `
+	SELECT
+		c.id, c.title, camp.title, bp.business_name, ip.creator_name,
+		c.amount_etb, c.total_business_payable_etb, c.updated_at
+	FROM contracts c
+	JOIN campaigns camp ON camp.id = c.campaign_id
+	JOIN business_profiles bp ON bp.user_id = c.business_user_id
+	JOIN influencer_profiles ip ON ip.user_id = c.influencer_user_id
+	WHERE c.status = 'accepted'
+	ORDER BY c.updated_at ASC
+	LIMIT 200
 	`
 
 	activateContractAfterPay = `

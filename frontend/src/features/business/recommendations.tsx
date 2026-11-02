@@ -148,10 +148,15 @@ export function Recommendations() {
     [campaigns, selectedCampaignId],
   );
 
+  // Declined or withdrawn invites can be sent again (the server reopens them).
   const invitedInfluencerIds = useMemo(
-    () => new Set(invites.map((inv) => inv.influencer_user_id)),
+    () =>
+      new Set(
+        invites.filter((inv) => inv.status === "pending" || inv.status === "accepted").map((inv) => inv.influencer_user_id),
+      ),
     [invites],
   );
+  const isDraft = selectedCampaign?.status === "draft";
 
   const filteredInfluencers = useMemo(() => {
     const minScore =
@@ -277,6 +282,15 @@ export function Recommendations() {
           ) : null}
         </div>
 
+        {isDraft && selectedCampaign ? (
+          <p role="status" className="mt-4 rounded-xl border border-amber-400/30 bg-amber-500/10 p-3 text-sm text-amber-50">
+            This campaign is still a draft. You can preview matches, but{" "}
+            <Link href={`/business/campaigns/${selectedCampaign.id}`} className="underline">
+              publish it
+            </Link>{" "}
+            before inviting creators.
+          </p>
+        ) : null}
         {selectedCampaign ? (
           <div className="mt-4 grid gap-3 text-sm text-[#CBD5E1] md:grid-cols-2 xl:grid-cols-4">
             <p>
@@ -479,7 +493,8 @@ export function Recommendations() {
                         onClick={() =>
                           onInvite(influencer.influencer_user_id, influencer.creator_name)
                         }
-                        disabled={isInvited || isInvitingThis || !selectedCampaignId}
+                        disabled={isInvited || isInvitingThis || !selectedCampaignId || isDraft}
+                        title={isDraft ? "Publish this campaign to invite creators" : undefined}
                         className="h-10 rounded-xl bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)] disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         {isInvitingThis

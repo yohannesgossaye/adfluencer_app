@@ -112,7 +112,7 @@ export function BusinessDashboard() {
           icon={FileText}
           label="Pending Contracts"
           value={String(kpis?.pending_contracts ?? 0)}
-          trend={`${kpis?.contracts_awaiting_payment ?? 0} awaiting escrow funding`}
+          trend={`${kpis?.contracts_awaiting_payment ?? 0} awaiting payment`}
         />
         <BusinessKpiCard
           icon={BarChart3}

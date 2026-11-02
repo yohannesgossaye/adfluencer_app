@@ -10,13 +10,13 @@ import (
 )
 
 type CreateContractRequest struct {
-	InviteID     string                        `json:"invite_id"`
-	Title        string                        `json:"title"`
-	AmountETB    float64                       `json:"amount_etb"`
-	Description  string                        `json:"description,omitempty"`
+	InviteID     string                         `json:"invite_id"`
+	Title        string                         `json:"title"`
+	AmountETB    float64                        `json:"amount_etb"`
+	Description  string                         `json:"description,omitempty"`
 	Deliverables []contractDto.DeliverableInput `json:"deliverables"`
-	StartDate    string                        `json:"start_date,omitempty"`
-	EndDate      string                        `json:"end_date,omitempty"`
+	StartDate    string                         `json:"start_date,omitempty"`
+	EndDate      string                         `json:"end_date,omitempty"`
 }
 
 func (r CreateContractRequest) Validate() error {
@@ -42,13 +42,8 @@ type CreateContractResponse struct {
 }
 
 type ListContractsResponse struct {
-	Items      []contractDto.ListItem       `json:"items"`
-	Pagination commonDto.ListMeta         `json:"pagination"`
-}
-
-type PayContractResponse struct {
-	Contract contractDto.DetailResponse `json:"contract"`
-	Payment  contractDto.PaymentSummary `json:"payment"`
+	Items      []contractDto.ListItem `json:"items"`
+	Pagination commonDto.ListMeta     `json:"pagination"`
 }
 
 type ApproveWorkResponse struct {
