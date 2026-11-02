@@ -12,7 +12,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { authApi } from "@/lib/api/auth";
-import { setMockUser } from "@/lib/mock-auth";
 import type { MarketingAuthRole } from "@/lib/marketing-auth-url";
 
 type SignupFormProps = {
@@ -88,18 +87,6 @@ export function SignupForm({
           setSession(tokens, user, profile);
         }
 
-        const displayName =
-          profile?.business_name ||
-          profile?.creator_name ||
-          profile?.full_name ||
-          user.email;
-
-        setMockUser({
-          email: user.email,
-          role: user.role,
-          name: displayName,
-          redirect: redirect_to,
-        });
 
         setMessage("Account created successfully! Redirecting...");
         onSuccess?.();

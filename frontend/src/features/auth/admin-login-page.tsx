@@ -10,7 +10,6 @@ import { GradientButton } from "@/components/common/gradient-button";
 import { useAuth } from "@/components/providers/auth-provider";
 import { Input } from "@/components/ui/input";
 import { authApi } from "@/lib/api/auth";
-import { setMockUser } from "@/lib/mock-auth";
 
 export function AdminLoginPageFeature() {
   const router = useRouter();
@@ -45,12 +44,6 @@ export function AdminLoginPageFeature() {
         }
 
         setSession(tokens, user, profile);
-        setMockUser({
-          email: user.email,
-          role: "admin",
-          name: profile.full_name || "Adfluence Admin",
-          redirect: redirect_to || "/admin/dashboard",
-        });
 
         router.push(redirect_to || "/admin/dashboard");
       }

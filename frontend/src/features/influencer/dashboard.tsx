@@ -109,9 +109,9 @@ export function InfluencerDashboard() {
           value={String(kpis?.active_collaborations ?? activeContracts.length)}
         />
         <KpiCard
-          label="Completed Earnings"
+          label="Earned"
           value={`ETB ${Math.round(kpis?.total_completed_earnings_etb ?? 0).toLocaleString()}`}
-          hint="Total cleared balance"
+          hint="From completed contracts"
         />
         <KpiCard
           label="Profile Score"
@@ -223,7 +223,8 @@ export function InfluencerDashboard() {
 
       <section className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-5 md:p-6">
         <h2 className="text-lg font-semibold text-white">Earnings overview</h2>
-        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+        {/* "Earned" is already a KPI above; this card shows only what is still to be paid. */}
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
           <div className="rounded-xl border border-white/10 bg-[#06111F] p-3">
             <p className="text-xs text-[#CBD5E1]">Pending payout</p>
             <p className="text-lg font-semibold text-amber-200">
@@ -231,17 +232,11 @@ export function InfluencerDashboard() {
             </p>
           </div>
           <div className="rounded-xl border border-white/10 bg-[#06111F] p-3">
-            <p className="text-xs text-[#CBD5E1]">Completed earnings</p>
-            <p className="text-lg font-semibold text-emerald-300">
-              ETB {Math.round(earnings?.completed_earnings_etb ?? 0).toLocaleString()}
-            </p>
-          </div>
-          <div className="rounded-xl border border-white/10 bg-[#06111F] p-3">
             <p className="text-xs text-[#CBD5E1]">Next payout</p>
             <p className="text-lg font-semibold text-white">
               {earnings?.next_payout_at
                 ? new Date(earnings.next_payout_at).toLocaleDateString()
-                : "Bi-weekly"}
+                : "No payout scheduled"}
             </p>
           </div>
         </div>

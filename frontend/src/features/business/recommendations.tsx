@@ -443,8 +443,9 @@ export function Recommendations() {
                           : ""}
                       </p>
                       <p className="text-sm text-[#CBD5E1]">
-                        Price: ETB {(influencer.min_price_etb || 10000).toLocaleString()} -{" "}
-                        {(influencer.max_price_etb || 30000).toLocaleString()}
+                        {influencer.min_price_etb != null && influencer.max_price_etb != null
+                          ? `Price: ETB ${influencer.min_price_etb.toLocaleString()} – ${influencer.max_price_etb.toLocaleString()}`
+                          : "Price not set"}
                       </p>
                     </div>
 

@@ -12,7 +12,6 @@ import { useAuth } from "@/components/providers/auth-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { authApi } from "@/lib/api/auth";
-import { setMockUser } from "@/lib/mock-auth";
 
 type LoginFormProps = {
   idPrefix?: string;
@@ -61,18 +60,6 @@ export function LoginForm({
         const { user, profile, tokens, redirect_to } = res.data;
         setSession(tokens, user, profile);
 
-        const displayName =
-          profile.business_name ||
-          profile.creator_name ||
-          profile.full_name ||
-          user.email;
-
-        setMockUser({
-          email: user.email,
-          role: user.role,
-          name: displayName,
-          redirect: redirect_to,
-        });
 
         onSuccess?.();
         const targetRoute = nextParam || redirect_to || homeFor(user);

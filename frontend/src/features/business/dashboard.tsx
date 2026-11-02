@@ -265,12 +265,10 @@ export function BusinessDashboard() {
                 influencer={{
                   id: rec.influencer_user_id,
                   name: rec.creator_name,
-                  imageUrl: rec.profile_image_url || "/images/adfluence-hero.jpg",
+                  imageUrl: rec.profile_image_url || undefined,
                   matchScore: rec.match_score,
-                  niche: rec.campaign_title || "Top Match",
-                  platform: "Creator",
-                  followers: undefined,
-                  priceRangeEtb: "Matched Rate",
+                  campaignId: rec.campaign_id,
+                  campaignTitle: rec.campaign_title,
                 }}
               />
             ))}

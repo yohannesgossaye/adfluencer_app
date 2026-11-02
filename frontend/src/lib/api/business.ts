@@ -243,7 +243,6 @@ export type InfluencerViewDetail = {
   profile_image_url?: string;
   city?: string;
   region?: string;
-  audience_description?: string;
   languages: string[];
   niches: Array<{ id: string; name: string; slug: string }>;
   platforms: string[];

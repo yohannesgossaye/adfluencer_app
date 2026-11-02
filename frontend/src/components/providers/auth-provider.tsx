@@ -7,7 +7,6 @@ import {
   REFRESH_TOKEN_STORAGE_KEY,
   AUTH_USER_STORAGE_KEY,
 } from "@/lib/constants";
-import { clearMockUser } from "@/lib/mock-auth";
 import {
   authApi,
   type AuthUser,
@@ -143,7 +142,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch {
       // Continue client cleanup even if network fails
     } finally {
-      clearMockUser();
+      // Remove a leftover key written by an old demo login.
+      localStorage.removeItem("adfluence_mock_user");
       setAccessTokenState(null);
       setUser(null);
       setProfile(null);
