@@ -43,15 +43,16 @@ type UserStats struct {
 }
 
 type UserListItem struct {
-	ID              string     `json:"user_id"`
-	Name            string     `json:"name"`
-	Email           string     `json:"email"`
-	Role            string     `json:"role"`
-	Status          string     `json:"status"`
-	JoinedAt        time.Time  `json:"joined_at"`
-	LastActiveAt    *time.Time `json:"last_active_at,omitempty"`
-	CampaignsCount  int        `json:"campaigns_count"`
-	ContractsCount  int        `json:"contracts_count"`
+	ID             string     `json:"user_id"`
+	Name           string     `json:"name"`
+	Email          string     `json:"email"`
+	Role           string     `json:"role"`
+	Status         string     `json:"status"`
+	JoinedAt       time.Time  `json:"joined_at"`
+	LastActiveAt   *time.Time `json:"last_active_at,omitempty"`
+	CampaignsCount int        `json:"campaigns_count"`
+	ContractsCount int        `json:"contracts_count"`
+	StatusReason   *string    `json:"status_reason,omitempty"`
 }
 
 type ListUsersResponse struct {
@@ -62,7 +63,6 @@ type ListUsersResponse struct {
 
 type UserDetailResponse struct {
 	UserListItem
-	StatusReason *string `json:"status_reason,omitempty"`
 }
 
 type BlockUserRequest struct {

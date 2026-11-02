@@ -10,6 +10,7 @@ import (
 	adminPersist "adinfluence_service_app/internal/storage/persist/admin"
 	"context"
 	"errors"
+	"strings"
 
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
@@ -75,29 +76,32 @@ func (m *adminModule) GetAdminCampaign(ctx context.Context, campaignID string) (
 //   complete     : active | paused -> completed
 // Drafts, cancelled and completed campaigns cannot be moderated.
 
-func (m *adminModule) PauseAdminCampaign(ctx context.Context, adminUserID, campaignID string, meta authDto.SessionMeta) (*adminDto.ModerateCampaignResponse, error) {
-	return m.moderateCampaign(ctx, adminUserID, campaignID, "paused", []string{"active"}, "campaign paused by admin", meta)
+func (m *adminModule) PauseAdminCampaign(ctx context.Context, adminUserID, campaignID, reason string, meta authDto.SessionMeta) (*adminDto.ModerateCampaignResponse, error) {
+	return m.moderateCampaign(ctx, adminUserID, campaignID, "paused", []string{"active"}, "campaign paused by admin", reason, meta)
 }
 
-func (m *adminModule) FlagAdminCampaign(ctx context.Context, adminUserID, campaignID string, meta authDto.SessionMeta) (*adminDto.ModerateCampaignResponse, error) {
-	return m.moderateCampaign(ctx, adminUserID, campaignID, "paused", []string{"active"}, "campaign flagged and paused by admin", meta)
+func (m *adminModule) FlagAdminCampaign(ctx context.Context, adminUserID, campaignID, reason string, meta authDto.SessionMeta) (*adminDto.ModerateCampaignResponse, error) {
+	return m.moderateCampaign(ctx, adminUserID, campaignID, "paused", []string{"active"}, "campaign flagged and paused by admin", reason, meta)
 }
 
-func (m *adminModule) ResumeAdminCampaign(ctx context.Context, adminUserID, campaignID string, meta authDto.SessionMeta) (*adminDto.ModerateCampaignResponse, error) {
-	return m.moderateCampaign(ctx, adminUserID, campaignID, "active", []string{"paused"}, "campaign resumed by admin", meta)
+func (m *adminModule) ResumeAdminCampaign(ctx context.Context, adminUserID, campaignID, reason string, meta authDto.SessionMeta) (*adminDto.ModerateCampaignResponse, error) {
+	return m.moderateCampaign(ctx, adminUserID, campaignID, "active", []string{"paused"}, "campaign resumed by admin", reason, meta)
 }
 
-func (m *adminModule) CompleteAdminCampaign(ctx context.Context, adminUserID, campaignID string, meta authDto.SessionMeta) (*adminDto.ModerateCampaignResponse, error) {
-	return m.moderateCampaign(ctx, adminUserID, campaignID, "completed", []string{"active", "paused"}, "campaign marked completed by admin", meta)
+func (m *adminModule) CompleteAdminCampaign(ctx context.Context, adminUserID, campaignID, reason string, meta authDto.SessionMeta) (*adminDto.ModerateCampaignResponse, error) {
+	return m.moderateCampaign(ctx, adminUserID, campaignID, "completed", []string{"active", "paused"}, "campaign marked completed by admin", reason, meta)
 }
 
-func (m *adminModule) moderateCampaign(ctx context.Context, adminUserID, campaignID, status string, from []string, desc string, meta authDto.SessionMeta) (*adminDto.ModerateCampaignResponse, error) {
+func (m *adminModule) moderateCampaign(ctx context.Context, adminUserID, campaignID, status string, from []string, desc, reason string, meta authDto.SessionMeta) (*adminDto.ModerateCampaignResponse, error) {
 	m.logger.Info(ctx, "admin moderating campaign", zap.String("admin_id", adminUserID), zap.String("campaign_id", campaignID), zap.String("to", status))
 	if err := m.admin.SetAdminCampaignStatus(ctx, campaignID, status, from); err != nil {
 		m.logger.Error(ctx, "failed to update campaign status in persistence", zap.String("campaign_id", campaignID), zap.String("reason", err.Error()))
 		return nil, mapCampaignError(err)
 	}
 
+	if reason = strings.TrimSpace(reason); reason != "" {
+		desc += ": " + reason
+	}
 	m.writeAuditAsync(authDto.CreateAuditLogInput{
 		ActorUserID: &adminUserID,
 		Action:      string(model.StatusChangeAction),

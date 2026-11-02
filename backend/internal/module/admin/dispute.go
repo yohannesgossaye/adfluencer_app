@@ -158,6 +158,8 @@ func mapDisputeDetail(row adminDto.DisputeRow) adminDto.AdminDisputeDetailRespon
 		InfluencerName:   row.InfluencerName,
 		InfluencerEmail:  row.InfluencerEmail,
 		InfluencerUserID: row.InfluencerUserID,
+		BusinessUserID:   row.BusinessUserID,
+		AgainstUserID:    row.AgainstUserID,
 		CampaignTitle:    row.CampaignTitle,
 		CampaignID:       row.CampaignID,
 		ContractID:       row.ContractID,

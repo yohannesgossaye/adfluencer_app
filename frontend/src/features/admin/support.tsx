@@ -3,17 +3,19 @@
 import { useCallback, useEffect, useState } from "react";
 import { ArrowLeft } from "lucide-react";
 
+import { toast } from "sonner";
+
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   adminApi,
   type AdminSupportTicketItem,
   type AdminSupportTicketDetail,
   type AdminSupportTicketStats,
 } from "@/lib/api/admin";
+import { adminErrorMessage } from "@/lib/api-errors";
 import { cn } from "@/lib/utils";
 
-type FilterKey = "all" | "business" | "influencer" | "open" | "in_review" | "resolved" | "high";
+type FilterKey = "all" | "business" | "influencer" | "open" | "in_review" | "escalated" | "resolved" | "high";
 
 const fieldShell =
   "w-full min-w-0 rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)]/60 px-3 py-2 text-sm text-white outline-none placeholder:text-[#94A3B8] focus:border-[color:var(--adfluence-orange)]/40 focus:ring-2 focus:ring-[color:var(--adfluence-orange)]/25";
@@ -34,9 +36,15 @@ function statusLabel(s: string) {
       return "Resolved";
     case "escalated":
       return "Escalated";
+    case "closed":
+      return "Closed";
     default:
       return "Open";
   }
+}
+
+function isDone(status: string) {
+  return status === "resolved" || status === "closed";
 }
 
 function messagePreview(text: string, max = 100) {
@@ -51,6 +59,7 @@ const filterButtons: { key: FilterKey; label: string }[] = [
   { key: "influencer", label: "Influencer" },
   { key: "open", label: "Open" },
   { key: "in_review", label: "In review" },
+  { key: "escalated", label: "Escalated" },
   { key: "resolved", label: "Resolved" },
   { key: "high", label: "High priority" },
 ];
@@ -75,7 +84,8 @@ export function AdminSupport() {
   const loadTickets = async () => {
     try {
       const roleParam = filter === "business" ? "business" : filter === "influencer" ? "influencer" : undefined;
-      const statusParam = filter === "open" ? "open" : filter === "in_review" ? "in_review" : filter === "resolved" ? "resolved" : undefined;
+      const statusParam =
+        filter === "open" || filter === "in_review" || filter === "escalated" || filter === "resolved" ? filter : undefined;
       const priorityParam = filter === "high" ? "high" : undefined;
 
       const res = await adminApi.listSupportTickets({
@@ -93,8 +103,8 @@ export function AdminSupport() {
       if (res.data?.stats) {
         setStats(res.data.stats);
       }
-    } catch {
-      // fallback
+    } catch (err) {
+      toast.error(adminErrorMessage(err, "Tickets could not be loaded."));
     } finally {
       setIsLoading(false);
     }
@@ -114,38 +124,49 @@ export function AdminSupport() {
           setNotesDraft(res.data.internal_note || "");
           setReplyDraft(res.data.admin_reply || "");
         }
-      } catch {
-        // fallback
+      } catch (err) {
+        toast.error(adminErrorMessage(err, "The ticket could not be opened."));
       }
     }
     loadDetail();
   }, [selectedId]);
 
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
   const setStatus = async (id: string, status: string) => {
+    setBusyId(id);
     try {
       await adminApi.updateSupportTicketStatus(id, { status });
+      toast.success(`Ticket marked ${statusLabel(status).toLowerCase()}.`);
       await loadTickets();
       if (selectedId === id) {
         const res = await adminApi.getSupportTicket(id);
         if (res.data) setSelectedDetail(res.data);
       }
-    } catch {
-      // fallback
+    } catch (err) {
+      toast.error(adminErrorMessage(err, "The ticket could not be updated."));
+    } finally {
+      setBusyId(null);
     }
   };
 
   const saveNotesForSelected = async () => {
     if (!selectedId) return;
+    setSaving(true);
     try {
       await adminApi.replySupportTicket(selectedId, {
         admin_reply: replyDraft.trim() || undefined,
         internal_note: notesDraft.trim() || undefined,
       });
+      toast.success(replyDraft.trim() ? "Reply and notes saved." : "Notes saved.");
       await loadTickets();
       const res = await adminApi.getSupportTicket(selectedId);
       if (res.data) setSelectedDetail(res.data);
-    } catch {
-      // fallback
+    } catch (err) {
+      toast.error(adminErrorMessage(err, "The reply could not be saved."));
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -257,7 +278,7 @@ export function AdminSupport() {
                           type="button"
                           size="sm"
                           className="h-11 flex-1 border border-amber-400/30 bg-amber-500/15 text-amber-100 sm:h-8 sm:flex-none"
-                          disabled={t.status === "in_review"}
+                          disabled={busyId === t.id || t.status === "in_review"}
                           onClick={() => setStatus(t.id, "in_review")}
                         >
                           Mark in review
@@ -266,16 +287,16 @@ export function AdminSupport() {
                           type="button"
                           size="sm"
                           className="h-11 flex-1 bg-emerald-500/20 text-emerald-100 sm:h-8 sm:flex-none"
-                          disabled={t.status === "resolved"}
-                          onClick={() => setStatus(t.id, "resolved")}
+                          disabled={busyId === t.id}
+                          onClick={() => setStatus(t.id, isDone(t.status) ? "open" : "resolved")}
                         >
-                          Mark resolved
+                          {isDone(t.status) ? "Reopen" : "Mark resolved"}
                         </Button>
                         <Button
                           type="button"
                           size="sm"
                           className="h-11 flex-1 bg-rose-500/20 text-rose-100 sm:h-8 sm:flex-none"
-                          disabled={t.status === "escalated"}
+                          disabled={busyId === t.id || t.status === "escalated" || isDone(t.status)}
                           onClick={() => setStatus(t.id, "escalated")}
                         >
                           Escalate
@@ -360,19 +381,21 @@ export function AdminSupport() {
                 <label className="text-xs font-medium uppercase tracking-wide text-[#94A3B8]">
                   Official reply to user
                 </label>
-                <Input
+                <textarea
                   value={replyDraft}
                   onChange={(e) => setReplyDraft(e.target.value)}
                   placeholder="e.g. We’re looking into this and will update within 24h."
-                  className={cn(fieldShell, "h-10 border-white/10 bg-[color:var(--adfluence-surface)]/60")}
+                  className={cn(fieldShell, "min-h-[110px] resize-y")}
                 />
+                <p className="text-xs text-[#94A3B8]">The user sees this reply on their support page.</p>
               </div>
               <Button
                 type="button"
                 className="h-11 w-full rounded-xl bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)] lg:h-10 lg:w-auto"
+                disabled={saving}
                 onClick={saveNotesForSelected}
               >
-                Save note & reply
+                {saving ? "Saving…" : "Save note & reply"}
               </Button>
             </div>
           )}

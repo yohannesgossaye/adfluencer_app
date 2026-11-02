@@ -417,9 +417,15 @@ export function AdminBusinesses() {
                   </div>
                 ) : (
                   <div className="flex flex-wrap gap-2">
+                    {detail.verification_status === "rejected" ? (
+                      <p className="w-full text-xs text-[#94A3B8]">
+                        Not approved. The business can update its profile and resubmit. If you have changed your mind, you can
+                        verify it now.
+                      </p>
+                    ) : null}
                     {detail.verification_status === "pending" || detail.verification_status === "rejected" ? (
                       <Button type="button" onClick={() => startDecision("verify")} className="h-10 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700">
-                        <BadgeCheck className="mr-1 size-4" aria-hidden /> Verify
+                        <BadgeCheck className="mr-1 size-4" aria-hidden /> {detail.verification_status === "rejected" ? "Verify anyway" : "Verify"}
                       </Button>
                     ) : null}
                     {detail.verification_status === "pending" ? (
@@ -431,9 +437,6 @@ export function AdminBusinesses() {
                       <Button type="button" variant="outline" onClick={() => startDecision("revoke")} className="h-10 rounded-xl border-rose-400/40 bg-transparent text-rose-200 hover:bg-rose-500/10">
                         <ShieldX className="mr-1 size-4" aria-hidden /> Revoke verification
                       </Button>
-                    ) : null}
-                    {detail.verification_status === "rejected" ? (
-                      <p className="w-full text-xs text-[#94A3B8]">Waiting for the business to update its profile and resubmit.</p>
                     ) : null}
                   </div>
                 )}

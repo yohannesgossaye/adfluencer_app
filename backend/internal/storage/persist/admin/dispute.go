@@ -60,6 +60,7 @@ func (a *admin) GetAdminDispute(ctx context.Context, disputeID string) (*adminDt
 		&row.InfluencerName,
 		&row.InfluencerEmail,
 		&row.InfluencerUserID,
+		&row.BusinessUserID,
 		&row.AgainstUserID,
 		&row.IssueType,
 		&row.Severity,

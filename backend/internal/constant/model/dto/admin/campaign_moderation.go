@@ -53,18 +53,18 @@ type AdminCampaignStats struct {
 }
 
 type AdminCampaignListItem struct {
-	ID                 string    `json:"id"`
-	Title              string    `json:"title"`
-	BusinessName       string    `json:"business_name"`
-	Niche              string    `json:"niche,omitempty"`
-	BudgetSummary      string    `json:"budget_summary,omitempty"`
-	CreatorsInvited    int       `json:"creators_invited"`
-	Status             string    `json:"status"`
-	CreatedAt          time.Time `json:"created_at"`
-	ContractSummary    string    `json:"contract_summary"`
-	PaymentSummary     string    `json:"payment_summary"`
-	ContractsActive    int       `json:"contracts_active"`
-	ContractsPending   int       `json:"contracts_pending"`
+	ID               string    `json:"id"`
+	Title            string    `json:"title"`
+	BusinessName     string    `json:"business_name"`
+	Niche            string    `json:"niche,omitempty"`
+	BudgetSummary    string    `json:"budget_summary,omitempty"`
+	CreatorsInvited  int       `json:"creators_invited"`
+	Status           string    `json:"status"`
+	CreatedAt        time.Time `json:"created_at"`
+	ContractSummary  string    `json:"contract_summary"`
+	PaymentSummary   string    `json:"payment_summary"`
+	ContractsActive  int       `json:"contracts_active"`
+	ContractsPending int       `json:"contracts_pending"`
 }
 
 type ListAdminCampaignsResponse struct {
@@ -75,16 +75,20 @@ type ListAdminCampaignsResponse struct {
 
 type AdminCampaignDetailResponse struct {
 	AdminCampaignListItem
-	Goal               *string   `json:"goal,omitempty"`
-	Description        string    `json:"description"`
-	BusinessUserID     string    `json:"business_user_id"`
-	BudgetMinETB       *float64  `json:"budget_min_etb,omitempty"`
-	BudgetMaxETB       *float64  `json:"budget_max_etb,omitempty"`
-	CreatorsNeeded     int       `json:"creators_needed"`
-	InvitesAccepted    int       `json:"invites_accepted"`
-	StartDate          *time.Time `json:"start_date,omitempty"`
-	EndDate            *time.Time `json:"end_date,omitempty"`
-	UpdatedAt          time.Time  `json:"updated_at"`
+	Goal            *string    `json:"goal,omitempty"`
+	Description     string     `json:"description"`
+	BusinessUserID  string     `json:"business_user_id"`
+	BudgetMinETB    *float64   `json:"budget_min_etb,omitempty"`
+	BudgetMaxETB    *float64   `json:"budget_max_etb,omitempty"`
+	CreatorsNeeded  int        `json:"creators_needed"`
+	InvitesAccepted int        `json:"invites_accepted"`
+	StartDate       *time.Time `json:"start_date,omitempty"`
+	EndDate         *time.Time `json:"end_date,omitempty"`
+	UpdatedAt       time.Time  `json:"updated_at"`
+}
+
+type ModerateCampaignRequest struct {
+	Reason string `json:"reason,omitempty"`
 }
 
 type ModerateCampaignResponse struct {
@@ -110,10 +114,10 @@ type AdminCampaignRow struct {
 	PaymentsPending  int
 	Goal             *string
 	Description      string
-	StartDate          *time.Time
-	EndDate            *time.Time
-	CreatedAt          time.Time
-	UpdatedAt          time.Time
+	StartDate        *time.Time
+	EndDate          *time.Time
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
 }
 
 // MapAdminCampaignStatus returns the status shown in the admin portal.
