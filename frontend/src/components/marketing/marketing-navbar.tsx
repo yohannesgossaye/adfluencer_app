@@ -1,4 +1,3 @@
-/* eslint-disable react/jsx-newline */
 "use client";
 
 import Link from "next/link";
@@ -17,33 +16,27 @@ export function MarketingNavbar() {
   const { openLogin, openSignup } = useMarketingAuth();
 
   const links = [
-    { href: "/", label: "Home" },
-    { href: "/for-businesses", label: "For Businesses" },
-    { href: "/for-influencers", label: "For Influencers" },
-    { href: "/#how-it-works", label: "How It Works" },
-    { href: "/pricing", label: "How Fees Work" },
+    { href: "/for-businesses", label: "For businesses" },
+    { href: "/for-influencers", label: "For creators" },
+    { href: "/pricing", label: "Fees" },
+    { href: "/#talk-to-us", label: "Talk to us" },
   ] as const;
 
   return (
     <header className="sticky top-0 z-50 overflow-x-hidden border-b border-white/10 bg-[color:var(--adfluence-bg)] text-white">
       <div className="relative flex h-[72px] min-w-0 items-center gap-2 px-4 sm:gap-3 sm:px-6 md:px-10 lg:px-16 xl:px-20">
         <BrandLogo showNameFrom="sm" className="min-w-0" />
-        <nav className="hidden items-center gap-8 text-sm text-slate-300 lg:flex absolute left-1/2 -translate-x-1/2">
-          <Link href="/" className="hover:text-white transition-colors">
-            Home
-          </Link>
-          <Link href="/for-businesses" className="hover:text-white transition-colors">
-            For Businesses
-          </Link>
-          <Link href="/for-influencers" className="hover:text-white transition-colors">
-            For Influencers
-          </Link>
-          <Link href="/#how-it-works" className="hover:text-white transition-colors">
-            How It Works
-          </Link>
-          <Link href="/pricing" className="hover:text-white transition-colors">
-            How Fees Work
-          </Link>
+        <nav aria-label="Main" className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-9 text-[15px] font-medium text-[#CBD5E1] lg:flex">
+          {links.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              aria-current={pathname === link.href ? "page" : undefined}
+              className={cn("transition-colors hover:text-white", pathname === link.href && "text-white")}
+            >
+              {link.label}
+            </Link>
+          ))}
         </nav>
         <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
           <Sheet>
@@ -80,9 +73,7 @@ export function MarketingNavbar() {
                 <div className="flex-1 space-y-2 p-4">
                   {links.map((link) => {
                     const active =
-                      link.href === "/"
-                        ? pathname === "/"
-                        : link.href.startsWith("/#")
+                      link.href.startsWith("/#")
                           ? false
                           : pathname === link.href || pathname.startsWith(`${link.href}/`);
                     return (
@@ -119,7 +110,7 @@ export function MarketingNavbar() {
                         onClick={openLogin}
                         className="h-12 w-full rounded-xl border-white/15 bg-transparent px-6 text-white hover:bg-white/10"
                       >
-                        Login
+                        Log in
                       </Button>
                     </SheetClose>
                     <SheetClose asChild>
@@ -128,7 +119,7 @@ export function MarketingNavbar() {
                         onClick={() => openSignup()}
                         className="h-12 w-full rounded-xl px-6"
                       >
-                        Sign Up
+                        Join free
                       </GradientButton>
                     </SheetClose>
                   </div>
@@ -138,18 +129,18 @@ export function MarketingNavbar() {
           </Sheet>
           <Button
             type="button"
-            variant="outline"
+            variant="ghost"
             onClick={openLogin}
-            className="hidden h-10 rounded-xl border-white/20 bg-transparent px-5 text-white hover:bg-white/10 sm:inline-flex"
+            className="hidden h-10 rounded-xl px-5 font-semibold sm:inline-flex"
           >
-            Login
+            Log in
           </Button>
           <GradientButton
             type="button"
             onClick={() => openSignup()}
-            className="hidden h-10 rounded-xl px-5 sm:inline-flex"
+            className="hidden h-10 rounded-xl px-5 font-semibold sm:inline-flex"
           >
-            Sign Up
+            Join free
           </GradientButton>
         </div>
       </div>
