@@ -107,6 +107,19 @@ export const authApi = {
     return res.data;
   },
 
+  /** Public Contact us form; the backend emails it to the team inbox. */
+  contact: async (data: {
+    name: string;
+    email: string;
+    role: "business" | "creator" | "other";
+    subject?: string;
+    message: string;
+    website?: string;
+  }): Promise<ApiResponse<null>> => {
+    const res = await apiClient.post<ApiResponse<null>>("/api/v1/auth/contact", data);
+    return res.data;
+  },
+
   forgotPassword: async (email: string): Promise<ApiResponse<{ message: string }>> => {
     const res = await apiClient.post<ApiResponse<{ message: string }>>("/api/v1/auth/forgot-password", {
       email,

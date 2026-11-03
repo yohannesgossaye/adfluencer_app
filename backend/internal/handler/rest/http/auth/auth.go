@@ -144,6 +144,27 @@ func (h *authHandler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
 	response.SendSuccessResponse(w, r, http.StatusOK, "if an account exists for this email, a reset link has been sent", nil, nil)
 }
 
+// Contact accepts a message from the public Contact us page and emails it to the team.
+func (h *authHandler) Contact(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	r.Body = http.MaxBytesReader(w, r.Body, MaxRequestBodySize)
+
+	var req authDto.ContactRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		response.SendErrorResponse(w, http.StatusBadRequest, "invalid_request", err, "invalid request body")
+		return
+	}
+	if err := req.Normalize().Validate(); err != nil {
+		response.SendErrorResponse(w, http.StatusBadRequest, "validation_error", err, err.Error())
+		return
+	}
+	if err := h.service.SubmitContact(ctx, req, sessionMetaFromRequest(r)); err != nil {
+		httputil.WriteServiceErrorOr(w, err, "contact_failed", "your message could not be sent")
+		return
+	}
+	response.SendSuccessResponse(w, r, http.StatusOK, "message sent", nil, nil)
+}
+
 func (h *authHandler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	r.Body = http.MaxBytesReader(w, r.Body, MaxRequestBodySize)

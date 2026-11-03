@@ -50,6 +50,8 @@ var (
 	ErrPortfolioItemNotFound      = errors.New("portfolio item not found")
 	ErrLoginLocked                = errors.New("too many failed login attempts")
 	ErrForgotPasswordRateLimit    = errors.New("too many password reset requests")
+	ErrContactRateLimit           = errors.New("too many contact messages")
+	ErrContactUnavailable         = errors.New("contact messages are not available right now")
 	ErrInvalidStatusForComplete   = errors.New("invalid status for complete")
 	ErrAccountNotVerified         = errors.New("account not verified")
 	ErrCampaignNotFound           = errors.New("campaign not found")
@@ -125,6 +127,8 @@ var ErrorMap = map[error]int{
 	ErrPortfolioItemNotFound:      http.StatusNotFound,
 	ErrLoginLocked:                http.StatusTooManyRequests,
 	ErrForgotPasswordRateLimit:    http.StatusTooManyRequests,
+	ErrContactRateLimit:           http.StatusTooManyRequests,
+	ErrContactUnavailable:         http.StatusServiceUnavailable,
 	ErrInvalidStatusForComplete:   http.StatusConflict,
 	ErrAccountNotVerified:         http.StatusForbidden,
 	ErrCampaignNotFound:           http.StatusNotFound,

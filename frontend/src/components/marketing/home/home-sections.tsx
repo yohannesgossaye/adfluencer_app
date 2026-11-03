@@ -1,11 +1,10 @@
 "use client";
 
-import { Mail, MessageCircle, Phone } from "lucide-react";
+import Link from "next/link";
 
 import { useMarketingAuth } from "@/components/marketing/marketing-auth-provider";
 import { Button } from "@/components/ui/button";
 import { formatEtb, previewFees } from "@/lib/contracts";
-import { contactLinks } from "@/lib/site-contact";
 import { cn } from "@/lib/utils";
 
 const container = "mx-auto max-w-[1200px] px-5 sm:px-8";
@@ -159,29 +158,16 @@ export function HonestFees() {
   );
 }
 
-export function TalkToUs() {
-  const contact = "h-12 w-full rounded-xl border border-white/15 px-5 font-semibold sm:w-auto";
+export function ContactCta() {
   return (
-    <section id="talk-to-us" className={cn(container, "scroll-mt-24 py-14 text-left sm:py-24 sm:text-center")}>
-      <h2 className={sectionTitle}>Talk to a person, not a form</h2>
-      <p className="mt-3 text-base text-[#CBD5E1] sm:text-lg">Our team in Addis Ababa answers in Amharic or English.</p>
-      <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:justify-center">
-        <Button asChild variant="secondary" className={contact}>
-          <a href={contactLinks.email}>
-            <Mail className="size-4" aria-hidden /> Email us
-          </a>
-        </Button>
-        <Button asChild variant="secondary" className={contact}>
-          <a href={contactLinks.phone}>
-            <Phone className="size-4" aria-hidden /> Call us
-          </a>
-        </Button>
-        <Button asChild variant="secondary" className={contact}>
-          <a href={contactLinks.telegram} target="_blank" rel="noopener noreferrer">
-            <MessageCircle className="size-4" aria-hidden /> Message on Telegram
-          </a>
-        </Button>
-      </div>
+    <section className={cn(container, "py-14 text-left sm:py-24 sm:text-center")}>
+      <h2 className={sectionTitle}>Questions? Contact us</h2>
+      <p className="mt-3 text-base text-[#CBD5E1] sm:text-lg">
+        Send us a message and we&apos;ll reply by email within one working day, in Amharic or English.
+      </p>
+      <Button asChild className="mt-7 h-12 w-full rounded-xl px-7 font-semibold sm:w-auto">
+        <Link href="/contact">Contact us</Link>
+      </Button>
     </section>
   );
 }

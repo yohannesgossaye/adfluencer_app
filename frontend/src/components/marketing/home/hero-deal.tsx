@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { ArrowRight } from "lucide-react";
 
 import { useMarketingAuth } from "@/components/marketing/marketing-auth-provider";
@@ -26,13 +27,13 @@ function DealCard({
   return (
     <div
       className={cn(
-        "w-full max-w-[440px] rounded-[20px] border border-white/10 bg-[color:var(--adfluence-card)] p-5 shadow-[0_18px_40px_rgba(2,8,18,0.55)] transition-transform duration-300 motion-safe:hover:rotate-0",
+        "w-full max-w-[440px] rounded-[20px] border border-white/10 bg-[color:var(--adfluence-card)]/95 p-5 shadow-[0_24px_48px_rgba(2,8,18,0.6)] backdrop-blur",
         className,
       )}
     >
       <div className="flex items-center justify-between gap-3">
-        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#A78BFA]">
-          {step} · {title}
+        <p className="whitespace-nowrap text-xs font-semibold uppercase tracking-[0.12em] text-[#A78BFA]">
+          {step} {title}
         </p>
         {tag}
       </div>
@@ -89,46 +90,41 @@ export function HeroDeal() {
         <p className="mt-4 text-sm text-[#94A3B8]">Free to join · 5% from each side, only on signed contracts</p>
       </div>
 
-      {/* An illustration of one deal, not real users: labelled as such. */}
-      <figure aria-label="Example of a deal on Adfluence" className="flex flex-col items-center">
-        <div className="flex w-full flex-col items-center gap-3 lg:gap-0">
-          <DealCard step="1" title="The brief" tag={<span className="text-xs text-[#94A3B8]">Example</span>} className="lg:rotate-[2.5deg]">
-            <p className="font-[family-name:var(--font-display)] text-xl font-bold text-white">Coffee brand launch video</p>
-            <p className="mt-1 text-sm text-[#CBD5E1]">TikTok · Food &amp; lifestyle · Addis Ababa · ETB 10,000–25,000</p>
-          </DealCard>
-          <DealCard step="2" title="The match" tag={<Pill tone="success">Strong fit</Pill>} className="lg:-mt-3 lg:-rotate-[1.5deg]">
-            <div className="flex items-center gap-3">
-              <span aria-hidden className="flex size-12 shrink-0 items-center justify-center rounded-full bg-[#4C1D95] font-semibold text-white">
-                ST
-              </span>
-              <div>
-                <p className="font-semibold text-white">Selam T.</p>
-                <p className="text-[13px] text-[#CBD5E1]">Food creator · TikTok · verified by Adfluence</p>
-              </div>
-            </div>
-            <p className="mt-3 text-sm text-[#CBD5E1]">Matches your niche, platform and budget</p>
-          </DealCard>
-          <DealCard step="3" title="The contract" tag={<Pill tone="info">Payment held safely</Pill>} className="lg:-mt-3 lg:rotate-[1.5deg]">
-            <dl className="space-y-2 text-[15px]">
-              <div className="flex justify-between">
-                <dt className="text-[#CBD5E1]">Agreed amount</dt>
-                <dd className="font-medium text-white">{formatEtb(EXAMPLE.amount)}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-[#CBD5E1]">Adfluence fee (5%)</dt>
-                <dd className="font-medium text-white">{formatEtb(EXAMPLE.businessFee)}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-[#CBD5E1]">You pay</dt>
-                <dd className="font-bold text-white">{formatEtb(EXAMPLE.totalBusinessPays)}</dd>
-              </div>
-            </dl>
-            <p className="mt-3 text-[13px] text-[#94A3B8]">Released to the creator when you approve the video.</p>
-          </DealCard>
+      {/* One photo, with a real Adfluence contract card over its corner. */}
+      <figure className="relative mx-auto w-full max-w-[520px] pb-16 sm:pb-20 lg:mx-0">
+        <div className="relative aspect-[4/5] w-full overflow-hidden rounded-[28px] sm:ml-auto sm:w-[88%] sm:rounded-[32px]">
+          <Image
+            src="/images/adfluence-hero.jpg"
+            alt="A creator filming a video on her phone"
+            fill
+            priority
+            sizes="(max-width: 640px) 100vw, 460px"
+            className="object-cover"
+          />
+          <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-[#0B1A2B]/45 via-transparent to-transparent" />
         </div>
-        <figcaption className="mt-5 text-xs text-[#94A3B8]">
-          Illustration of how a deal looks. Names and amounts are examples.
-        </figcaption>
+        <DealCard
+          step="Example"
+          title="Contract"
+          tag={<Pill tone="info">Held safely</Pill>}
+          className="absolute bottom-0 left-0 max-w-[340px] sm:max-w-[360px]"
+        >
+          <dl className="space-y-2 text-[15px]">
+            <div className="flex justify-between">
+              <dt className="text-[#CBD5E1]">Agreed amount</dt>
+              <dd className="font-medium text-white">{formatEtb(EXAMPLE.amount)}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-[#CBD5E1]">Adfluence fee (5%)</dt>
+              <dd className="font-medium text-white">{formatEtb(EXAMPLE.businessFee)}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-[#CBD5E1]">You pay</dt>
+              <dd className="font-bold text-white">{formatEtb(EXAMPLE.totalBusinessPays)}</dd>
+            </div>
+          </dl>
+          <p className="mt-3 text-[13px] text-[#94A3B8]">Released to the creator when you approve the work.</p>
+        </DealCard>
       </figure>
     </section>
   );

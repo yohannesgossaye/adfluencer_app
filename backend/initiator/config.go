@@ -14,8 +14,10 @@ type Config struct {
 	Port        string
 	DbUrl       string
 	FrontendURL string
-	AppEnv      string
-	CORSOrigins []string
+	// ContactInbox receives messages from the public Contact us page.
+	ContactInbox string
+	AppEnv       string
+	CORSOrigins  []string
 	// MigrateOnStart applies pending migrations before serving (default true).
 	MigrateOnStart bool
 	DB             DBConfig
@@ -72,6 +74,7 @@ func Load() *Config {
 		Port:           Getenv("PORT", "8080"),
 		DbUrl:          Getenv("DATABASE_URL", ""),
 		FrontendURL:    Getenv("FRONTEND_URL", "http://localhost:3000"),
+		ContactInbox:   Getenv("CONTACT_INBOX_EMAIL", Getenv("SMTP_FROM", os.Getenv("SMTP_USER"))),
 		AppEnv:         Getenv("APP_ENV", "production"),
 		CORSOrigins:    parseList(Getenv("CORS_ORIGINS", defaultCORSOrigins)),
 		MigrateOnStart: Getenv("MIGRATE_ON_START", "true") == "true",

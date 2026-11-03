@@ -19,7 +19,7 @@ export function MarketingNavbar() {
     { href: "/for-businesses", label: "For businesses" },
     { href: "/for-influencers", label: "For creators" },
     { href: "/pricing", label: "Fees" },
-    { href: "/#talk-to-us", label: "Talk to us" },
+    { href: "/contact", label: "Contact us" },
   ] as const;
 
   return (

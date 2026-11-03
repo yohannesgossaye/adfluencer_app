@@ -35,6 +35,11 @@ func AuthRoutes(router chi.Router, rest handler.AuthHandler, authMiddleware midd
 			},
 			{
 				Method:  http.MethodPost,
+				Path:    "/contact",
+				Handler: rest.Contact,
+			},
+			{
+				Method:  http.MethodPost,
 				Path:    "/reset-password",
 				Handler: rest.ResetPassword,
 			},

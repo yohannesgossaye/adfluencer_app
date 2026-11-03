@@ -69,6 +69,8 @@ const AUTH_MESSAGES: Record<string, string> = {
   too_many_forgot_password_requests: "Too many reset requests. Wait a few minutes and try again.",
   too_many_verify_email_requests: "Too many code requests. Wait a few minutes and try again.",
   validation_error: "Some details are missing or invalid.",
+  too_many_contact_messages: "You've sent several messages already. Please wait an hour, or email us directly.",
+  contact_unavailable: "Messages can't be sent right now. Please email us directly.",
 };
 
 /** A message for the auth screens; never shows raw technical errors such as "Network Error". */
