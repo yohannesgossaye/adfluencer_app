@@ -26,7 +26,7 @@ export function MarketingNavbar() {
     <header className="sticky top-0 z-50 overflow-x-hidden border-b border-white/10 bg-[color:var(--adfluence-bg)] text-white">
       <div className="relative flex h-[72px] min-w-0 items-center gap-2 px-4 sm:gap-3 sm:px-6 md:px-10 lg:px-16 xl:px-20">
         <BrandLogo showNameFrom="sm" className="min-w-0" />
-        <nav aria-label="Main" className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-9 text-[15px] font-medium text-[#CBD5E1] lg:flex">
+        <nav aria-label="Main" className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-6 text-[15px] xl:gap-9 font-medium text-[#CBD5E1] lg:flex">
           {links.map((link) => (
             <Link
               key={link.href}

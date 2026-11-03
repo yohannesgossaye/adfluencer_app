@@ -64,7 +64,7 @@ export function HeroDeal() {
   return (
     <section className="mx-auto grid max-w-[1200px] items-center gap-12 px-5 pt-10 pb-14 sm:px-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,460px)] lg:gap-16 lg:pt-16 lg:pb-24">
       <div>
-        <h1 className="font-[family-name:var(--font-display)] text-[42px] leading-[1.02] font-extrabold tracking-[-0.03em] text-white sm:text-6xl lg:text-[72px] lg:leading-[0.98]">
+        <h1 className="font-[family-name:var(--font-display)] text-[42px] leading-[1.02] font-extrabold tracking-[-0.03em] text-white sm:text-6xl lg:text-[60px] lg:leading-[1] xl:text-[72px] xl:leading-[0.98]">
           Find the creators Ethiopia actually listens to.
         </h1>
         <p lang="am" className="mt-5 font-[family-name:var(--font-amharic)] text-xl text-[#A78BFA] sm:text-2xl">
@@ -104,8 +104,8 @@ export function HeroDeal() {
           <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-[#0B1A2B]/45 via-transparent to-transparent" />
         </div>
         <DealCard
-          step="Example"
-          title="Contract"
+          step="Your deal,"
+          title="in birr"
           tag={<Pill tone="info">Held safely</Pill>}
           className="absolute bottom-0 left-0 max-w-[340px] sm:max-w-[360px]"
         >
