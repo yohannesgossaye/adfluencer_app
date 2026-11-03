@@ -67,7 +67,7 @@ export function InfluencerWhyLoveSection() {
                 {[25, 38, 47, 58, 70, 85, 92].map((h, i) => (
                   <div
                     key={i}
-                    className="flex-1 rounded-t bg-[color:var(--adfluence-orange)]"
+                    className="flex-1 rounded-t bg-[color:var(--adfluence-action)]"
                     style={{ height: `${h}%` }}
                   />
                 ))}

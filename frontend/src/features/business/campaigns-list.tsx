@@ -41,7 +41,7 @@ export function CampaignsList() {
         </div>
         <Button
           asChild
-          className="h-11 rounded-xl bg-[color:var(--adfluence-orange)] px-5 text-white hover:bg-[color:var(--adfluence-orange-hover)]"
+          className="h-11 rounded-xl bg-[color:var(--adfluence-action)] px-5 text-white hover:bg-[color:var(--adfluence-action-hover)]"
         >
           <Link href="/business/campaigns/create">Create Campaign</Link>
         </Button>
@@ -58,7 +58,7 @@ export function CampaignsList() {
             <p className="mt-1 text-sm text-[#CBD5E1]">Create a new campaign to start finding matched creators.</p>
             <Button
               asChild
-              className="mt-4 h-11 rounded-xl bg-[color:var(--adfluence-orange)] px-5 text-white hover:bg-[color:var(--adfluence-orange-hover)]"
+              className="mt-4 h-11 rounded-xl bg-[color:var(--adfluence-action)] px-5 text-white hover:bg-[color:var(--adfluence-action-hover)]"
             >
               <Link href="/business/campaigns/create">Create Campaign</Link>
             </Button>
@@ -99,7 +99,7 @@ export function CampaignsList() {
                   </div>
                   <div className="h-2 rounded-full bg-white/10">
                     <div
-                      className="h-2 rounded-full bg-[color:var(--adfluence-orange)]"
+                      className="h-2 rounded-full bg-[color:var(--adfluence-action)]"
                       style={{
                         width: `${Math.min(
                           100,
@@ -120,7 +120,7 @@ export function CampaignsList() {
                   ) : null}
                   <Button
                     asChild
-                    className="h-10 rounded-xl bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)]"
+                    className="h-10 rounded-xl bg-[color:var(--adfluence-action)] text-white hover:bg-[color:var(--adfluence-action-hover)]"
                   >
                     <Link href={`/business/campaigns/${campaign.id}`}>
                       {campaign.status === "draft" ? "Review & publish" : "Open campaign"}

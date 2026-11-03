@@ -83,8 +83,18 @@ export function previewFees(amount: number) {
   };
 }
 
+/** Money is always written "ETB 12,500" across the app. */
 export function formatEtb(value?: number) {
-  return `${new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(value ?? 0)} ETB`;
+  return `ETB ${new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(value ?? 0)}`;
+}
+
+/** "ETB 5,000 – 10,000"; open-ended when only one side is known. */
+export function formatEtbRange(min?: number | null, max?: number | null) {
+  const n = (v: number) => new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(v);
+  if (min && max) return `ETB ${n(min)} – ${n(max)}`;
+  if (max) return `Up to ETB ${n(max)}`;
+  if (min) return `From ETB ${n(min)}`;
+  return "Price not set";
 }
 
 export function formatDate(iso?: string) {

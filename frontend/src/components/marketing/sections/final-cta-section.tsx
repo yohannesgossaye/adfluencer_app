@@ -20,7 +20,7 @@ export function FinalCtaSection() {
           <div className="flex flex-wrap justify-center gap-4">
             <Button
               asChild
-              className="h-12 rounded-xl bg-[color:var(--adfluence-orange)] px-6 text-base font-medium text-white hover:bg-[color:var(--adfluence-orange-hover)] sm:text-lg"
+              className="h-12 rounded-xl bg-[color:var(--adfluence-action)] px-6 text-base font-medium text-white hover:bg-[color:var(--adfluence-action-hover)] sm:text-lg"
             >
               <Link href={buildMarketingAuthHref("/", "signup")}>
                 Get Started Free <ArrowRight className="size-5" />

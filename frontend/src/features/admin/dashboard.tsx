@@ -129,7 +129,7 @@ export function AdminDashboard() {
                       <Button
                         type="button"
                         size="sm"
-                        className="h-11 rounded-lg bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)] sm:h-8"
+                        className="h-11 rounded-lg bg-[color:var(--adfluence-action)] text-white hover:bg-[color:var(--adfluence-action-hover)] sm:h-8"
                         onClick={() => void approve(a.user_id)}
                       >
                         Approve

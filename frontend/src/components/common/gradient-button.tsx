@@ -9,7 +9,7 @@ export function GradientButton({ className, ...props }: GradientButtonProps) {
   return (
     <Button
       className={cn(
-        "bg-[color:var(--adfluence-orange)] text-white shadow-sm hover:bg-[color:var(--adfluence-orange-hover)]",
+        "bg-[color:var(--adfluence-action)] text-white shadow-sm hover:bg-[color:var(--adfluence-action-hover)]",
         className,
       )}
       {...props}

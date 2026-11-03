@@ -99,7 +99,7 @@ export function MarketingNavbar() {
                             <span
                               className={cn(
                                 "size-2.5 rounded-full bg-white/20",
-                                active ? "bg-[color:var(--adfluence-orange)]" : null,
+                                active ? "bg-[color:var(--adfluence-action)]" : null,
                               )}
                             />
                           </span>

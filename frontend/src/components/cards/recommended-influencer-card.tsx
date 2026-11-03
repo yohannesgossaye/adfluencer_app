@@ -33,7 +33,7 @@ export function RecommendedInfluencerCard({ influencer }: { influencer: Recommen
       <div className="space-y-3 p-4 text-white">
         <div className="flex items-center justify-between gap-2">
           <h3 className="truncate text-base font-semibold">{influencer.name}</h3>
-          <span className="shrink-0 rounded-full bg-[color:var(--adfluence-orange)] px-3 py-1 text-xs font-medium text-white">
+          <span className="shrink-0 rounded-full bg-[color:var(--adfluence-action)] px-3 py-1 text-xs font-medium text-white">
             {Math.round(influencer.matchScore)}% match
           </span>
         </div>

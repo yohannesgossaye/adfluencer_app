@@ -9,7 +9,7 @@ import { businessApi } from "@/lib/api/business";
 import type { ChatConversationItem } from "@/lib/api/chat";
 
 const primary =
-  "h-9 flex-1 rounded-xl bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)] sm:flex-none";
+  "h-9 flex-1 rounded-xl bg-[color:var(--adfluence-action)] text-white hover:bg-[color:var(--adfluence-action-hover)] sm:flex-none";
 
 /**
  * A contract needs an accepted invite. When this chat belongs to a campaign the

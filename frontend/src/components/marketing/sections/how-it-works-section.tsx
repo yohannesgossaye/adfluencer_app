@@ -28,7 +28,7 @@ export function HowItWorksSection() {
 
         <div className="grid md:grid-cols-2 gap-8">
           <div className="adfluence-glass rounded-2xl p-8 border border-white/20">
-            <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-[color:var(--adfluence-orange)]">
+            <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-[color:var(--adfluence-action)]">
               <Target className="h-8 w-8 text-white" />
             </div>
             <h3 className="text-2xl font-bold mb-6">For Businesses</h3>

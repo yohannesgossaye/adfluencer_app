@@ -139,7 +139,7 @@ export function AdminCampaigns() {
           className={cn(
             "inline-flex min-h-11 items-center rounded-full border px-4 py-2 text-sm transition-colors sm:min-h-0 sm:px-3 sm:py-1.5 sm:text-xs",
             status === "all"
-              ? "border-transparent bg-[color:var(--adfluence-orange)] text-white"
+              ? "border-transparent bg-[color:var(--adfluence-action)] text-white"
               : "border-white/10 text-[#CBD5E1]",
           )}
         >
@@ -153,7 +153,7 @@ export function AdminCampaigns() {
             className={cn(
               "inline-flex min-h-11 items-center rounded-full border px-4 py-2 text-sm capitalize transition-colors sm:min-h-0 sm:px-3 sm:py-1.5 sm:text-xs",
               status === s.id
-                ? "border-transparent bg-[color:var(--adfluence-orange)] text-white"
+                ? "border-transparent bg-[color:var(--adfluence-action)] text-white"
                 : "border-white/10 text-[#CBD5E1]",
             )}
           >
@@ -217,7 +217,7 @@ export function AdminCampaigns() {
                     <Button
                       size="sm"
                       disabled={busyId === r.id}
-                      className="h-11 bg-[color:var(--adfluence-orange)] text-white sm:h-8"
+                      className="h-11 bg-[color:var(--adfluence-action)] text-white sm:h-8"
                       onClick={() => void run(r.id, () => adminApi.resumeCampaign(r.id), "Campaign is live again.").catch(() => {})}
                     >
                       Resume

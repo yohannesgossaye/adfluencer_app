@@ -202,7 +202,7 @@ export function AdminSupport() {
             className={cn(
               "inline-flex min-h-11 shrink-0 items-center rounded-full border px-4 py-2 text-sm font-medium transition-colors sm:min-h-0 sm:px-3 sm:py-1.5 sm:text-xs",
               filter === b.key
-                ? "border-transparent bg-[color:var(--adfluence-orange)] text-white"
+                ? "border-transparent bg-[color:var(--adfluence-action)] text-white"
                 : "border-white/15 bg-white/5 text-[#CBD5E1] hover:bg-white/10",
             )}
           >
@@ -389,7 +389,7 @@ export function AdminSupport() {
               </div>
               <Button
                 type="button"
-                className="h-11 w-full rounded-xl bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)] lg:h-10 lg:w-auto"
+                className="h-11 w-full rounded-xl bg-[color:var(--adfluence-action)] text-white hover:bg-[color:var(--adfluence-action-hover)] lg:h-10 lg:w-auto"
                 disabled={saving}
                 onClick={saveNotesForSelected}
               >

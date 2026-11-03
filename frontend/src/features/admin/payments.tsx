@@ -128,7 +128,7 @@ export function AdminPayments() {
                     <Button
                       type="submit"
                       disabled={busy || reference.trim().length < 3}
-                      className="h-11 rounded-xl bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)] sm:h-10"
+                      className="h-11 rounded-xl bg-[color:var(--adfluence-action)] text-white hover:bg-[color:var(--adfluence-action-hover)] sm:h-10"
                     >
                       {busy ? <Loader2 className="mr-2 size-4 animate-spin" aria-hidden /> : null}
                       Confirm payment received

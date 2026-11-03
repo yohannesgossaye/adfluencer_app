@@ -172,7 +172,7 @@ export function AdminDisputes() {
             className={cn(
               "inline-flex min-h-11 items-center rounded-full border px-4 py-2 text-sm capitalize transition-colors sm:min-h-0",
               tab === t
-                ? "border-transparent bg-[color:var(--adfluence-orange)] text-white"
+                ? "border-transparent bg-[color:var(--adfluence-action)] text-white"
                 : "border-white/10 bg-white/5 text-[#CBD5E1]",
             )}
           >
@@ -326,7 +326,7 @@ export function AdminDisputes() {
                   <Button
                     type="button"
                     size="sm"
-                    className="h-11 bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)] sm:h-9"
+                    className="h-11 bg-[color:var(--adfluence-action)] text-white hover:bg-[color:var(--adfluence-action-hover)] sm:h-9"
                     onClick={() => askResolve(shownDetail)}
                   >
                     Resolve dispute…

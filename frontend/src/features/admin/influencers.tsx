@@ -209,7 +209,7 @@ export function AdminInfluencers() {
             className={cn(
               "inline-flex min-h-11 items-center rounded-full border px-4 py-2 text-sm font-medium transition-colors sm:min-h-0",
               tab === t.id
-                ? "border-transparent bg-[color:var(--adfluence-orange)] text-white"
+                ? "border-transparent bg-[color:var(--adfluence-action)] text-white"
                 : "border-white/10 bg-[rgba(255,255,255,0.06)] text-[#CBD5E1] hover:text-white",
             )}
           >
@@ -286,7 +286,7 @@ export function AdminInfluencers() {
                     <Button
                       type="button"
                       size="sm"
-                      className="h-11 bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)] sm:h-8"
+                      className="h-11 bg-[color:var(--adfluence-action)] text-white hover:bg-[color:var(--adfluence-action-hover)] sm:h-8"
                       disabled={!canApprove(r.status) || busyId === r.user_id}
                       onClick={(e) => {
                         e.stopPropagation();
@@ -358,7 +358,7 @@ export function AdminInfluencers() {
                   <Button
                     type="button"
                     disabled={busyId === selected.user_id}
-                    className="h-11 flex-1 bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)] sm:h-9"
+                    className="h-11 flex-1 bg-[color:var(--adfluence-action)] text-white hover:bg-[color:var(--adfluence-action-hover)] sm:h-9"
                     onClick={() => void setStatus(selected.user_id, "approved")}
                   >
                     Approve

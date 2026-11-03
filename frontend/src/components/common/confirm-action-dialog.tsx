@@ -115,7 +115,7 @@ function ConfirmBody({ request, onClose }: { request: ConfirmActionRequest; onCl
               "h-11 rounded-xl text-white sm:h-10",
               request.tone === "danger"
                 ? "bg-rose-600 hover:bg-rose-500"
-                : "bg-[color:var(--adfluence-orange)] hover:bg-[color:var(--adfluence-orange-hover)]",
+                : "bg-[color:var(--adfluence-action)] hover:bg-[color:var(--adfluence-action-hover)]",
             )}
           >
             {busy ? <Loader2 className="mr-2 size-4 animate-spin" aria-hidden /> : null}

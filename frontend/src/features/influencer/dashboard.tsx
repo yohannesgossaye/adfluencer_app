@@ -94,7 +94,7 @@ export function InfluencerDashboard() {
         </div>
         <Button
           asChild
-          className="h-11 rounded-xl bg-[color:var(--adfluence-orange)] px-5 text-white hover:bg-[color:var(--adfluence-orange-hover)]"
+          className="h-11 rounded-xl bg-[color:var(--adfluence-action)] px-5 text-white hover:bg-[color:var(--adfluence-action-hover)]"
         >
           <Link href="/influencer/profile">Edit Profile</Link>
         </Button>
@@ -134,7 +134,7 @@ export function InfluencerDashboard() {
         </div>
         <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/10">
           <div
-            className="h-full rounded-full bg-[color:var(--adfluence-orange)]"
+            className="h-full rounded-full bg-[color:var(--adfluence-action)]"
             style={{ width: `${completeness?.percent ?? 0}%` }}
           />
         </div>
@@ -195,7 +195,7 @@ export function InfluencerDashboard() {
                 {/* Answering happens on the Invites page, which shows the full brief and confirms a decline. */}
                 <Button
                   asChild
-                  className="mt-4 h-11 w-full rounded-xl bg-[color:var(--adfluence-orange)] text-white hover:bg-[color:var(--adfluence-orange-hover)]"
+                  className="mt-4 h-11 w-full rounded-xl bg-[color:var(--adfluence-action)] text-white hover:bg-[color:var(--adfluence-action-hover)]"
                 >
                   <Link href="/influencer/invites">Review and respond</Link>
                 </Button>
@@ -255,7 +255,7 @@ export function InfluencerDashboard() {
                     <p className="truncate text-xs text-[#CBD5E1]">{c.last_message_preview || "Direct message"}</p>
                   </div>
                   {c.unread_count > 0 ? (
-                    <span className="shrink-0 rounded-full bg-[color:var(--adfluence-orange)] px-2 py-0.5 text-[10px] font-semibold">
+                    <span className="shrink-0 rounded-full bg-[color:var(--adfluence-action)] px-2 py-0.5 text-[10px] font-semibold">
                       {c.unread_count}
                     </span>
                   ) : null}

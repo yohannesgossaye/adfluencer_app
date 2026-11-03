@@ -365,7 +365,7 @@ export function CreateCampaign({ campaignId }: { campaignId?: string } = {}) {
               <div
                 className={`h-2 rounded-full transition-all duration-300 ${
                   step.complete
-                    ? "bg-[color:var(--adfluence-orange)] shadow-[0_0_8px_rgba(249,115,22,0.4)]"
+                    ? "bg-[color:var(--adfluence-action)] shadow-[0_0_8px_rgba(249,115,22,0.4)]"
                     : "bg-white/10"
                 }`}
               />
@@ -638,7 +638,7 @@ export function CreateCampaign({ campaignId }: { campaignId?: string } = {}) {
               type="button"
               onClick={onSubmit}
               disabled={isLoading || loadingCampaign}
-              className="h-12 rounded-xl bg-[color:var(--adfluence-orange)] px-8 text-base font-semibold text-white shadow-lg shadow-[color:var(--adfluence-orange)]/20 hover:bg-[color:var(--adfluence-orange-hover)]"
+              className="h-12 rounded-xl bg-[color:var(--adfluence-action)] px-8 text-base font-semibold text-white shadow-lg shadow-[color:var(--adfluence-orange)]/20 hover:bg-[color:var(--adfluence-action-hover)]"
             >
               {isLoading ? "Saving…" : isEdit ? "Save changes" : "Save as draft"}
             </Button>
@@ -690,7 +690,7 @@ export function CreateCampaign({ campaignId }: { campaignId?: string } = {}) {
               type="button"
               onClick={onSubmit}
               disabled={isLoading || loadingCampaign}
-              className="h-12 w-full rounded-xl bg-[color:var(--adfluence-orange)] text-base font-semibold text-white shadow-lg shadow-[color:var(--adfluence-orange)]/20 hover:bg-[color:var(--adfluence-orange-hover)]"
+              className="h-12 w-full rounded-xl bg-[color:var(--adfluence-action)] text-base font-semibold text-white shadow-lg shadow-[color:var(--adfluence-orange)]/20 hover:bg-[color:var(--adfluence-action-hover)]"
             >
               {isLoading ? "Saving…" : isEdit ? "Save changes" : "Save as draft"}
             </Button>

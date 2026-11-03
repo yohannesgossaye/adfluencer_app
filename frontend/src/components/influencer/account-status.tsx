@@ -126,7 +126,7 @@ export function AccountStatusPanel({ feature }: { feature: string }) {
         </ul>
       ) : null}
       <div className="mt-5 flex flex-wrap justify-center gap-2">
-        <Button asChild className="h-11 rounded-xl bg-[color:var(--adfluence-orange)] px-5 text-white hover:bg-[color:var(--adfluence-orange-hover)]">
+        <Button asChild className="h-11 rounded-xl bg-[color:var(--adfluence-action)] px-5 text-white hover:bg-[color:var(--adfluence-action-hover)]">
           <Link href={view.cta.href}>{view.cta.label}</Link>
         </Button>
         {view.cta.href !== "/influencer/support" ? (

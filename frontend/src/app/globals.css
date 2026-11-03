@@ -7,6 +7,8 @@
 @theme inline {
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-bricolage), var(--font-noto-ethiopic), ui-sans-serif, system-ui, sans-serif;
+  --font-amharic: var(--font-abyssinica), var(--font-noto-ethiopic), serif;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -50,10 +52,8 @@
 
 :root {
   color-scheme: dark;
-  --font-geist-sans: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
-    "Segoe UI Emoji", "Segoe UI Symbol";
-  --font-geist-mono: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo,
-    Consolas, "DejaVu Sans Mono", monospace;
+  --font-geist-sans: var(--font-inter), var(--font-noto-ethiopic), ui-sans-serif, system-ui, sans-serif;
+  --font-geist-mono: ui-monospace, "Cascadia Code", Menlo, Consolas, monospace;
   --radius: 0.625rem;
   /* The app is dark-only. shadcn components read these, so they follow the brand. */
   --background: #0b1a2b;
@@ -62,7 +62,7 @@
   --card-foreground: #f8fafc;
   --popover: #0f2236;
   --popover-foreground: #f8fafc;
-  --primary: #d97706;
+  --primary: #b45309;
   --primary-foreground: #ffffff;
   --secondary: rgb(255 255 255 / 0.08);
   --secondary-foreground: #f8fafc;
@@ -75,14 +75,14 @@
   --border: rgb(255 255 255 / 0.1);
   --input: rgb(255 255 255 / 0.15);
   --ring: #a78bfa;
-  --chart-1: #d97706;
+  --chart-1: #f59e0b;
   --chart-2: #a78bfa;
   --chart-3: #34d399;
   --chart-4: #60a5fa;
   --chart-5: #f472b6;
   --sidebar: #06111f;
   --sidebar-foreground: #f8fafc;
-  --sidebar-primary: #d97706;
+  --sidebar-primary: #b45309;
   --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: rgb(255 255 255 / 0.1);
   --sidebar-accent-foreground: #ffffff;
@@ -95,8 +95,12 @@
   --adfluence-card: #0f2236;
   --adfluence-purple: #3b0764;
   --adfluence-purple-mid: #4c1d95;
-  --adfluence-orange: #d97706;
-  --adfluence-orange-hover: #b45309;
+  /* Amber has two jobs. Action = button backgrounds (white text passes AA at 5:1).
+     Orange = amber text, borders and focus on navy (bright enough to read). */
+  --adfluence-action: #b45309;
+  --adfluence-action-hover: #92400e;
+  --adfluence-orange: #f59e0b;
+  --adfluence-orange-hover: #d97706;
   --adfluence-purple-accent: #a78bfa;
   --adfluence-light: #f8fafc;
   --adfluence-text-dark: #0f172a;
@@ -119,12 +123,12 @@
 
 @layer utilities {
   .adfluence-primary {
-    background-color: var(--adfluence-orange);
+    background-color: var(--adfluence-action);
     color: white;
   }
 
   .adfluence-primary:hover {
-    background-color: var(--adfluence-orange-hover);
+    background-color: var(--adfluence-action-hover);
   }
 
   .adfluence-glass {
