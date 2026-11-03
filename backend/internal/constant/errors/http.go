@@ -165,6 +165,10 @@ func ClientErrorCode(err error) string {
 		return "login_locked"
 	case errors.Is(err, ErrForgotPasswordRateLimit):
 		return "too_many_forgot_password_requests"
+	case errors.Is(err, ErrContactRateLimit):
+		return "too_many_contact_messages"
+	case errors.Is(err, ErrContactUnavailable):
+		return "contact_unavailable"
 	default:
 		return "bad_request"
 	}

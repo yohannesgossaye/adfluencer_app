@@ -23,9 +23,9 @@ type modules struct {
 	chat       module.ChatService
 }
 
-func InitModules(persistence persistence, tokens *jwt.TokenManager, email *mail.Client, smsClient *sms.Client, dispatcher *notify.Dispatcher, files platformStorage.Service, frontendURL string, logSecrets bool, log utils.Logger) modules {
+func InitModules(persistence persistence, tokens *jwt.TokenManager, email *mail.Client, smsClient *sms.Client, dispatcher *notify.Dispatcher, files platformStorage.Service, frontendURL, contactInbox string, logSecrets bool, log utils.Logger) modules {
 	return modules{
-		auth:       auth.InitAuthModule(persistence.auth, tokens, email, smsClient, dispatcher, frontendURL, logSecrets, log),
+		auth:       auth.InitAuthModule(persistence.auth, tokens, email, smsClient, dispatcher, frontendURL, contactInbox, logSecrets, log),
 		influencer: influencer.InitInfluencerModule(persistence.influencer, persistence.contract, persistence.support, persistence.auth, files, log),
 		business:   businessModule.InitBusinessModule(persistence.business, persistence.influencer, persistence.contract, persistence.support, persistence.auth, files, log),
 		admin:      adminModule.InitAdminModule(persistence.admin, persistence.influencer, persistence.support, persistence.contract, log),

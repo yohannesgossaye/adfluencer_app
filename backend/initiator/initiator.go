@@ -125,7 +125,7 @@ func Initiator(ctx context.Context) {
 		RememberMeRefreshTokenTTL: cfg.JWT.RememberMeRefreshTokenTTL,
 	})
 	dispatcher := notify.New(logger)
-	service := InitModules(postgresRepo, tokens, emailClient, smsClient, dispatcher, fileStorage, cfg.FrontendURL, cfg.IsDevelopment(), logger)
+	service := InitModules(postgresRepo, tokens, emailClient, smsClient, dispatcher, fileStorage, cfg.FrontendURL, cfg.ContactInbox, cfg.IsDevelopment(), logger)
 	handler := InitHandler(service, tokens, cfg.CORSOrigins, logger)
 	authMW := middleware.InitAuthMiddleware(tokens)
 	InitRoute(r, handler, authMW)

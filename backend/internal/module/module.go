@@ -16,6 +16,7 @@ type AuthService interface {
 	GetMe(ctx context.Context, userID string) (*authDto.MeResponse, error)
 	Logout(ctx context.Context, userID string, req authDto.LogoutRequest, meta authDto.SessionMeta) error
 	ForgotPassword(ctx context.Context, req authDto.ForgotPasswordRequest) error
+	SubmitContact(ctx context.Context, req authDto.ContactRequest, meta authDto.SessionMeta) error
 	ResetPassword(ctx context.Context, req authDto.ResetPasswordRequest) (*authDto.ResetPasswordResponse, error)
 	SendVerifyEmail(ctx context.Context, userID string) error
 	VerifyEmail(ctx context.Context, userID string, req authDto.VerifyEmailRequest) (*authDto.VerifyEmailResponse, error)

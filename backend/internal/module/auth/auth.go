@@ -30,22 +30,25 @@ type userAuthModule struct {
 	sms         *sms.Client
 	notify      *notify.Dispatcher
 	frontendURL string
-	logSecrets  bool
-	logger      utils.Logger
+	// contactInbox receives Contact us messages (CONTACT_INBOX_EMAIL).
+	contactInbox string
+	logSecrets   bool
+	logger       utils.Logger
 }
 
 // logSecrets allows OTPs and reset links to be written to the log when no
 // email/SMS provider is configured. Enable it only for local development.
-func InitAuthModule(p storage.AuthPersisitence, tokens *jwt.TokenManager, email *mail.Client, smsClient *sms.Client, dispatcher *notify.Dispatcher, frontendURL string, logSecrets bool, log utils.Logger) module.AuthService {
+func InitAuthModule(p storage.AuthPersisitence, tokens *jwt.TokenManager, email *mail.Client, smsClient *sms.Client, dispatcher *notify.Dispatcher, frontendURL, contactInbox string, logSecrets bool, log utils.Logger) module.AuthService {
 	return &userAuthModule{
-		persistence: p,
-		tokens:      tokens,
-		mail:        email,
-		sms:         smsClient,
-		notify:      dispatcher,
-		frontendURL: strings.TrimRight(frontendURL, "/"),
-		logSecrets:  logSecrets,
-		logger:      log,
+		persistence:  p,
+		tokens:       tokens,
+		mail:         email,
+		sms:          smsClient,
+		notify:       dispatcher,
+		frontendURL:  strings.TrimRight(frontendURL, "/"),
+		contactInbox: strings.TrimSpace(contactInbox),
+		logSecrets:   logSecrets,
+		logger:       log,
 	}
 }
 
