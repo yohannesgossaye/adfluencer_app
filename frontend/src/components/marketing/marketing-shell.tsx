@@ -1,30 +1,24 @@
 "use client";
 
-import type { ReactNode } from "react";
-import { Suspense } from "react";
+import { Suspense, type ReactNode } from "react";
 
 import { MarketingAuthModal } from "@/components/marketing/marketing-auth-modal";
 import { MarketingAuthProvider } from "@/components/marketing/marketing-auth-provider";
 import { MarketingFooter } from "@/components/marketing/marketing-footer";
 import { MarketingNavbar } from "@/components/marketing/marketing-navbar";
 
-function MarketingShellContent({ children }: { children: ReactNode }) {
+export function MarketingShell({ children }: { children: ReactNode }) {
   return (
     <MarketingAuthProvider>
       <div className="min-h-screen bg-[color:var(--adfluence-bg)] text-white">
         <MarketingNavbar />
         <main>{children}</main>
         <MarketingFooter />
-        <MarketingAuthModal />
+        {/* Only the dialog reads the URL, so pages are rendered on the server (good for Google). */}
+        <Suspense fallback={null}>
+          <MarketingAuthModal />
+        </Suspense>
       </div>
     </MarketingAuthProvider>
-  );
-}
-
-export function MarketingShell({ children }: { children: ReactNode }) {
-  return (
-    <Suspense fallback={<div className="min-h-screen bg-[color:var(--adfluence-bg)]" />}>
-      <MarketingShellContent>{children}</MarketingShellContent>
-    </Suspense>
   );
 }
