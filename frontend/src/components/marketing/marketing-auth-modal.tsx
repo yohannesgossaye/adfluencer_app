@@ -4,17 +4,22 @@ import { LoginForm, LoginFormHeader } from "@/components/auth/login-form";
 import { SignupForm, SignupFormHeader } from "@/components/auth/signup-form";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 
+import { useSearchParams } from "next/navigation";
+
+import { parseMarketingAuthRole, type MarketingAuthMode } from "@/lib/marketing-auth-url";
+
 import { useMarketingAuth } from "./marketing-auth-provider";
 
+/** Render inside <Suspense>: it reads the URL (?auth=login|signup&role=…). */
 export function MarketingAuthModal() {
-  const {
-    mode,
-    signupRole,
-    isOpen,
-    closeAuth,
-    switchToLogin,
-    switchToSignup,
-  } = useMarketingAuth();
+  const { openLogin, openSignup, closeAuth } = useMarketingAuth();
+  const searchParams = useSearchParams();
+  const authParam = searchParams.get("auth");
+  const mode: MarketingAuthMode | null = authParam === "login" || authParam === "signup" ? authParam : null;
+  const signupRole = parseMarketingAuthRole(searchParams.get("role")) ?? "business";
+  const isOpen = mode !== null;
+  const switchToLogin = openLogin;
+  const switchToSignup = openSignup;
 
   return (
     <Dialog
