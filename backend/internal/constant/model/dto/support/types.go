@@ -4,17 +4,18 @@ import (
 	customErr "adinfluence_service_app/internal/constant/errors"
 	"errors"
 	"strings"
+	"time"
 )
 
 const (
-	IssueCampaignIssue         = "campaign_issue"
-	IssueContractIssue         = "contract_issue"
-	IssuePaymentQuestion       = "payment_question"
-	IssueCreatorCommunication  = "creator_communication"
-	IssueTechnicalIssue        = "technical_issue"
-	IssueGeneralFeedback       = "general_feedback"
-	IssueProfileApproval       = "profile_approval"
-	IssueComplaint             = "complaint"
+	IssueCampaignIssue        = "campaign_issue"
+	IssueContractIssue        = "contract_issue"
+	IssuePaymentQuestion      = "payment_question"
+	IssueCreatorCommunication = "creator_communication"
+	IssueTechnicalIssue       = "technical_issue"
+	IssueGeneralFeedback      = "general_feedback"
+	IssueProfileApproval      = "profile_approval"
+	IssueComplaint            = "complaint"
 
 	PriorityLow    = "low"
 	PriorityNormal = "normal"
@@ -38,13 +39,13 @@ var businessIssueTypes = map[string]string{
 }
 
 var influencerIssueTypes = map[string]string{
-	IssueProfileApproval:  "Profile approval",
-	IssueCampaignIssue:    "Campaign invite",
-	IssueContractIssue:    "Contract issue",
-	IssuePaymentQuestion:  "Payment/payout question",
-	IssueComplaint:        "Business communication",
-	IssueTechnicalIssue:   "Technical issue",
-	IssueGeneralFeedback:  "General feedback",
+	IssueProfileApproval: "Profile approval",
+	IssueCampaignIssue:   "Campaign invite",
+	IssueContractIssue:   "Contract issue",
+	IssuePaymentQuestion: "Payment/payout question",
+	IssueComplaint:       "Business communication",
+	IssueTechnicalIssue:  "Technical issue",
+	IssueGeneralFeedback: "General feedback",
 }
 
 var ErrInvalidIssueType = errors.New("invalid issue type")
@@ -111,9 +112,52 @@ func MapValidationError(err error) error {
 		return customErr.ErrBadRequest
 	case errors.Is(err, ErrInvalidStatus):
 		return customErr.ErrBadRequest
-	case errors.Is(err, ErrSubjectRequired), errors.Is(err, ErrMessageRequired):
+	case errors.Is(err, ErrSubjectRequired), errors.Is(err, ErrMessageRequired), errors.Is(err, ErrMessageTooLong):
 		return customErr.ErrBadRequest
 	default:
 		return err
 	}
+}
+
+// Who sent a message in a support conversation.
+const (
+	FromUser    = "user"
+	FromSupport = "support"
+)
+
+// Message is one public message in a support conversation, after the
+// opening message stored on the ticket itself.
+type Message struct {
+	ID         string    `json:"id"`
+	From       string    `json:"from"` // "user" or "support"
+	SenderName string    `json:"sender_name"`
+	Body       string    `json:"body"`
+	CreatedAt  time.Time `json:"created_at"`
+}
+
+const MaxMessageLength = 4000
+
+var ErrMessageTooLong = errors.New("message must be at most 4000 characters")
+
+// ReplyRequest is a new message from the user on their own ticket.
+type ReplyRequest struct {
+	Message string `json:"message"`
+}
+
+func (r ReplyRequest) Validate() error {
+	n := len([]rune(strings.TrimSpace(r.Message)))
+	if n == 0 {
+		return ErrMessageRequired
+	}
+	if n > MaxMessageLength {
+		return ErrMessageTooLong
+	}
+	return nil
+}
+
+// ReplyResult tells the user whether their reply reopened a finished ticket.
+type ReplyResult struct {
+	Message  Message `json:"message"`
+	Status   string  `json:"status"`
+	Reopened bool    `json:"reopened"`
 }

@@ -127,10 +127,14 @@ func (m *businessModule) GetSupportTicket(ctx context.Context, userID, ticketID 
 		return nil, mapSupportError(err)
 	}
 
-	item := mapBusinessSupportListItem(*row)
+	messages, err := m.threads.Messages(ctx, ticketID)
+	if err != nil {
+		return nil, err
+	}
 	return &businessDto.SupportTicketDetailResponse{
-		SupportTicketListItem: item,
+		SupportTicketListItem: mapBusinessSupportListItem(*row),
 		Message:               row.Message,
+		Messages:              messages,
 	}, nil
 }
 
@@ -142,10 +146,11 @@ func mapBusinessSupportListItem(row businessDto.SupportTicketRecord) businessDto
 		IssueTypeLabel:       supportDto.IssueTypeLabel(row.IssueType),
 		Priority:             row.Priority,
 		Status:               row.Status,
-		AdminReply:           row.ResolutionNote,
 		RelatedCampaignID:    row.RelatedCampaignID,
 		RelatedCampaignTitle: row.RelatedCampaignTitle,
 		CreatedAt:            row.CreatedAt,
+		LastReplyBy:          row.LastReplyBy,
+		LastActivityAt:       row.LastActivityAt,
 	}
 }
 

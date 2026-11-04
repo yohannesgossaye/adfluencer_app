@@ -131,10 +131,14 @@ func (m *influencerModule) GetSupportTicket(ctx context.Context, userID, ticketI
 		return nil, mapSupportError(err)
 	}
 
-	item := mapInfluencerSupportListItem(*row)
+	messages, err := m.threads.Messages(ctx, ticketID)
+	if err != nil {
+		return nil, err
+	}
 	return &influencerDto.SupportTicketDetailResponse{
-		SupportTicketListItem: item,
+		SupportTicketListItem: mapInfluencerSupportListItem(*row),
 		Message:               row.Message,
+		Messages:              messages,
 	}, nil
 }
 
@@ -146,10 +150,11 @@ func mapInfluencerSupportListItem(row businessDto.SupportTicketRecord) influence
 		IssueTypeLabel:       supportDto.IssueTypeLabel(row.IssueType),
 		Priority:             row.Priority,
 		Status:               row.Status,
-		AdminReply:           row.ResolutionNote,
 		RelatedCampaignID:    row.RelatedCampaignID,
 		RelatedCampaignTitle: row.RelatedCampaignTitle,
 		CreatedAt:            row.CreatedAt,
+		LastReplyBy:          row.LastReplyBy,
+		LastActivityAt:       row.LastActivityAt,
 	}
 }
 

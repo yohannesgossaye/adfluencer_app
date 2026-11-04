@@ -1,6 +1,7 @@
 import { apiClient } from "@/lib/api/api-client";
 import type { ApiResponse } from "@/lib/api/auth";
 import type { ContractDetail, ContractDispute, ContractListItem, ReportProblemRequest } from "@/lib/api/business";
+import type { LastReplyBy, SupportMessage, SupportReplyResult } from "@/lib/support";
 
 export type { ContractDetail, ContractListItem };
 
@@ -177,10 +178,13 @@ export type InfluencerSupportTicket = {
   issue_type_label?: string;
   priority: string;
   status: string;
-  admin_reply?: string;
   related_campaign_id?: string;
   related_campaign_title?: string;
   created_at: string;
+  last_reply_by: LastReplyBy;
+  last_activity_at: string;
+  /** Only on the single-ticket response: the conversation after the opening message. */
+  messages?: SupportMessage[];
 };
 
 export type CreateInfluencerSupportTicketRequest = {
@@ -364,6 +368,11 @@ export const influencerApi = {
     const res = await apiClient.get<ApiResponse<{ items: InfluencerSupportTicket[] }>>(
       "/api/v1/influencer/support/tickets"
     );
+    return res.data;
+  },
+
+  replySupportTicket: async (ticketId: string, message: string): Promise<ApiResponse<SupportReplyResult>> => {
+    const res = await apiClient.post<ApiResponse<SupportReplyResult>>(`/api/v1/influencer/support/tickets/${ticketId}/messages`, { message });
     return res.data;
   },
 

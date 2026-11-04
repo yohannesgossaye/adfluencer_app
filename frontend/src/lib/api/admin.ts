@@ -1,5 +1,6 @@
 import { apiClient } from "@/lib/api/api-client";
 import type { ApiResponse } from "@/lib/api/auth";
+import type { LastReplyBy, SupportMessage } from "@/lib/support";
 
 // --- Dashboard Types ---
 export type EscrowQueueItem = {
@@ -304,8 +305,9 @@ export type AdminSupportTicketItem = {
   sender_email: string;
   sender_role: string;
   related_campaign_title?: string;
-  admin_reply?: string;
   created_at: string;
+  last_reply_by: LastReplyBy;
+  last_activity_at: string;
 };
 
 export type AdminSupportTicketStats = {
@@ -314,6 +316,8 @@ export type AdminSupportTicketStats = {
   business_count: number;
   influencer_count: number;
   resolved_count: number;
+  /** Unfinished tickets where the user wrote last (or nobody has replied yet). */
+  needs_reply_count: number;
 };
 
 export type AdminSupportTicketDetail = {
@@ -330,10 +334,11 @@ export type AdminSupportTicketDetail = {
   sender_role: string;
   related_campaign_id?: string;
   related_campaign_title?: string;
-  admin_reply?: string;
   internal_note?: string;
   created_at: string;
   updated_at: string;
+  last_reply_by: LastReplyBy;
+  messages: SupportMessage[];
 };
 
 // --- API Service Methods ---

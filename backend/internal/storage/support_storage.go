@@ -3,6 +3,7 @@ package storage
 import (
 	adminDto "adinfluence_service_app/internal/constant/model/dto/admin"
 	businessDto "adinfluence_service_app/internal/constant/model/dto/business"
+	supportDto "adinfluence_service_app/internal/constant/model/dto/support"
 	"context"
 )
 
@@ -27,4 +28,8 @@ type SupportPersistence interface {
 	GetAdminTicket(ctx context.Context, ticketID string) (*adminDto.SupportTicketRow, error)
 	UpdateTicketStatus(ctx context.Context, ticketID, status, adminUserID string) error
 	SaveTicketReply(ctx context.Context, ticketID, adminUserID string, adminReply, internalNote *string) error
+
+	// The conversation on a ticket.
+	ListMessages(ctx context.Context, ticketID string) ([]supportDto.Message, error)
+	AddUserMessage(ctx context.Context, userID, ticketID, body string) (msg supportDto.Message, status string, reopened bool, err error)
 }

@@ -46,10 +46,13 @@ type SupportTicketListItem struct {
 	IssueTypeLabel       string    `json:"issue_type_label"`
 	Priority             string    `json:"priority"`
 	Status               string    `json:"status"`
-	AdminReply           *string   `json:"admin_reply,omitempty"`
 	RelatedCampaignID    *string   `json:"related_campaign_id,omitempty"`
 	RelatedCampaignTitle *string   `json:"related_campaign_title,omitempty"`
 	CreatedAt            time.Time `json:"created_at"`
+	// LastReplyBy is "support" when our team answered last, "user" when the
+	// user did, and "" before anyone replied.
+	LastReplyBy    string    `json:"last_reply_by"`
+	LastActivityAt time.Time `json:"last_activity_at"`
 }
 
 type ListSupportTicketsResponse struct {
@@ -59,6 +62,8 @@ type ListSupportTicketsResponse struct {
 type SupportTicketDetailResponse struct {
 	SupportTicketListItem
 	Message string `json:"message"`
+	// Messages is the conversation after the opening message, oldest first.
+	Messages []supportDto.Message `json:"messages"`
 }
 
 type CreateSupportTicketResponse struct {
@@ -88,4 +93,6 @@ type SupportTicketRecord struct {
 	RelatedCampaignID    *string
 	RelatedCampaignTitle *string
 	CreatedAt            time.Time
+	LastReplyBy          string // "", "user" or "support"
+	LastActivityAt       time.Time
 }

@@ -45,6 +45,7 @@ type BusinessHandler interface {
 	CreateSupportTicket(w http.ResponseWriter, r *http.Request)
 	ListSupportTickets(w http.ResponseWriter, r *http.Request)
 	GetSupportTicket(w http.ResponseWriter, r *http.Request)
+	ReplySupportTicket(w http.ResponseWriter, r *http.Request)
 	ListCategories(w http.ResponseWriter, r *http.Request)
 }
 
@@ -70,6 +71,7 @@ type InfluencerHandler interface {
 	CreateSupportTicket(w http.ResponseWriter, r *http.Request)
 	ListSupportTickets(w http.ResponseWriter, r *http.Request)
 	GetSupportTicket(w http.ResponseWriter, r *http.Request)
+	ReplySupportTicket(w http.ResponseWriter, r *http.Request)
 	ListCategories(w http.ResponseWriter, r *http.Request)
 }
 

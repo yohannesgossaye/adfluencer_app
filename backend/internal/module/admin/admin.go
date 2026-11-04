@@ -10,6 +10,7 @@ import (
 	"adinfluence_service_app/internal/module/admin/helper"
 	disputeModule "adinfluence_service_app/internal/module/dispute"
 	influencerHelper "adinfluence_service_app/internal/module/influencer/helper"
+	supportModule "adinfluence_service_app/internal/module/support"
 	"adinfluence_service_app/internal/storage"
 	adminPersist "adinfluence_service_app/internal/storage/persist/admin"
 	"adinfluence_service_app/platform/utils"
@@ -28,16 +29,18 @@ type adminModule struct {
 	support    storage.SupportPersistence
 	contracts  storage.ContractPersistence
 	disputes   *disputeModule.Service
+	threads    *supportModule.Service
 	logger     utils.Logger
 }
 
-func InitAdminModule(admin storage.AdminPersistence, influencer storage.InfluencerPersistence, support storage.SupportPersistence, contracts storage.ContractPersistence, disputes *disputeModule.Service, log utils.Logger) *adminModule {
+func InitAdminModule(admin storage.AdminPersistence, influencer storage.InfluencerPersistence, support storage.SupportPersistence, contracts storage.ContractPersistence, disputes *disputeModule.Service, threads *supportModule.Service, log utils.Logger) *adminModule {
 	return &adminModule{
 		admin:      admin,
 		influencer: influencer,
 		support:    support,
 		contracts:  contracts,
 		disputes:   disputes,
+		threads:    threads,
 		logger:     log,
 	}
 }
