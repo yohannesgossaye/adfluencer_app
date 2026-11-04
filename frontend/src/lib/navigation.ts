@@ -53,11 +53,11 @@ export const influencerNav: NavItem[] = [
 
 export const adminNav: NavItem[] = [
   { label: "Dashboard", href: "/admin/dashboard", icon: "dashboard" },
-  { label: "Influencers", href: "/admin/influencers", icon: "users" },
-  { label: "Businesses", href: "/admin/businesses", icon: "verification" },
+  { label: "Creators", href: "/admin/influencers", icon: "sparkles" },
+  { label: "Businesses", href: "/admin/businesses", icon: "building" },
   { label: "Campaigns", href: "/admin/campaigns", icon: "briefcase" },
   { label: "Payments", href: "/admin/payments", icon: "contracts" },
-  { label: "Users", href: "/admin/users", icon: "building" },
+  { label: "Users", href: "/admin/users", icon: "users" },
   { label: "Disputes", href: "/admin/disputes", icon: "disputes" },
   { label: "Categories", href: "/admin/categories", icon: "categories" },
   { label: "Support", href: "/admin/support", icon: "support" },

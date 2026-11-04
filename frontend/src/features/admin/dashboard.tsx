@@ -13,7 +13,28 @@ import {
   type AdminDashboardSummaryResponse,
 } from "@/lib/api/admin";
 import { adminErrorMessage } from "@/lib/api-errors";
+import { formatEtb } from "@/lib/contracts";
 import { cn } from "@/lib/utils";
+
+/** One "needs action" tile: amber when there is work waiting, calm when clear. */
+function ActionTile({ label, count, href, hint }: { label: string; count: number; href: string; hint: string }) {
+  const waiting = count > 0;
+  return (
+    <Link
+      href={href}
+      className={cn(
+        "group flex flex-col justify-between rounded-2xl border p-4 transition-colors focus-visible:outline-2 focus-visible:outline-[#A78BFA]",
+        waiting
+          ? "border-amber-300/40 bg-amber-300/10 hover:bg-amber-300/15"
+          : "border-white/10 bg-[rgba(255,255,255,0.04)] hover:bg-white/[0.07]",
+      )}
+    >
+      <p className="text-sm font-medium text-[#CBD5E1]">{label}</p>
+      <p className={cn("mt-2 text-3xl font-bold tabular-nums", waiting ? "text-amber-200" : "text-white/60")}>{count}</p>
+      <p className="mt-1 text-xs text-[#94A3B8] group-hover:text-white">{waiting ? `${hint} →` : "All clear"}</p>
+    </Link>
+  );
+}
 
 function Kpi({ label, value }: { label: string; value: string }) {
   return (
@@ -59,27 +80,22 @@ export function AdminDashboard() {
 
   const kpis = useMemo(() => {
     const k = summary?.kpis;
+    // Totals only; anything that needs an admin's action is in the row above.
     return [
-      { label: "Total Influencers", value: String(k?.total_influencers ?? 0) },
-      { label: "Total Businesses", value: String(k?.total_businesses ?? 0) },
-      { label: "Pending Approvals", value: String(k?.pending_influencer_approvals ?? 0) },
-      { label: "Active Campaigns", value: String(k?.active_campaigns ?? 0) },
-      { label: "Total Campaigns", value: String(k?.total_campaigns ?? 0) },
-      { label: "Total Users", value: String(k?.total_users ?? 0) },
-      { label: "Open Disputes", value: String(k?.open_disputes ?? 0) },
-      { label: "Support Tickets", value: String(k?.open_support_tickets ?? 0) },
-      {
-        label: "Monthly Revenue",
-        value: `ETB ${Math.round(k?.monthly_platform_revenue_etb ?? 0).toLocaleString()}`,
-      },
-      { label: "Platform Fee", value: "5% + 5%" },
-      { label: "Blocked Users", value: String(k?.blocked_users ?? 0) },
-      { label: "Completed Contracts", value: String(k?.completed_contracts ?? 0) },
+      { label: "Creators", value: String(k?.total_influencers ?? 0) },
+      { label: "Businesses", value: String(k?.total_businesses ?? 0) },
+      { label: "Live campaigns", value: String(k?.active_campaigns ?? 0) },
+      { label: "All campaigns", value: String(k?.total_campaigns ?? 0) },
+      { label: "Completed contracts", value: String(k?.completed_contracts ?? 0) },
+      { label: "Revenue this month", value: formatEtb(Math.round(k?.monthly_platform_revenue_etb ?? 0)) },
+      { label: "Blocked accounts", value: String(k?.blocked_users ?? 0) },
+      { label: "All accounts", value: String(k?.total_users ?? 0) },
     ];
   }, [summary]);
 
   const previewPending = summary?.pending_approvals || [];
-  const activity = summary?.recent_activity || [];
+  // Logins are noise here; show actions people took.
+  const activity = (summary?.recent_activity || []).filter((a) => !/^log(in|out)$/i.test(a.label.trim()));
   const alerts = summary?.alerts || [];
 
   return (
@@ -101,7 +117,21 @@ export function AdminDashboard() {
           void loadSummary();
         }}
       >
-        <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <section aria-labelledby="needs-action">
+          <h2 id="needs-action" className="text-lg font-semibold text-white">
+            Needs action today
+          </h2>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+            <ActionTile label="Payments to confirm" count={summary?.kpis?.payments_to_confirm ?? 0} href="/admin/payments" hint="Confirm payments" />
+            <ActionTile label="Businesses to verify" count={summary?.kpis?.businesses_to_review ?? 0} href="/admin/businesses" hint="Review businesses" />
+            <ActionTile label="Creators to approve" count={summary?.kpis?.pending_influencer_approvals ?? 0} href="/admin/influencers" hint="Review creators" />
+            <ActionTile label="Open disputes" count={summary?.kpis?.open_disputes ?? 0} href="/admin/disputes" hint="Handle disputes" />
+            <ActionTile label="Urgent tickets" count={summary?.kpis?.urgent_support_tickets ?? 0} href="/admin/support" hint="Answer tickets" />
+          </div>
+        </section>
+
+        <h2 className="sr-only">Platform totals</h2>
+        <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {kpis.map((k) => (
             <Kpi key={k.label} label={k.label} value={k.value} />
           ))}
@@ -109,7 +139,7 @@ export function AdminDashboard() {
 
         <div className="grid gap-6 xl:grid-cols-2">
           <section className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-5">
-            <h2 className="text-lg font-semibold text-white">Pending influencer approvals</h2>
+            <h2 className="text-lg font-semibold text-white">Creators waiting for approval</h2>
             {previewPending.length === 0 ? (
               <p className="mt-3 text-sm text-[#CBD5E1]">No pending approvals.</p>
             ) : (
@@ -152,7 +182,7 @@ export function AdminDashboard() {
           <section className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-5">
             <h2 className="text-lg font-semibold text-white">Platform activity</h2>
             {activity.length === 0 ? (
-              <p className="mt-3 text-sm text-[#CBD5E1]">No recent activity logs.</p>
+              <p className="mt-3 text-sm text-[#CBD5E1]">No recent actions yet. Approvals, payments and moderation will appear here.</p>
             ) : (
               <ul className="mt-3 space-y-2">
                 {activity.map((item) => (

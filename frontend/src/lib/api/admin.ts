@@ -25,6 +25,9 @@ export type AdminKPIs = {
   blocked_users: number;
   completed_contracts: number;
   monthly_platform_revenue_etb: number;
+  payments_to_confirm: number;
+  businesses_to_review: number;
+  urgent_support_tickets: number;
 };
 
 export type AdminRevenueSummary = {

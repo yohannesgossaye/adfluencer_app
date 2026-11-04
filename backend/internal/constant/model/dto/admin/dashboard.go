@@ -3,11 +3,11 @@ package admin
 import "time"
 
 type DashboardSummaryResponse struct {
-	KPIs              DashboardKPIs                  `json:"kpis"`
-	PendingApprovals  []DashboardPendingApprovalRow  `json:"pending_approvals"`
-	RecentActivity    []DashboardActivityRow         `json:"recent_activity"`
-	RevenueSummary    DashboardRevenueSummary        `json:"revenue_summary"`
-	Alerts            []DashboardAlertRow            `json:"alerts"`
+	KPIs             DashboardKPIs                 `json:"kpis"`
+	PendingApprovals []DashboardPendingApprovalRow `json:"pending_approvals"`
+	RecentActivity   []DashboardActivityRow        `json:"recent_activity"`
+	RevenueSummary   DashboardRevenueSummary       `json:"revenue_summary"`
+	Alerts           []DashboardAlertRow           `json:"alerts"`
 }
 
 type DashboardKPIs struct {
@@ -22,13 +22,17 @@ type DashboardKPIs struct {
 	BlockedUsers               int     `json:"blocked_users"`
 	CompletedContracts         int     `json:"completed_contracts"`
 	MonthlyPlatformRevenueETB  float64 `json:"monthly_platform_revenue_etb"`
+	// "Needs action" counts for the admin home.
+	PaymentsToConfirm    int `json:"payments_to_confirm"`
+	BusinessesToReview   int `json:"businesses_to_review"`
+	UrgentSupportTickets int `json:"urgent_support_tickets"`
 }
 
 type DashboardRevenueSummary struct {
-	TotalCampaignValueETB        float64                    `json:"total_campaign_value_etb"`
-	TotalPlatformFeesETB         float64                    `json:"total_platform_fees_etb"`
-	PlatformFeePercentBusiness   float64                    `json:"platform_fee_percent_business"`
-	PlatformFeePercentInfluencer float64                    `json:"platform_fee_percent_influencer"`
+	TotalCampaignValueETB        float64                      `json:"total_campaign_value_etb"`
+	TotalPlatformFeesETB         float64                      `json:"total_platform_fees_etb"`
+	PlatformFeePercentBusiness   float64                      `json:"platform_fee_percent_business"`
+	PlatformFeePercentInfluencer float64                      `json:"platform_fee_percent_influencer"`
 	MonthlyTrend                 []DashboardMonthlyRevenueRow `json:"monthly_trend"`
 }
 
@@ -77,4 +81,7 @@ type DashboardKPIRow struct {
 	MonthlyPlatformRevenueETB  float64
 	TotalCampaignValueETB      float64
 	TotalPlatformFeesETB       float64
+	PaymentsToConfirm          int
+	BusinessesToReview         int
+	UrgentSupportTickets       int
 }

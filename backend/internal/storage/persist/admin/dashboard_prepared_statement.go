@@ -28,7 +28,8 @@ const (
 				  AND completed_at >= date_trunc('month', NOW() AT TIME ZONE '` + businessTimeZone + `') AT TIME ZONE '` + businessTimeZone + `'
 			), 0)::float8 AS month_revenue,
 			COALESCE(SUM(amount_etb) FILTER (WHERE status IN ('active', 'completed')), 0)::float8 AS total_value,
-			COALESCE(SUM(platform_total_fee_etb) FILTER (WHERE status = 'completed'), 0)::float8 AS total_fees
+			COALESCE(SUM(platform_total_fee_etb) FILTER (WHERE status = 'completed'), 0)::float8 AS total_fees,
+			COUNT(*) FILTER (WHERE status = 'accepted')::int AS awaiting_payment
 		FROM contracts
 	)
 	SELECT
@@ -38,7 +39,11 @@ const (
 		(SELECT COUNT(*)::int FROM disputes WHERE status IN ('open', 'under_review')),
 		(SELECT COUNT(*)::int FROM support_tickets WHERE status IN ('open', 'in_review', 'escalated')),
 		u.blocked,
-		k.completed, k.month_revenue, k.total_value, k.total_fees
+		k.completed, k.month_revenue, k.total_value, k.total_fees,
+		k.awaiting_payment,
+		(SELECT COUNT(*)::int FROM business_profiles WHERE verification_status = 'pending'),
+		(SELECT COUNT(*)::int FROM support_tickets
+		 WHERE status = 'escalated' OR (priority IN ('high', 'urgent') AND status IN ('open', 'in_review')))
 	FROM u, c, k
 	`
 

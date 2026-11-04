@@ -22,6 +22,9 @@ func (a *admin) GetDashboardKPIs(ctx context.Context) (*adminDto.DashboardKPIRow
 		&row.MonthlyPlatformRevenueETB,
 		&row.TotalCampaignValueETB,
 		&row.TotalPlatformFeesETB,
+		&row.PaymentsToConfirm,
+		&row.BusinessesToReview,
+		&row.UrgentSupportTickets,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("get admin dashboard kpis: %w", err)
