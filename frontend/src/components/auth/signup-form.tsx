@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import { BrandLogo } from "@/components/common/brand-logo";
 import { GradientButton } from "@/components/common/gradient-button";
@@ -43,9 +43,12 @@ export function SignupForm({
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
+  // Follow a new role from the link (?role=…) without an effect.
+  const [linkRole, setLinkRole] = useState(initialRole);
+  if (initialRole !== linkRole) {
+    setLinkRole(initialRole);
     setRole(initialRole);
-  }, [initialRole]);
+  }
 
   const roleLabel = useMemo(
     () => (role === "business" ? "Business name" : "Creator name"),
