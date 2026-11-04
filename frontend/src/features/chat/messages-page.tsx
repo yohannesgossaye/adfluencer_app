@@ -3,7 +3,7 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import axios from "axios";
-import { ArrowDown, ArrowLeft, Loader2, RotateCcw, Send, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowLeft, Check, CheckCheck, Loader2, RotateCcw, SendHorizontal, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { useChat } from "@/components/chat/chat-provider";
@@ -36,7 +36,7 @@ type Thread = {
 const PAGE_SIZE = 30;
 const WS_ACK_TIMEOUT_MS = 8_000;
 const NEAR_BOTTOM_PX = 120;
-const DELETED_TEXT = "This message was deleted";
+const DELETED_TEXT = "Message deleted";
 
 const emptyThread: Thread = { messages: [], loaded: false, hasMore: false, loadingOlder: false };
 
@@ -51,10 +51,36 @@ function errorMessage(err: unknown, fallback: string) {
 
 function formatTime(iso: string) {
   try {
-    return new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
+    return new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
   } catch {
-    return iso;
+    return "";
   }
+}
+
+/** "Today", "Yesterday", "Mon 3 Nov" or "20 Oct 2025" for the divider above a day's messages. */
+function dayLabel(iso: string) {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const start = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const days = Math.round((start(new Date()) - start(d)) / 86_400_000);
+  if (days === 0) return "Today";
+  if (days === 1) return "Yesterday";
+  const opts: Intl.DateTimeFormatOptions =
+    days < 7 ? { weekday: "short", day: "numeric", month: "short" } : d.getFullYear() === new Date().getFullYear() ? { day: "numeric", month: "short" } : { day: "numeric", month: "short", year: "numeric" };
+  return new Intl.DateTimeFormat("en-GB", opts).format(d);
+}
+
+const GROUP_GAP_MS = 5 * 60_000;
+const sameDay = (a: string, b: string) => new Date(a).toDateString() === new Date(b).toDateString();
+/** Messages from one person within a few minutes read as one group (one avatar, one time). */
+function sameGroup(a: ChatMessage | undefined, b: ChatMessage | undefined) {
+  return (
+    !!a &&
+    !!b &&
+    a.sender_user_id === b.sender_user_id &&
+    sameDay(a.created_at, b.created_at) &&
+    Math.abs(new Date(b.created_at).getTime() - new Date(a.created_at).getTime()) < GROUP_GAP_MS
+  );
 }
 
 function formatListTime(iso?: string) {
@@ -467,7 +493,7 @@ export function MessagesPage({ config }: { config: MessagesPageConfig }) {
           {connectionNotice}
         </p>
       ) : null}
-      <div className="flex min-h-0 flex-1 flex-col gap-4 md:flex-row md:gap-0 md:overflow-hidden md:rounded-2xl md:border md:border-white/10">
+      <div className="flex h-[calc(100dvh_-_7.5rem)] min-h-[420px] shrink-0 flex-col gap-4 md:h-[calc(100dvh_-_9.5rem)] md:flex-row md:gap-0 md:overflow-hidden md:rounded-2xl md:border md:border-white/10">
         <aside
           className={cn(
             "flex w-full shrink-0 flex-col border-white/10 bg-[rgba(255,255,255,0.08)] md:w-[300px] md:border-r md:py-4",
@@ -553,7 +579,7 @@ export function MessagesPage({ config }: { config: MessagesPageConfig }) {
           </div>
         </aside>
 
-        <section className={cn("relative flex min-h-[70vh] flex-1 flex-col bg-[#0B1A2B] md:min-h-0", !mobileShowChat && "hidden md:flex")}>
+        <section className={cn("relative flex min-h-0 flex-1 flex-col overflow-hidden bg-[#081523] max-md:rounded-2xl max-md:border max-md:border-white/10", !mobileShowChat && "hidden md:flex")}>
           {selected ? (
             <>
               <header className="flex shrink-0 flex-wrap items-start gap-3 border-b border-white/10 bg-[rgba(255,255,255,0.06)] px-3 py-3 md:px-4">
@@ -571,7 +597,7 @@ export function MessagesPage({ config }: { config: MessagesPageConfig }) {
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold text-white">{selected.other_user_name}</p>
                   <p className="text-xs text-[#CBD5E1]">
-                    {selected.campaign_title || "Direct message"} · <span className="capitalize">{selected.other_user_role}</span>
+                    {selected.campaign_title || "Direct message"} · {selected.other_user_role === "influencer" ? "Creator" : selected.other_user_role === "business" ? "Business" : selected.other_user_role}
                   </p>
                 </div>
                 {config.headerActions ? (
@@ -585,8 +611,9 @@ export function MessagesPage({ config }: { config: MessagesPageConfig }) {
                 role="log"
                 aria-live="polite"
                 aria-label={`Conversation with ${selected.other_user_name}`}
-                className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-4 md:px-4"
+                className="min-h-0 flex-1 overflow-y-auto px-3 py-4 md:px-6"
               >
+                <div className="mx-auto flex w-full max-w-[760px] flex-col">
                 {thread.hasMore ? (
                   <div className="flex justify-center">
                     <Button
@@ -616,80 +643,114 @@ export function MessagesPage({ config }: { config: MessagesPageConfig }) {
                 ) : thread.messages.length === 0 ? (
                   <p className="py-8 text-center text-xs text-[#94A3B8]">No messages yet. Send a message below to start collaborating.</p>
                 ) : (
-                  thread.messages.map((m) => {
+                  thread.messages.map((m, i) => {
+                    const prev = thread.messages[i - 1];
+                    const next = thread.messages[i + 1];
                     const mine = m.sender_user_id === currentUserId;
                     const deleted = m.is_deleted_for_everyone;
                     const canAct = !deleted && !m._status;
+                    const newDay = !prev || !sameDay(prev.created_at, m.created_at);
+                    const first = newDay || !sameGroup(prev, m);
+                    const last = !sameGroup(m, next);
                     return (
-                      <div key={m.id} className={cn("group flex", mine ? "justify-end" : "justify-start")}>
-                        <div
-                          className={cn(
-                            "relative max-w-[85%] rounded-2xl border px-3 py-2 text-sm md:max-w-[70%]",
-                            deleted
-                              ? "border-white/10 bg-transparent text-[#94A3B8] italic"
-                              : mine
-                                ? "border-[color:var(--adfluence-orange)]/25 bg-[color:var(--adfluence-orange)]/15 text-white"
-                                : "border-white/10 bg-[rgba(255,255,255,0.08)] text-[#E2E8F0]",
-                            m._status === "sending" && "opacity-70",
-                          )}
-                        >
-                          <p className="whitespace-pre-wrap break-words">{deleted ? DELETED_TEXT : m.body}</p>
-                          {m.media_url && !deleted ? (
-                            <a
-                              href={m.media_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="mt-2 inline-flex items-center gap-1 rounded-lg border border-white/10 bg-[color:var(--adfluence-surface)] px-2 py-1 text-xs text-[#CBD5E1] hover:underline"
-                            >
-                              Attachment ({m.media_type})
-                            </a>
-                          ) : null}
-                          <div className="mt-1 flex items-center justify-between gap-2 text-[10px] text-[#94A3B8]">
-                            <span>{formatTime(m.created_at)}</span>
-                            {mine && !deleted ? (
-                              m._status === "sending" ? (
-                                <span>Sending…</span>
-                              ) : m._status === "failed" ? (
-                                <button type="button" onClick={() => retry(m)} className="inline-flex items-center gap-1 text-rose-300 hover:underline">
-                                  <RotateCcw className="size-3" aria-hidden /> Not sent · Retry
-                                </button>
-                              ) : (
-                                <span>{m.is_read ? "Read" : "Sent"}</span>
-                              )
-                            ) : null}
+                      <div key={m.id}>
+                        {newDay ? (
+                          <div className="my-4 flex items-center gap-3 first:mt-0" role="separator">
+                            <span className="h-px flex-1 bg-white/10" />
+                            <span className="rounded-full bg-white/5 px-3 py-1 text-[11px] font-medium text-[#94A3B8]">{dayLabel(m.created_at)}</span>
+                            <span className="h-px flex-1 bg-white/10" />
                           </div>
-                          {m._status === "failed" && m._error ? <p className="mt-1 text-[10px] text-rose-300">{m._error}</p> : null}
-                          {canAct ? (
-                            <button
-                              type="button"
-                              aria-label="Delete message"
-                              aria-expanded={deleteMenuFor === m.id}
-                              onClick={() => setDeleteMenuFor(deleteMenuFor === m.id ? null : m.id)}
-                              className="absolute -top-2 -right-2 rounded-full bg-[color:var(--adfluence-surface)] p-1 text-[#CBD5E1] opacity-100 ring-1 ring-white/15 transition-opacity hover:text-white focus-visible:opacity-100 md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100"
-                            >
-                              <Trash2 className="size-3" aria-hidden />
-                            </button>
-                          ) : null}
-                          {deleteMenuFor === m.id ? (
-                            <div className="mt-2 flex flex-wrap gap-2 border-t border-white/10 pt-2 text-xs not-italic">
-                              <button type="button" className="rounded-lg bg-white/10 px-2 py-1 hover:bg-white/15" onClick={() => void deleteMessage(m, "me")}>
-                                Delete for me
-                              </button>
-                              {mine ? (
-                                <button type="button" className="rounded-lg bg-rose-500/80 px-2 py-1 text-white hover:bg-rose-600" onClick={() => void deleteMessage(m, "everyone")}>
-                                  Delete for everyone
-                                </button>
-                              ) : null}
-                              <button type="button" className="rounded-lg px-2 py-1 text-[#CBD5E1] hover:bg-white/10" onClick={() => setDeleteMenuFor(null)}>
-                                Cancel
-                              </button>
+                        ) : null}
+                        <div className={cn("group flex items-end gap-2", mine ? "justify-end" : "justify-start", first ? "mt-3" : "mt-0.5")}>
+                          {!mine ? (
+                            <div className="w-8 shrink-0">
+                              {last ? <UserAvatar src={selected.other_user_avatar} name={selected.other_user_name} size="sm" /> : null}
                             </div>
                           ) : null}
+                          <div className={cn("relative max-w-[82%] sm:max-w-[70%]", mine && "order-first")}>
+                            {deleted ? (
+                              <p className="rounded-full border border-dashed border-white/15 px-3 py-1.5 text-xs text-[#94A3B8] italic">
+                                {DELETED_TEXT}
+                              </p>
+                            ) : (
+                              <div
+                                className={cn(
+                                  "rounded-[20px] px-3.5 pt-2 pb-1.5 text-[15px] leading-snug shadow-sm",
+                                  mine
+                                    ? "bg-gradient-to-br from-[#6D28D9] to-[#5B21B6] text-white"
+                                    : "border border-white/10 bg-[color:var(--adfluence-card)] text-[#E2E8F0]",
+                                  mine && last && "rounded-br-md",
+                                  !mine && last && "rounded-bl-md",
+                                  m._status === "sending" && "opacity-70",
+                                  m._status === "failed" && "ring-1 ring-rose-400/70",
+                                )}
+                              >
+                                <p className="whitespace-pre-wrap break-words">{m.body}</p>
+                                {m.media_url ? (
+                                  <a
+                                    href={m.media_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="mt-2 inline-flex items-center gap-1 rounded-lg bg-black/20 px-2 py-1 text-xs hover:underline"
+                                  >
+                                    Attachment ({m.media_type})
+                                  </a>
+                                ) : null}
+                                <div className={cn("mt-0.5 flex items-center justify-end gap-1 text-[11px]", mine ? "text-white/70" : "text-[#94A3B8]")}>
+                                  <span>{formatTime(m.created_at)}</span>
+                                  {mine ? (
+                                    m._status === "sending" ? (
+                                      <Loader2 className="size-3 animate-spin" aria-label="Sending" />
+                                    ) : m._status === "failed" ? null : m.is_read ? (
+                                      <CheckCheck className="size-3.5 text-sky-300" aria-label="Read" />
+                                    ) : (
+                                      <Check className="size-3.5" aria-label="Sent" />
+                                    )
+                                  ) : null}
+                                </div>
+                              </div>
+                            )}
+                            {m._status === "failed" ? (
+                              <button type="button" onClick={() => retry(m)} className="mt-1 inline-flex items-center gap-1 text-[11px] text-rose-300 hover:underline">
+                                <RotateCcw className="size-3" aria-hidden /> Not sent{m._error ? `: ${m._error}` : ""} · Tap to retry
+                              </button>
+                            ) : null}
+                            {canAct ? (
+                              <button
+                                type="button"
+                                aria-label="Delete message"
+                                aria-expanded={deleteMenuFor === m.id}
+                                onClick={() => setDeleteMenuFor(deleteMenuFor === m.id ? null : m.id)}
+                                className={cn(
+                                  "absolute top-1/2 -translate-y-1/2 rounded-full p-1.5 text-[#94A3B8] transition-opacity hover:bg-white/10 hover:text-white md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100",
+                                  mine ? "-left-9" : "-right-9",
+                                )}
+                              >
+                                <Trash2 className="size-3.5" aria-hidden />
+                              </button>
+                            ) : null}
+                            {deleteMenuFor === m.id ? (
+                              <div className={cn("mt-1.5 flex flex-wrap gap-1.5 text-xs", mine ? "justify-end" : "justify-start")}>
+                                <button type="button" className="rounded-full bg-white/10 px-3 py-1.5 text-white hover:bg-white/15" onClick={() => void deleteMessage(m, "me")}>
+                                  Delete for me
+                                </button>
+                                {mine ? (
+                                  <button type="button" className="rounded-full bg-rose-600 px-3 py-1.5 text-white hover:bg-rose-500" onClick={() => void deleteMessage(m, "everyone")}>
+                                    Delete for everyone
+                                  </button>
+                                ) : null}
+                                <button type="button" className="rounded-full px-3 py-1.5 text-[#CBD5E1] hover:bg-white/10" onClick={() => setDeleteMenuFor(null)}>
+                                  Cancel
+                                </button>
+                              </div>
+                            ) : null}
+                          </div>
                         </div>
                       </div>
                     );
                   })
                 )}
+                </div>
               </div>
 
               {showNewBelow ? (
@@ -706,49 +767,67 @@ export function MessagesPage({ config }: { config: MessagesPageConfig }) {
                 </button>
               ) : null}
 
-              <div className="shrink-0 border-t border-white/10 bg-[rgba(255,255,255,0.04)] px-3 py-3 md:px-4">
-                <div className="mb-2 flex flex-wrap gap-2">
-                  {config.quickReplies.map((q) => (
-                    <button
-                      key={q}
-                      type="button"
-                      // Fill the box instead of sending, so the text can be checked or edited first.
-                      onClick={() => {
-                        setDraft(q);
-                        document.getElementById("chat-message")?.focus();
-                      }}
-                      className="inline-flex min-h-11 items-center rounded-full border border-white/10 bg-[color:var(--adfluence-surface)] px-4 py-2.5 text-sm text-[#CBD5E1] transition-colors hover:border-[color:var(--adfluence-orange)]/40 hover:text-white md:min-h-0 md:px-3 md:py-1 md:text-xs"
-                    >
-                      {q}
-                    </button>
-                  ))}
-                </div>
-                <form
-                  className="flex gap-2"
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    sendMessage(draft);
-                  }}
-                >
-                  <Input
-                    id="chat-message"
-                    aria-label="Message"
-                    value={draft}
-                    maxLength={4000}
-                    onChange={(e) => setDraft(e.target.value)}
-                    placeholder="Write a message…"
-                    className="h-11 min-w-0 flex-1 rounded-xl border-white/10 bg-[color:var(--adfluence-surface)] text-white placeholder:text-[#94A3B8] focus-visible:border-[color:var(--adfluence-orange)] focus-visible:ring-[color:var(--adfluence-orange)]/25"
-                  />
-                  <Button
-                    type="submit"
-                    disabled={!draft.trim()}
-                    className="h-11 shrink-0 rounded-xl bg-[color:var(--adfluence-action)] px-4 text-white hover:bg-[color:var(--adfluence-action-hover)]"
+              <div className="shrink-0 border-t border-white/10 bg-[color:var(--adfluence-bg)] px-3 pt-2 pb-3 md:px-6">
+                <div className="mx-auto w-full max-w-[760px]">
+                  <div className="-mx-1 mb-2 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                    {config.quickReplies.map((q) => (
+                      <button
+                        key={q}
+                        type="button"
+                        // Fill the box instead of sending, so the text can be checked or edited first.
+                        onClick={() => {
+                          setDraft(q);
+                          document.getElementById("chat-message")?.focus();
+                        }}
+                        className="inline-flex min-h-9 shrink-0 items-center rounded-full border border-white/10 px-3 text-xs text-[#CBD5E1] transition-colors hover:border-[#A78BFA]/50 hover:text-white"
+                      >
+                        {q}
+                      </button>
+                    ))}
+                  </div>
+                  <form
+                    className="flex items-end gap-2 rounded-[24px] border border-white/10 bg-[color:var(--adfluence-card)] p-1.5 pl-4 focus-within:border-[#A78BFA]/60"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      sendMessage(draft);
+                    }}
                   >
-                    <Send className="size-4 md:mr-1" aria-hidden />
-                    <span className="hidden md:inline">Send</span>
-                    <span className="sr-only md:hidden">Send</span>
-                  </Button>
-                </form>
+                    <textarea
+                      id="chat-message"
+                      aria-label="Message"
+                      value={draft}
+                      maxLength={4000}
+                      rows={1}
+                      onChange={(e) => {
+                        setDraft(e.target.value);
+                        e.target.style.height = "auto";
+                        e.target.style.height = `${Math.min(e.target.scrollHeight, 140)}px`;
+                      }}
+                      onKeyDown={(e) => {
+                        // Enter sends; Shift+Enter adds a new line.
+                        if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+                          e.preventDefault();
+                          if (draft.trim()) {
+                            sendMessage(draft);
+                            e.currentTarget.style.height = "auto";
+                          }
+                        }
+                      }}
+                      placeholder="Write a message…"
+                      className="max-h-[140px] min-h-10 flex-1 resize-none bg-transparent py-2.5 text-[15px] text-white outline-none placeholder:text-[#64748B]"
+                    />
+                    <Button
+                      type="submit"
+                      size="icon"
+                      disabled={!draft.trim()}
+                      aria-label="Send message"
+                      className="size-10 shrink-0 rounded-full disabled:opacity-40"
+                    >
+                      <SendHorizontal className="size-4" aria-hidden />
+                    </Button>
+                  </form>
+                  <p className="mt-1.5 hidden text-center text-[11px] text-[#64748B] md:block">Enter to send · Shift + Enter for a new line</p>
+                </div>
               </div>
             </>
           ) : (
