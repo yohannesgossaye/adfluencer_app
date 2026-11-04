@@ -134,6 +134,14 @@ func InfluencerRoutes(router chi.Router, rest handler.InfluencerHandler, authMid
 			},
 			{
 				Method:  http.MethodPost,
+				Path:    "/contracts/{contract_id}/dispute",
+				Handler: rest.OpenDispute,
+				Middlewares: []func(next http.Handler) http.Handler{
+					authMiddleware.AuthenticateToken,
+				},
+			},
+			{
+				Method:  http.MethodPost,
 				Path:    "/contracts/{contract_id}/accept",
 				Handler: rest.AcceptContract,
 				Middlewares: []func(next http.Handler) http.Handler{

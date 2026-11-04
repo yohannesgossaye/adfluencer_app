@@ -259,6 +259,12 @@ func AdminRoutes(router chi.Router, rest handler.AdminHandler, authMiddleware mi
 					Middlewares: auth,
 				},
 				{
+					Method:      http.MethodPost,
+					Path:        "/{dispute_id}/resolve",
+					Handler:     rest.ResolveDispute,
+					Middlewares: auth,
+				},
+				{
 					Method:      http.MethodPatch,
 					Path:        "/{dispute_id}/status",
 					Handler:     rest.UpdateDisputeStatus,

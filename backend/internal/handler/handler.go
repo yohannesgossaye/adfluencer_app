@@ -38,6 +38,7 @@ type BusinessHandler interface {
 	ListContracts(w http.ResponseWriter, r *http.Request)
 	GetContract(w http.ResponseWriter, r *http.Request)
 	ApproveWork(w http.ResponseWriter, r *http.Request)
+	OpenDispute(w http.ResponseWriter, r *http.Request)
 	CancelContract(w http.ResponseWriter, r *http.Request)
 	GetDashboardSummary(w http.ResponseWriter, r *http.Request)
 	ListSupportCampaignOptions(w http.ResponseWriter, r *http.Request)
@@ -62,6 +63,7 @@ type InfluencerHandler interface {
 	ListContracts(w http.ResponseWriter, r *http.Request)
 	GetContract(w http.ResponseWriter, r *http.Request)
 	AcceptContract(w http.ResponseWriter, r *http.Request)
+	OpenDispute(w http.ResponseWriter, r *http.Request)
 	RejectContract(w http.ResponseWriter, r *http.Request)
 	GetDashboardSummary(w http.ResponseWriter, r *http.Request)
 	ListSupportInviteOptions(w http.ResponseWriter, r *http.Request)
@@ -112,5 +114,6 @@ type AdminHandler interface {
 	ListAdminDisputes(w http.ResponseWriter, r *http.Request)
 	GetAdminDispute(w http.ResponseWriter, r *http.Request)
 	UpdateDisputeStatus(w http.ResponseWriter, r *http.Request)
+	ResolveDispute(w http.ResponseWriter, r *http.Request)
 	UpdateDisputeNotes(w http.ResponseWriter, r *http.Request)
 }

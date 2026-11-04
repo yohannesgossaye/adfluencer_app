@@ -6,6 +6,10 @@ import (
 )
 
 type ContractPersistence interface {
+	// Disputes ("Report a problem" on a contract).
+	OpenDispute(ctx context.Context, userID, contractID, reason, description string) (*contractDto.DisputeSummary, error)
+	ResolveDispute(ctx context.Context, adminID, disputeID, outcome, note string) (contractID string, err error)
+	DisputeParties(ctx context.Context, contractID string) (*contractDto.DisputeParties, error)
 	GetAcceptedInvite(ctx context.Context, businessUserID, inviteID string) (*contractDto.AcceptedInviteRecord, error)
 	ContractExistsForInvite(ctx context.Context, inviteID string) (bool, error)
 	CreateContract(ctx context.Context, input contractDto.SaveContractInput) error

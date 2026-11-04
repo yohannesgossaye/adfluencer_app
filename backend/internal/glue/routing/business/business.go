@@ -182,6 +182,14 @@ func BusinessRoutes(router chi.Router, rest handler.BusinessHandler, authMiddlew
 			},
 			{
 				Method:  http.MethodPost,
+				Path:    "/contracts/{contract_id}/dispute",
+				Handler: rest.OpenDispute,
+				Middlewares: []func(next http.Handler) http.Handler{
+					authMiddleware.AuthenticateToken,
+				},
+			},
+			{
+				Method:  http.MethodPost,
 				Path:    "/contracts/{contract_id}/approve-work",
 				Handler: rest.ApproveWork,
 				Middlewares: []func(next http.Handler) http.Handler{

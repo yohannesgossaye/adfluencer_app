@@ -159,6 +159,10 @@ func ClientErrorCode(err error) string {
 		return "invalid_user_status_change"
 	case errors.Is(err, ErrDisputeNotFound):
 		return "dispute_not_found"
+	case errors.Is(err, ErrDisputeAlreadyOpen):
+		return "dispute_already_open"
+	case errors.Is(err, ErrDisputeAlreadyResolved):
+		return "dispute_already_resolved"
 	case errors.Is(err, ErrInvalidDisputeStatus):
 		return "invalid_dispute_status"
 	case errors.Is(err, ErrLoginLocked):

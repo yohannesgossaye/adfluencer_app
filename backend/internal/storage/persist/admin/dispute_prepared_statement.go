@@ -5,7 +5,7 @@ const (
 	SELECT
 		d.id,
 		d.description,
-		d.issue_type::text,
+		CASE WHEN d.reason IS NOT NULL THEN d.reason ELSE d.issue_type::text END,
 		d.severity::text,
 		d.status::text,
 		d.created_at,
@@ -45,7 +45,7 @@ const (
 		ct.influencer_user_id,
 		ct.business_user_id,
 		d.against_user_id,
-		d.issue_type::text,
+		CASE WHEN d.reason IS NOT NULL THEN d.reason ELSE d.issue_type::text END,
 		d.severity::text,
 		d.status::text,
 		d.description,

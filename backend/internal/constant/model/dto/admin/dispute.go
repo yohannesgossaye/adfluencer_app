@@ -85,7 +85,8 @@ type UpdateDisputeStatusRequest struct {
 
 func (r UpdateDisputeStatusRequest) Validate() error {
 	switch strings.ToLower(strings.TrimSpace(r.Status)) {
-	case "under_review", "resolved", "escalated", "closed", "open":
+	// "resolved" goes through POST /disputes/{id}/resolve, which also moves the contract.
+	case "under_review", "escalated", "open":
 		return nil
 	default:
 		return customErr.ErrInvalidDisputeStatus
