@@ -6,6 +6,7 @@ import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 
 import { ListStatus, LoadMore } from "@/components/common/list-status";
+import { FilterChips } from "@/components/common/filter-chips";
 import { Button } from "@/components/ui/button";
 import {
   adminApi,
@@ -20,7 +21,9 @@ import { formatDate } from "@/lib/contracts";
 import { StatusBadge } from "@/components/common/status-badge";
 import { priorityLevel, ticketStatus } from "@/lib/status";
 
-type FilterKey = "all" | "business" | "influencer" | "open" | "in_review" | "escalated" | "resolved" | "high";
+type RoleFilter = "all" | "business" | "influencer";
+type StatusFilter = "all" | "open" | "in_review" | "escalated" | "resolved";
+type PriorityFilter = "all" | "high";
 
 const fieldShell =
   "w-full min-w-0 rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)]/60 px-3 py-2 text-sm text-white outline-none placeholder:text-[#94A3B8] focus:border-[color:var(--adfluence-orange)]/40 focus:ring-2 focus:ring-[color:var(--adfluence-orange)]/25";
@@ -37,19 +40,12 @@ function messagePreview(text: string, max = 100) {
   return `${t.slice(0, max)}…`;
 }
 
-const filterButtons: { key: FilterKey; label: string }[] = [
-  { key: "all", label: "All" },
-  { key: "business", label: "Business" },
-  { key: "influencer", label: "Influencer" },
-  { key: "open", label: "Open" },
-  { key: "in_review", label: "In review" },
-  { key: "escalated", label: "Escalated" },
-  { key: "resolved", label: "Resolved" },
-  { key: "high", label: "High priority" },
-];
 
 export function AdminSupport() {
-  const [filter, setFilter] = useState<FilterKey>("all");
+  // Three independent filters, e.g. "Business + Open + High priority".
+  const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [priorityFilter, setPriorityFilter] = useState<PriorityFilter>("all");
   const [pickedId, setPickedId] = useState<string | null>(null);
   const [selectedDetail, setSelectedDetail] = useState<AdminSupportTicketDetail | null>(null);
   const [mobileShowDetail, setMobileShowDetail] = useState(false);
@@ -58,13 +54,12 @@ export function AdminSupport() {
 
   const fetchPage = useCallback(
     async (page: number) => {
-      const role = filter === "business" || filter === "influencer" ? filter : undefined;
-      const status =
-        filter === "open" || filter === "in_review" || filter === "escalated" || filter === "resolved" ? filter : undefined;
-      const priority = filter === "high" ? "high" : undefined;
+      const role = roleFilter === "all" ? undefined : roleFilter;
+      const status = statusFilter === "all" ? undefined : statusFilter;
+      const priority = priorityFilter === "all" ? undefined : priorityFilter;
       return (await adminApi.listSupportTickets({ role, status, priority, page })).data;
     },
-    [filter],
+    [roleFilter, statusFilter, priorityFilter],
   );
   const list = usePagedList(fetchPage);
   const tickets: AdminSupportTicketItem[] = list.items;
@@ -148,7 +143,7 @@ export function AdminSupport() {
     { label: "Open tickets", value: list.state !== "ready" ? "—" : String(stats.open_count) },
     { label: "High priority", value: list.state !== "ready" ? "—" : String(stats.high_priority_count) },
     { label: "Business requests", value: list.state !== "ready" ? "—" : String(stats.business_count) },
-    { label: "Influencer requests", value: list.state !== "ready" ? "—" : String(stats.influencer_count) },
+    { label: "Creator requests", value: list.state !== "ready" ? "—" : String(stats.influencer_count) },
     { label: "Resolved", value: list.state !== "ready" ? "—" : String(stats.resolved_count) },
   ];
 
@@ -157,7 +152,7 @@ export function AdminSupport() {
       <header className="space-y-1">
         <h1 className="text-2xl font-semibold md:text-3xl">Support & Comments</h1>
         <p className="max-w-3xl text-sm text-[#CBD5E1] md:text-base">
-          Review support requests, feedback, and reported issues from businesses and influencers.
+          Support requests, feedback and reported issues from businesses and creators.
         </p>
       </header>
 
@@ -175,22 +170,41 @@ export function AdminSupport() {
         ))}
       </div>
 
-      <div className="flex min-w-0 gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {filterButtons.map((b) => (
-          <button
-            key={b.key}
-            type="button"
-            onClick={() => setFilter(b.key)}
-            className={cn(
-              "inline-flex min-h-11 shrink-0 items-center rounded-full border px-4 py-2 text-sm font-medium transition-colors sm:min-h-0 sm:px-3 sm:py-1.5 sm:text-xs",
-              filter === b.key
-                ? "border-transparent bg-[color:var(--adfluence-action)] text-white"
-                : "border-white/15 bg-white/5 text-[#CBD5E1] hover:bg-white/10",
-            )}
-          >
-            {b.label}
-          </button>
-        ))}
+      <div className="space-y-3">
+        <FilterChips
+          label="From"
+          showLabel
+          value={roleFilter}
+          onChange={setRoleFilter}
+          options={[
+            { value: "all", label: "Everyone" },
+            { value: "business", label: "Businesses" },
+            { value: "influencer", label: "Creators" },
+          ]}
+        />
+        <FilterChips
+          label="Status"
+          showLabel
+          value={statusFilter}
+          onChange={setStatusFilter}
+          options={[
+            { value: "all", label: "Any status" },
+            { value: "open", label: "Open" },
+            { value: "in_review", label: "In review" },
+            { value: "escalated", label: "Escalated" },
+            { value: "resolved", label: "Resolved" },
+          ]}
+        />
+        <FilterChips
+          label="Priority"
+          showLabel
+          value={priorityFilter}
+          onChange={setPriorityFilter}
+          options={[
+            { value: "all", label: "Any priority" },
+            { value: "high", label: "High priority" },
+          ]}
+        />
       </div>
 
       <div className="flex min-w-0 flex-col gap-6 lg:flex-row lg:items-stretch">

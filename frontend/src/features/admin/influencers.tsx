@@ -20,6 +20,7 @@ import { UserAvatar } from "@/components/common/user-avatar";
 import { formatDate, formatEtbRange } from "@/lib/contracts";
 import { StatusBadge } from "@/components/common/status-badge";
 import { creatorStatus } from "@/lib/status";
+import { FilterChips } from "@/components/common/filter-chips";
 
 const tabs: Array<{ id: "all" | "pending" | "approved" | "rejected"; label: string }> = [
   { id: "all", label: "All" },
@@ -186,23 +187,12 @@ export function AdminInfluencers() {
         </p>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        {tabs.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => setTab(t.id)}
-            className={cn(
-              "inline-flex min-h-11 items-center rounded-full border px-4 py-2 text-sm font-medium transition-colors sm:min-h-0",
-              tab === t.id
-                ? "border-transparent bg-[color:var(--adfluence-action)] text-white"
-                : "border-white/10 bg-[rgba(255,255,255,0.06)] text-[#CBD5E1] hover:text-white",
-            )}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+      <FilterChips
+        label="Creator status"
+        value={tab}
+        onChange={setTab}
+        options={tabs.map((t) => ({ value: t.id, label: t.label }))}
+      />
 
       <Input
         aria-label="Search creators"
