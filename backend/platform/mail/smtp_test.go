@@ -95,3 +95,33 @@ func TestSendTimesOutOnStalledServer(t *testing.T) {
 		t.Fatalf("Send took %v; the timeout did not apply", d)
 	}
 }
+
+func TestBuildMessageHeaders(t *testing.T) {
+	msg := buildMessage("yohannesgossaye73@gmail.com", "creator@example.com", "Problem reported: የቡና ማስታወቂያ", "Hello\nline two")
+	head, body, ok := strings.Cut(msg, "\r\n\r\n")
+	if !ok {
+		t.Fatal("no header/body separator")
+	}
+	for _, want := range []string{
+		`From: "Adfluence" <yohannesgossaye73@gmail.com>`,
+		"To: creator@example.com",
+		"Subject: =?utf-8?q?",
+		"Date: ",
+		"@gmail.com>",
+		"Content-Type: text/plain; charset=UTF-8",
+	} {
+		if !strings.Contains(head, want) {
+			t.Errorf("headers missing %q:\n%s", want, head)
+		}
+	}
+	if strings.Contains(head, "የቡና") {
+		t.Error("subject must be encoded, not raw UTF-8")
+	}
+	if body != "Hello\r\nline two" {
+		t.Errorf("body = %q, want CRLF line endings", body)
+	}
+	// A From that already has a name is kept as it is.
+	if m := buildMessage(`"Adfluence Team" <team@example.com>`, "a@b.c", "s", "b"); !strings.Contains(m, `From: "Adfluence Team" <team@example.com>`) {
+		t.Errorf("named From changed: %s", m)
+	}
+}
