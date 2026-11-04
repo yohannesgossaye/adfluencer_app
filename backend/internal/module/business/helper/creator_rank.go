@@ -42,17 +42,19 @@ func textRank(row businessDto.CreatorRow, q string) int {
 	return 0
 }
 
-// quality favours engaged audiences over raw size: engagement weighted by
-// the order of magnitude of the following. A creator without an engagement
-// rate counts as 2%.
+// quality balances reach and engagement: the square of the following's order
+// of magnitude times the square root of the engagement rate, so a 7K account
+// with 10% engagement doesn't outrank a 400K account with 4%, and a big but
+// inactive account doesn't win on size alone. No engagement rate counts as 2%.
 func quality(row businessDto.CreatorRow) float64 {
 	e := 2.0
 	if row.EngagementRate != nil && *row.EngagementRate > 0 {
-		e = *row.EngagementRate
+		e = math.Min(*row.EngagementRate, 25)
 	}
-	q := e * math.Log10(float64(row.TotalFollowers)+10)
+	reach := math.Log10(float64(row.TotalFollowers) + 10)
+	q := math.Sqrt(e) * reach * reach
 	if row.IsVerified {
-		q += 1
+		q += 3
 	}
 	return q
 }

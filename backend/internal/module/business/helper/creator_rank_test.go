@@ -84,3 +84,16 @@ func TestRankCreatorsSizeAndSorts(t *testing.T) {
 		t.Fatalf("price_high sort = %v", got)
 	}
 }
+
+// Browsing without a search balances reach and engagement.
+func TestRankCreatorsDefaultBalancesReachAndEngagement(t *testing.T) {
+	rows := []businessDto.CreatorRow{
+		creator("Tiny but very engaged", 7_000, 10.4, "fashion", "tiktok"),
+		creator("Big football channel", 620_000, 4.2, "sports", "youtube"),
+		creator("Huge but inactive", 900_000, 0.3, "lifestyle", "facebook"),
+	}
+	got := names(RankCreators(rows, "", "", "best", nil))
+	if got[0] != "Big football channel" || got[2] == "Big football channel" {
+		t.Fatalf("order = %v", got)
+	}
+}
