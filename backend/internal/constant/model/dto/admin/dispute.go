@@ -77,6 +77,10 @@ type AdminDisputeDetailResponse struct {
 	CreatedAt      time.Time  `json:"created_at"`
 	UpdatedAt      time.Time  `json:"updated_at"`
 	ResolvedAt     *time.Time `json:"resolved_at,omitempty"`
+	// Outcome is continue, complete or terminate once resolved.
+	Outcome        string `json:"outcome,omitempty"`
+	OpenedByRole   string `json:"opened_by_role"`
+	ContractStatus string `json:"contract_status"`
 }
 
 type UpdateDisputeStatusRequest struct {
@@ -85,7 +89,8 @@ type UpdateDisputeStatusRequest struct {
 
 func (r UpdateDisputeStatusRequest) Validate() error {
 	switch strings.ToLower(strings.TrimSpace(r.Status)) {
-	case "under_review", "resolved", "escalated", "closed", "open":
+	// "resolved" goes through POST /disputes/{id}/resolve, which also moves the contract.
+	case "under_review", "escalated", "open":
 		return nil
 	default:
 		return customErr.ErrInvalidDisputeStatus
@@ -133,4 +138,7 @@ type DisputeRow struct {
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
 	ResolvedAt       *time.Time
+	Outcome          string
+	OpenedByRole     string
+	ContractStatus   string
 }

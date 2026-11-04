@@ -40,6 +40,7 @@ type InfluencerService interface {
 	ListContracts(ctx context.Context, userID string, query contractDto.ListQuery) (*influencerDto.ListContractsResponse, error)
 	GetContract(ctx context.Context, userID, contractID string) (*contractDto.DetailResponse, error)
 	AcceptContract(ctx context.Context, userID, contractID string, meta authDto.SessionMeta) (*influencerDto.RespondContractResponse, error)
+	OpenDispute(ctx context.Context, userID, contractID string, req contractDto.OpenDisputeRequest) (*contractDto.DisputeSummary, error)
 	RejectContract(ctx context.Context, userID, contractID string, meta authDto.SessionMeta) (*influencerDto.RespondContractResponse, error)
 	GetDashboardSummary(ctx context.Context, userID string) (*influencerDto.DashboardSummaryResponse, error)
 	ListSupportInviteOptions(ctx context.Context, userID string) (*influencerDto.ListSupportInviteOptionsResponse, error)
@@ -86,6 +87,7 @@ type AdminService interface {
 	ListAdminDisputes(ctx context.Context, query adminDto.ListAdminDisputesQuery) (*adminDto.ListAdminDisputesResponse, error)
 	GetAdminDispute(ctx context.Context, disputeID string) (*adminDto.AdminDisputeDetailResponse, error)
 	UpdateDisputeStatus(ctx context.Context, adminUserID, disputeID string, req adminDto.UpdateDisputeStatusRequest, meta authDto.SessionMeta) (*adminDto.UpdateDisputeStatusResponse, error)
+	ResolveDispute(ctx context.Context, adminUserID, disputeID string, req contractDto.ResolveDisputeRequest) error
 	UpdateDisputeNotes(ctx context.Context, adminUserID, disputeID string, req adminDto.UpdateDisputeNotesRequest, meta authDto.SessionMeta) (*adminDto.UpdateDisputeNotesResponse, error)
 }
 
@@ -110,6 +112,7 @@ type BusinessService interface {
 	ListContracts(ctx context.Context, userID string, query contractDto.ListQuery) (*businessDto.ListContractsResponse, error)
 	GetContract(ctx context.Context, userID, contractID string) (*contractDto.DetailResponse, error)
 	ApproveWork(ctx context.Context, userID, contractID string, meta authDto.SessionMeta) (*businessDto.ApproveWorkResponse, error)
+	OpenDispute(ctx context.Context, userID, contractID string, req contractDto.OpenDisputeRequest) (*contractDto.DisputeSummary, error)
 	CancelContract(ctx context.Context, userID, contractID string, meta authDto.SessionMeta) (*businessDto.ContractMutationResponse, error)
 	GetDashboardSummary(ctx context.Context, userID string) (*businessDto.DashboardSummaryResponse, error)
 	ListSupportCampaignOptions(ctx context.Context, userID string) (*businessDto.ListSupportCampaignOptionsResponse, error)

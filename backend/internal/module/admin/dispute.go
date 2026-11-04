@@ -6,6 +6,7 @@ import (
 	adminDto "adinfluence_service_app/internal/constant/model/dto/admin"
 	authDto "adinfluence_service_app/internal/constant/model/dto/auth"
 	commonDto "adinfluence_service_app/internal/constant/model/dto/common"
+	contractDto "adinfluence_service_app/internal/constant/model/dto/contract"
 	supportDto "adinfluence_service_app/internal/constant/model/dto/support"
 	"adinfluence_service_app/internal/module/admin/helper"
 	adminPersist "adinfluence_service_app/internal/storage/persist/admin"
@@ -133,7 +134,7 @@ func (m *adminModule) UpdateDisputeNotes(ctx context.Context, adminUserID, dispu
 }
 
 func mapDisputeListItem(row adminDto.DisputeRow) adminDto.AdminDisputeListItem {
-	label := supportDto.IssueTypeLabel(row.IssueType)
+	label := disputeLabel(row.IssueType)
 	return adminDto.AdminDisputeListItem{
 		ID:             row.ID,
 		Title:          helper.DisputeTitle(label, row.CampaignTitle),
@@ -150,7 +151,7 @@ func mapDisputeListItem(row adminDto.DisputeRow) adminDto.AdminDisputeListItem {
 }
 
 func mapDisputeDetail(row adminDto.DisputeRow) adminDto.AdminDisputeDetailResponse {
-	label := supportDto.IssueTypeLabel(row.IssueType)
+	label := disputeLabel(row.IssueType)
 	return adminDto.AdminDisputeDetailResponse{
 		ID:               row.ID,
 		Title:            helper.DisputeTitle(label, row.CampaignTitle),
@@ -174,6 +175,9 @@ func mapDisputeDetail(row adminDto.DisputeRow) adminDto.AdminDisputeDetailRespon
 		CreatedAt:        row.CreatedAt,
 		UpdatedAt:        row.UpdatedAt,
 		ResolvedAt:       row.ResolvedAt,
+		Outcome:          row.Outcome,
+		OpenedByRole:     row.OpenedByRole,
+		ContractStatus:   row.ContractStatus,
 	}
 }
 
@@ -181,5 +185,17 @@ func mapDisputeError(err error) error {
 	if errors.Is(err, adminPersist.ErrAdminDisputeNotFound) {
 		return customErr.ErrDisputeNotFound
 	}
+	if errors.Is(err, contractDto.ErrDisputeAlreadyResolved) {
+		return customErr.ErrDisputeAlreadyResolved
+	}
 	return err
+}
+
+// disputeLabel names a dispute by the reason the reporter chose (contract
+// disputes) or, for older rows, by its support issue type.
+func disputeLabel(issue string) string {
+	if l := contractDto.DisputeReasonLabel(issue); l != strings.ReplaceAll(issue, "_", " ") {
+		return l
+	}
+	return supportDto.IssueTypeLabel(issue)
 }

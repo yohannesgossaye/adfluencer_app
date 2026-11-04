@@ -5,6 +5,7 @@ import (
 	"adinfluence_service_app/internal/constant/model"
 	authDto "adinfluence_service_app/internal/constant/model/dto/auth"
 	influencerDto "adinfluence_service_app/internal/constant/model/dto/influencer"
+	disputeModule "adinfluence_service_app/internal/module/dispute"
 	"adinfluence_service_app/internal/module/influencer/helper"
 	"adinfluence_service_app/internal/storage"
 	platformStorage "adinfluence_service_app/platform/storage"
@@ -25,10 +26,11 @@ type influencerModule struct {
 	support    storage.SupportPersistence
 	auth       storage.AuthPersisitence
 	files      platformStorage.Service
+	disputes   *disputeModule.Service
 	logger     utils.Logger
 }
 
-func InitInfluencerModule(influencer storage.InfluencerPersistence, contracts storage.ContractPersistence, support storage.SupportPersistence, auth storage.AuthPersisitence, files platformStorage.Service, log utils.Logger) *influencerModule {
+func InitInfluencerModule(influencer storage.InfluencerPersistence, contracts storage.ContractPersistence, support storage.SupportPersistence, auth storage.AuthPersisitence, files platformStorage.Service, disputes *disputeModule.Service, log utils.Logger) *influencerModule {
 	if files == nil {
 		files = platformStorage.NewNoop()
 	}
@@ -38,6 +40,7 @@ func InitInfluencerModule(influencer storage.InfluencerPersistence, contracts st
 		support:    support,
 		auth:       auth,
 		files:      files,
+		disputes:   disputes,
 		logger:     log,
 	}
 }

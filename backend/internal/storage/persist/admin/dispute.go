@@ -3,6 +3,7 @@ package admin
 import (
 	adminDto "adinfluence_service_app/internal/constant/model/dto/admin"
 	authDto "adinfluence_service_app/internal/constant/model/dto/auth"
+	contractDto "adinfluence_service_app/internal/constant/model/dto/contract"
 	"context"
 	"database/sql"
 	"errors"
@@ -71,6 +72,9 @@ func (a *admin) GetAdminDispute(ctx context.Context, disputeID string) (*adminDt
 		&row.UpdatedAt,
 		&resolvedAt,
 		&row.AdminNote,
+		&row.Outcome,
+		&row.OpenedByRole,
+		&row.ContractStatus,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -109,8 +113,15 @@ func (a *admin) UpdateDisputeStatus(ctx context.Context, disputeID, status, admi
 	if err != nil {
 		return fmt.Errorf("update dispute status: %w", err)
 	}
-	n, _ := result.RowsAffected()
-	if n == 0 {
+	if n, _ := result.RowsAffected(); n == 0 {
+		// Either it doesn't exist or it was already settled with an outcome.
+		var exists bool
+		if err := a.db.QueryRowContext(ctx, `SELECT EXISTS (SELECT 1 FROM disputes WHERE id = $1)`, disputeID).Scan(&exists); err != nil {
+			return fmt.Errorf("check dispute: %w", err)
+		}
+		if exists {
+			return contractDto.ErrDisputeAlreadyResolved
+		}
 		return ErrAdminDisputeNotFound
 	}
 	return nil

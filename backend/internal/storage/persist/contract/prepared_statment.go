@@ -56,7 +56,7 @@ const (
 	getContractByID = `
 	SELECT
 		c.id,
-		c.invite_id,
+		COALESCE(c.invite_id::text, ''),
 		c.campaign_id,
 		c.business_user_id,
 		c.influencer_user_id,

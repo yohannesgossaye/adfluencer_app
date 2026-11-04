@@ -215,6 +215,13 @@ func (p *contractRepo) loadContract(ctx context.Context, contractID, role, userI
 		return err
 	})
 
+	var dispute *contractDto.DisputeSummary
+	g.Go(func() error {
+		var err error
+		dispute, err = p.latestDispute(ctx, rec.ID)
+		return err
+	})
+
 	if err := g.Wait(); err != nil {
 		return nil, err
 	}
@@ -222,6 +229,7 @@ func (p *contractRepo) loadContract(ctx context.Context, contractID, role, userI
 	rec.Deliverables = deliverables
 	rec.Payment = payment
 	rec.Payout = payout
+	rec.Dispute = dispute
 
 	return &rec, nil
 }

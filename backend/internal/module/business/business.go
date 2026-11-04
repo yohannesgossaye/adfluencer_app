@@ -6,6 +6,7 @@ import (
 	authDto "adinfluence_service_app/internal/constant/model/dto/auth"
 	businessDto "adinfluence_service_app/internal/constant/model/dto/business"
 	"adinfluence_service_app/internal/module/business/helper"
+	disputeModule "adinfluence_service_app/internal/module/dispute"
 	"adinfluence_service_app/internal/storage"
 	platformStorage "adinfluence_service_app/platform/storage"
 	"adinfluence_service_app/platform/utils"
@@ -25,10 +26,11 @@ type businessModule struct {
 	support    storage.SupportPersistence
 	auth       storage.AuthPersisitence
 	files      platformStorage.Service
+	disputes   *disputeModule.Service
 	logger     utils.Logger
 }
 
-func InitBusinessModule(business storage.BusinessPersistence, influencer storage.InfluencerPersistence, contracts storage.ContractPersistence, support storage.SupportPersistence, auth storage.AuthPersisitence, files platformStorage.Service, log utils.Logger) *businessModule {
+func InitBusinessModule(business storage.BusinessPersistence, influencer storage.InfluencerPersistence, contracts storage.ContractPersistence, support storage.SupportPersistence, auth storage.AuthPersisitence, files platformStorage.Service, disputes *disputeModule.Service, log utils.Logger) *businessModule {
 	if files == nil {
 		files = platformStorage.NewNoop()
 	}
@@ -39,6 +41,7 @@ func InitBusinessModule(business storage.BusinessPersistence, influencer storage
 		support:    support,
 		auth:       auth,
 		files:      files,
+		disputes:   disputes,
 		logger:     log,
 	}
 }
@@ -289,8 +292,8 @@ func (m *businessModule) buildResponse(user *authDto.UserResponse, rec *business
 			EmailVerified: user.EmailVerified,
 			PhoneVerified: user.PhoneVerified,
 		},
-		Profile:      detail,
-		Completeness: completeness,
+		Profile:           detail,
+		Completeness:      completeness,
 		MarketplaceAccess: helper.BuildMarketplaceAccess(detail, user.Status),
 	}
 }
@@ -328,4 +331,3 @@ func optionalString(v string) *string {
 func (m *businessModule) ListActiveCategories(ctx context.Context) ([]businessDto.CampaignCategoryResponse, error) {
 	return m.business.ListActiveCategories(ctx)
 }
-

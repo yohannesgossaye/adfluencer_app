@@ -79,6 +79,8 @@ var (
 	ErrInvalidUserStatusChange    = errors.New("invalid user status change")
 	ErrDisputeNotFound            = errors.New("dispute not found")
 	ErrInvalidDisputeStatus       = errors.New("invalid dispute status")
+	ErrDisputeAlreadyOpen         = errors.New("this contract already has an open dispute")
+	ErrDisputeAlreadyResolved     = errors.New("this dispute is already resolved")
 	ErrInvalidRefreshToken        = errors.New("invalid or expired refresh token")
 )
 
@@ -156,5 +158,7 @@ var ErrorMap = map[error]int{
 	ErrInvalidUserStatusChange:    http.StatusConflict,
 	ErrDisputeNotFound:            http.StatusNotFound,
 	ErrInvalidDisputeStatus:       http.StatusBadRequest,
+	ErrDisputeAlreadyOpen:         http.StatusConflict,
+	ErrDisputeAlreadyResolved:     http.StatusConflict,
 	ErrInvalidRefreshToken:        http.StatusBadRequest,
 }

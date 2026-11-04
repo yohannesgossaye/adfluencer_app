@@ -76,23 +76,25 @@ type PartySummary struct {
 }
 
 type DetailResponse struct {
-	ID                     string                `json:"id"`
-	Title                  string                `json:"title"`
-	Description            *string               `json:"description,omitempty"`
-	Status                 string                `json:"status"`
-	Fees                   FeeBreakdown          `json:"fees"`
-	Deliverables           []DeliverableResponse `json:"deliverables"`
-	Campaign               CampaignSummary       `json:"campaign"`
-	Business               PartySummary          `json:"business"`
-	Influencer             PartySummary          `json:"influencer"`
-	StartDate              *time.Time            `json:"start_date,omitempty"`
-	EndDate                *time.Time            `json:"end_date,omitempty"`
-	Payment                *PaymentSummary       `json:"payment,omitempty"`
-	Payout                 *PayoutSummary        `json:"payout,omitempty"`
-	AcceptedByInfluencerAt *time.Time            `json:"accepted_by_influencer_at,omitempty"`
-	CompletedAt            *time.Time            `json:"completed_at,omitempty"`
-	CreatedAt              time.Time             `json:"created_at"`
-	UpdatedAt              time.Time             `json:"updated_at"`
+	ID           string                `json:"id"`
+	Title        string                `json:"title"`
+	Description  *string               `json:"description,omitempty"`
+	Status       string                `json:"status"`
+	Fees         FeeBreakdown          `json:"fees"`
+	Deliverables []DeliverableResponse `json:"deliverables"`
+	Campaign     CampaignSummary       `json:"campaign"`
+	Business     PartySummary          `json:"business"`
+	Influencer   PartySummary          `json:"influencer"`
+	StartDate    *time.Time            `json:"start_date,omitempty"`
+	EndDate      *time.Time            `json:"end_date,omitempty"`
+	Payment      *PaymentSummary       `json:"payment,omitempty"`
+	Payout       *PayoutSummary        `json:"payout,omitempty"`
+	// Dispute is the latest "Report a problem" on this contract, if any.
+	Dispute                *DisputeSummary `json:"dispute,omitempty"`
+	AcceptedByInfluencerAt *time.Time      `json:"accepted_by_influencer_at,omitempty"`
+	CompletedAt            *time.Time      `json:"completed_at,omitempty"`
+	CreatedAt              time.Time       `json:"created_at"`
+	UpdatedAt              time.Time       `json:"updated_at"`
 }
 
 type ListItem struct {

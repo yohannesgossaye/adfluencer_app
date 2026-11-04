@@ -1,6 +1,6 @@
 import { apiClient } from "@/lib/api/api-client";
 import type { ApiResponse } from "@/lib/api/auth";
-import type { ContractDetail, ContractListItem } from "@/lib/api/business";
+import type { ContractDetail, ContractDispute, ContractListItem, ReportProblemRequest } from "@/lib/api/business";
 
 export type { ContractDetail, ContractListItem };
 
@@ -308,6 +308,11 @@ export const influencerApi = {
       "/api/v1/influencer/contracts",
       { params }
     );
+    return res.data;
+  },
+
+  reportProblem: async (contractId: string, data: ReportProblemRequest): Promise<ApiResponse<ContractDispute>> => {
+    const res = await apiClient.post<ApiResponse<ContractDispute>>(`/api/v1/influencer/contracts/${contractId}/dispute`, data);
     return res.data;
   },
 

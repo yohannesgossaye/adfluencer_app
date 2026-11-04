@@ -19,6 +19,9 @@ import { cn } from "@/lib/utils";
 import { StatusBadge } from "@/components/common/status-badge";
 import { disputeStatus, priorityLevel } from "@/lib/status";
 import { FilterChips } from "@/components/common/filter-chips";
+import { contractStatus, formatDate } from "@/lib/contracts";
+import { outcomeLabel } from "@/lib/disputes";
+import { ResolveDisputeDialog } from "./resolve-dispute-dialog";
 
 
 function isFinished(status: string) {
@@ -32,7 +35,7 @@ export function AdminDisputes() {
   const [selectedDetail, setSelectedDetail] = useState<AdminDisputeDetail | null>(null);
   const [mobileShowDetail, setMobileShowDetail] = useState(false);
   const [adminNoteDraft, setAdminNoteDraft] = useState("");
-  const [resolutionNoteDraft, setResolutionNoteDraft] = useState("");
+  const [resolving, setResolving] = useState<AdminDisputeDetail | null>(null);
 
   const fetchPage = useCallback(async (page: number) => (await adminApi.listDisputes({ tab, page })).data, [tab]);
   const list = usePagedList(fetchPage);
@@ -50,7 +53,6 @@ export function AdminDisputes() {
         if (res.data) {
           setSelectedDetail(res.data);
           setAdminNoteDraft(res.data.admin_note || "");
-          setResolutionNoteDraft(res.data.resolution_note || "");
         }
       } catch (err) {
         toast.error(adminErrorMessage(err, "This dispute could not be opened."));
@@ -83,37 +85,15 @@ export function AdminDisputes() {
     if (!selectedId) return;
     setSavingNotes(true);
     try {
-      await adminApi.updateDisputeNotes(selectedId, {
-        admin_note: adminNoteDraft,
-        resolution_note: resolutionNoteDraft,
-      });
-      toast.success("Notes saved.");
+      await adminApi.updateDisputeNotes(selectedId, { admin_note: adminNoteDraft });
+      toast.success("Note saved.");
       await loadDisputes();
     } catch (err) {
-      toast.error(adminErrorMessage(err, "The notes could not be saved."));
+      toast.error(adminErrorMessage(err, "The note could not be saved."));
     } finally {
       setSavingNotes(false);
     }
   };
-
-  const askResolve = (d: AdminDisputeDetail) =>
-    setConfirm({
-      title: "Resolve this dispute?",
-      description: "Record what was decided. The dispute moves to Resolved; you can reopen it later if needed.",
-      confirmLabel: "Resolve dispute",
-      reasonLabel: "Resolution note",
-      reasonPlaceholder: "e.g. Creator re-posted the video; business confirmed. No refund.",
-      onConfirm: async (note) => {
-        try {
-          await adminApi.updateDisputeNotes(d.id, { admin_note: adminNoteDraft, resolution_note: note });
-        } catch (err) {
-          toast.error(adminErrorMessage(err, "The resolution note could not be saved."));
-          throw err;
-        }
-        setResolutionNoteDraft(note);
-        await setStatus(d.id, "resolved", "Dispute resolved.");
-      },
-    });
 
   const askBlock = (party: "business" | "creator", d: AdminDisputeDetail) => {
     const userId = party === "business" ? d.business_user_id : d.influencer_user_id;
@@ -149,7 +129,8 @@ export function AdminDisputes() {
       <div>
         <h1 className="text-2xl font-semibold text-white">Disputes & reports</h1>
         <p className="mt-1 max-w-2xl text-sm text-[#CBD5E1]">
-          Review reported conversations and disputes. Admin supervises escalated escrow claims.
+          Problems reported on contracts. The payment stays held until you decide: continue the contract, complete it and pay the
+          creator, or end it.
         </p>
       </div>
 
@@ -188,7 +169,6 @@ export function AdminDisputes() {
                 <p className="text-xs text-[#CBD5E1]">
                   {d.business_name} ↔ {d.influencer_name} · {d.campaign_title}
                 </p>
-                <p className="mt-1 text-xs text-[#94A3B8]">{d.issue_type_label || d.issue_type}</p>
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   <StatusBadge status={disputeStatus(d.status)} />
                   <StatusBadge status={{ ...priorityLevel(d.severity), label: `${priorityLevel(d.severity).label} severity` }} />
@@ -226,41 +206,51 @@ export function AdminDisputes() {
               </Button>
             </div>
             <h2 className="text-lg font-semibold text-white">{shownDetail.title}</h2>
-            <p className="text-xs text-[#CBD5E1]">
-              Status: <StatusBadge status={disputeStatus(shownDetail.status)} />
-            </p>
-            <p className="text-xs text-[#CBD5E1]">
-              Between <span className="text-white">{shownDetail.business_name}</span> (business) and{" "}
-              <span className="text-white">{shownDetail.influencer_name}</span> (creator)
-              {shownDetail.against_user_id ? (
-                <>
-                  {" "}· reported:{" "}
-                  <span className="text-white">
-                    {shownDetail.against_user_id === shownDetail.business_user_id
-                      ? shownDetail.business_name
-                      : shownDetail.influencer_name}
-                  </span>
-                </>
-              ) : null}
-            </p>
-            <div className="rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)] p-3">
-              <p className="text-xs font-medium uppercase text-[#94A3B8]">Description & preview</p>
-              <p className="mt-2 text-sm text-[#CBD5E1]">{shownDetail.description || shownDetail.preview}</p>
+            <div className="flex flex-wrap gap-1.5">
+              <StatusBadge status={disputeStatus(shownDetail.status)} />
+              <StatusBadge status={{ ...contractStatus(shownDetail.contract_status, "business").badge, label: `Contract: ${contractStatus(shownDetail.contract_status, "business").label}` }} />
             </div>
+            <dl className="space-y-1 text-xs text-[#CBD5E1]">
+              <div>
+                <dt className="inline text-[#94A3B8]">Problem: </dt>
+                <dd className="inline text-white">{shownDetail.issue_type_label}</dd>
+              </div>
+              <div>
+                <dt className="inline text-[#94A3B8]">Reported by: </dt>
+                <dd className="inline text-white">
+                  {shownDetail.opened_by_role === "business"
+                    ? `${shownDetail.business_name} (business)`
+                    : `${shownDetail.influencer_name} (creator)`}{" "}
+                  on {formatDate(shownDetail.created_at)}
+                </dd>
+              </div>
+              <div>
+                <dt className="inline text-[#94A3B8]">Against: </dt>
+                <dd className="inline text-white">
+                  {shownDetail.opened_by_role === "business"
+                    ? `${shownDetail.influencer_name} (creator)`
+                    : `${shownDetail.business_name} (business)`}
+                </dd>
+              </div>
+            </dl>
+            <div className="rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)] p-3">
+              <p className="text-xs font-medium uppercase text-[#94A3B8]">What they said</p>
+              <p className="mt-2 text-sm whitespace-pre-wrap text-[#CBD5E1]">{shownDetail.description || shownDetail.preview}</p>
+            </div>
+            {isFinished(shownDetail.status) ? (
+              <div className="rounded-xl border border-emerald-400/30 bg-emerald-500/10 p-3">
+                <p className="text-sm font-semibold text-emerald-50">Decision: {outcomeLabel(shownDetail.outcome)}</p>
+                {shownDetail.resolved_at ? <p className="text-xs text-emerald-100/80">{formatDate(shownDetail.resolved_at)}</p> : null}
+                {shownDetail.resolution_note ? (
+                  <p className="mt-2 text-sm whitespace-pre-wrap text-[#E2E8F0]">{shownDetail.resolution_note}</p>
+                ) : null}
+              </div>
+            ) : null}
             <label className="block text-xs">
-              <span className="text-[#CBD5E1]">Admin internal note</span>
+              <span className="text-[#CBD5E1]">Internal note (only admins see this)</span>
               <textarea
                 value={adminNoteDraft}
                 onChange={(e) => setAdminNoteDraft(e.target.value)}
-                rows={2}
-                className="mt-1 w-full rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)] px-2 py-1 text-sm text-white"
-              />
-            </label>
-            <label className="block text-xs">
-              <span className="text-[#CBD5E1]">Resolution note</span>
-              <textarea
-                value={resolutionNoteDraft}
-                onChange={(e) => setResolutionNoteDraft(e.target.value)}
                 rows={2}
                 className="mt-1 w-full rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)] px-2 py-1 text-sm text-white"
               />
@@ -273,26 +263,10 @@ export function AdminDisputes() {
               disabled={savingNotes}
               onClick={saveNotes}
             >
-              {savingNotes ? "Saving…" : "Save notes"}
+              {savingNotes ? "Saving…" : "Save note"}
             </Button>
             <div className="flex flex-col gap-2 pt-2">
-              {isFinished(shownDetail.status) ? (
-                <Button
-                  type="button"
-                  size="sm"
-                  className="h-11 bg-white/10 text-white sm:h-9"
-                  onClick={() =>
-                    setConfirm({
-                      title: "Reopen this dispute?",
-                      description: "It moves back to Open & under review.",
-                      confirmLabel: "Reopen",
-                      onConfirm: () => setStatus(shownDetail.id, "under_review", "Dispute reopened."),
-                    })
-                  }
-                >
-                  Reopen dispute
-                </Button>
-              ) : (
+              {isFinished(shownDetail.status) ? null : (
                 <>
                   {shownDetail.status !== "under_review" ? (
                     <Button
@@ -310,7 +284,7 @@ export function AdminDisputes() {
                     type="button"
                     size="sm"
                     className="h-11 bg-[color:var(--adfluence-action)] text-white hover:bg-[color:var(--adfluence-action-hover)] sm:h-9"
-                    onClick={() => askResolve(shownDetail)}
+                    onClick={() => setResolving(shownDetail)}
                   >
                     Resolve dispute…
                   </Button>
@@ -342,6 +316,15 @@ export function AdminDisputes() {
       </div>
 
       <ConfirmActionDialog request={confirm} onClose={() => setConfirm(null)} />
+      <ResolveDisputeDialog
+        dispute={resolving}
+        onClose={() => setResolving(null)}
+        onResolved={async () => {
+          const id = resolving?.id;
+          await loadDisputes();
+          if (id) await refreshSelected(id).catch(() => {});
+        }}
+      />
     </div>
   );
 }
