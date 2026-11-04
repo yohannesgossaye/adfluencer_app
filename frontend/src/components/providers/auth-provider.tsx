@@ -64,6 +64,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   React.useEffect(() => {
     const storedToken = window.localStorage.getItem(AUTH_TOKEN_STORAGE_KEY);
+    // The saved session lives in the browser only, so it can be read after
+    // hydration, never during the server render; setting state here is intended.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setAccessTokenState(storedToken);
 
     const storedUser = window.localStorage.getItem(AUTH_USER_STORAGE_KEY);

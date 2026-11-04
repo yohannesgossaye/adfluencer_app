@@ -82,8 +82,6 @@ jobs:
           NEXT_PUBLIC_API_URL: https://13-49-175-98.sslip.io
           NEXT_TELEMETRY_DISABLED: "1"
         run: pnpm build
-      # Existing lint findings are cleaned up in Phase 4; until then lint is
-      # reported but does not block merging.
-      - name: Lint (report only)
-        continue-on-error: true
-        run: pnpm exec eslint .
+      # Lint blocks merging: any error or warning fails this job.
+      - name: Lint
+        run: pnpm exec eslint . --max-warnings 0

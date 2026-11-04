@@ -3,7 +3,7 @@
 import { homeFor } from "@/lib/role-home";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { AuthPageCard } from "@/components/auth/auth-page-card";
 import { BrandLogo } from "@/components/common/brand-logo";
@@ -22,6 +22,12 @@ export default function VerifyPage() {
 
   const { refreshMe } = useAuth();
   const [code, setCode] = useState(initialCode);
+  // A new ?code= in the link fills the box (adjusting state while rendering, not in an effect).
+  const [linkCode, setLinkCode] = useState(initialCode);
+  if (initialCode && initialCode !== linkCode) {
+    setLinkCode(initialCode);
+    setCode(initialCode);
+  }
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -77,13 +83,6 @@ export default function VerifyPage() {
       setIsResending(false);
     }
   };
-
-  useEffect(() => {
-    if (initialCode) {
-      // Auto-submit if code passed in URL
-      setCode(initialCode);
-    }
-  }, [initialCode]);
 
   return (
     <AuthPageCard>
