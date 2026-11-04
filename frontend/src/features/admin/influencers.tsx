@@ -49,7 +49,7 @@ function statusBadge(s: string) {
 }
 
 export function AdminInfluencers() {
-  const [tab, setTab] = useState<(typeof tabs)[number]["id"]>("all");
+  const [tab, setTab] = useState<(typeof tabs)[number]["id"]>("pending");
   const [search, setSearch] = useState("");
   const [query, setQuery] = useState("");
   const [pickedId, setPickedId] = useState<string | null>(null);
