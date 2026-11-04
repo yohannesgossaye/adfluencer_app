@@ -126,6 +126,14 @@ func BusinessRoutes(router chi.Router, rest handler.BusinessHandler, authMiddlew
 			},
 			{
 				Method:  http.MethodGet,
+				Path:    "/creators",
+				Handler: rest.SearchCreators,
+				Middlewares: []func(next http.Handler) http.Handler{
+					authMiddleware.AuthenticateToken,
+				},
+			},
+			{
+				Method:  http.MethodGet,
 				Path:    "/influencers/{user_id}",
 				Handler: rest.GetInfluencerForBusiness,
 				Middlewares: []func(next http.Handler) http.Handler{
