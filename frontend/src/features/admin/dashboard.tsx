@@ -13,7 +13,7 @@ import {
   type AdminDashboardSummaryResponse,
 } from "@/lib/api/admin";
 import { adminErrorMessage } from "@/lib/api-errors";
-import { formatEtb } from "@/lib/contracts";
+import { formatEtb, formatDate } from "@/lib/contracts";
 import { cn } from "@/lib/utils";
 
 /** One "needs action" tile: amber when there is work waiting, calm when clear. */
@@ -195,7 +195,7 @@ export function AdminDashboard() {
                       <p className="text-xs text-[#CBD5E1]">{item.detail}</p>
                     </div>
                     <span className="shrink-0 text-[10px] text-[#94A3B8]">
-                      {new Date(item.created_at).toLocaleDateString()}
+                      {formatDate(item.created_at)}
                     </span>
                   </li>
                 ))}
@@ -210,13 +210,13 @@ export function AdminDashboard() {
             <div className="rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)] p-3">
               <p className="text-xs text-[#CBD5E1]">Total campaign escrow value</p>
               <p className="text-lg font-semibold text-white">
-                ETB {Math.round(summary?.revenue_summary?.total_campaign_value_etb ?? 0).toLocaleString()}
+                {formatEtb(Math.round(summary?.revenue_summary?.total_campaign_value_etb ?? 0))}
               </p>
             </div>
             <div className="rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)] p-3">
               <p className="text-xs text-[#CBD5E1]">Total platform commission (5% + 5%)</p>
               <p className="text-lg font-semibold text-[color:var(--adfluence-orange)]">
-                ETB {Math.round(summary?.revenue_summary?.total_platform_fees_etb ?? 0).toLocaleString()}
+                {formatEtb(Math.round(summary?.revenue_summary?.total_platform_fees_etb ?? 0))}
               </p>
             </div>
           </div>

@@ -20,6 +20,9 @@ import {
 import { usePagedList, type LoadState } from "@/hooks/use-paged-list";
 import { apiErrorType, businessErrorMessage } from "@/lib/api-errors";
 import { getInitials } from "@/lib/utils";
+import { formatDate, formatEtbRange } from "@/lib/contracts";
+import { StatusBadge } from "@/components/common/status-badge";
+import { campaignStatus, inviteStatus } from "@/lib/status";
 
 const platformOptions = ["All platforms", "TikTok", "Instagram", "YouTube", "Telegram"] as const;
 const scoreOptions = ["Any score", "80+", "85+", "90+", "95+"] as const;
@@ -243,7 +246,7 @@ export function Recommendations() {
               Campaign title: <span className="text-white font-medium">{selectedCampaign.title}</span>
             </p>
             <p>
-              Status: <span className="text-white capitalize">{selectedCampaign.status}</span>
+              Status: <StatusBadge status={campaignStatus(selectedCampaign.status)} />
             </p>
             <p>
               Primary Platform:{" "}
@@ -265,7 +268,7 @@ export function Recommendations() {
               Timeline:{" "}
               <span className="text-white">
                 {selectedCampaign.start_date
-                  ? `${new Date(selectedCampaign.start_date).toLocaleDateString()} - ${new Date(selectedCampaign.end_date || "").toLocaleDateString()}`
+                  ? `${formatDate(selectedCampaign.start_date)} - ${formatDate(selectedCampaign.end_date)}`
                   : "Flexible"}
               </span>
             </p>
@@ -428,7 +431,7 @@ export function Recommendations() {
                       </p>
                       <p className="text-sm text-[#CBD5E1]">
                         {influencer.min_price_etb != null && influencer.max_price_etb != null
-                          ? `Price: ETB ${influencer.min_price_etb.toLocaleString()} – ${influencer.max_price_etb.toLocaleString()}`
+                          ? `Price: ${formatEtbRange(influencer.min_price_etb, influencer.max_price_etb)}`
                           : "Price not set"}
                       </p>
                     </div>
@@ -536,9 +539,7 @@ export function Recommendations() {
                     <p className="text-sm font-medium text-white">
                       {invite.creator_name || "Creator"}
                     </p>
-                    <p className="mt-1 text-xs text-emerald-300 capitalize">
-                      Status: {invite.status}
-                    </p>
+                    <StatusBadge status={inviteStatus(invite.status)} className="mt-1.5" />
                     <Button
                       asChild
                       className="mt-3 h-9 w-full rounded-xl bg-white/10 text-white hover:bg-white/15"

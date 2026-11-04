@@ -20,6 +20,7 @@ import {
 } from "@/lib/api/business";
 import { DELIVERABLE_TYPES, contractStatus, formatEtb, previewFees } from "@/lib/contracts";
 import { cn } from "@/lib/utils";
+import { StatusBadge } from "@/components/common/status-badge";
 
 const FILTERS = [
   { id: "", label: "All" },
@@ -315,7 +316,7 @@ export function BusinessContracts() {
       return {
         text: `Approve the delivered work? This releases ${formatEtb(detail.fees.influencer_receivable_etb)} to the creator and completes the contract.`,
         button: "Approve and release payout",
-        tone: "bg-emerald-600 hover:bg-emerald-700",
+        tone: "bg-[color:var(--adfluence-action)] hover:bg-[color:var(--adfluence-action-hover)]",
       };
     return { text: "Cancel this contract? The creator will see it as cancelled.", button: "Cancel contract", tone: "bg-rose-600 hover:bg-rose-700" };
   }, [detail, confirm]);
@@ -344,7 +345,7 @@ export function BusinessContracts() {
           </p>
         ) : null}
         {detail.status === "active" ? (
-          <Button type="button" onClick={() => setConfirm({ kind: "approve" })} className="h-10 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700">
+          <Button type="button" onClick={() => setConfirm({ kind: "approve" })} className="h-10 rounded-xl bg-[color:var(--adfluence-action)] hover:bg-[color:var(--adfluence-action-hover)] text-white">
             Approve work and release payout
           </Button>
         ) : null}
@@ -420,7 +421,7 @@ export function BusinessContracts() {
                   <div className="min-w-0">
                     <p className="font-semibold text-white">{r.title}</p>
                     <p className="text-xs text-[#CBD5E1]">{r.counterparty_name} · {r.campaign_title}</p>
-                    <span className={cn("mt-2 inline-block rounded-full border px-2 py-0.5 text-[10px] font-medium", st.badgeClass)}>{st.label}</span>
+                    <StatusBadge status={st.badge} className="mt-2" />
                   </div>
                   <span className="shrink-0 text-sm font-semibold tabular-nums">{formatEtb(r.total_business_payable_etb || r.amount_etb)}</span>
                 </button>

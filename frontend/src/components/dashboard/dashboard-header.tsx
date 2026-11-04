@@ -14,7 +14,7 @@ export function DashboardHeader({
       <div className="flex items-start gap-3">
         {leading ? <div className="mt-0.5 md:hidden">{leading}</div> : null}
         <div>
-          <h1 className="text-xl font-semibold text-white">{title}</h1>
+          <p className="text-xl font-semibold text-white">{title}</p>
           <p className="text-sm text-[#CBD5E1]">{subtitle}</p>
         </div>
       </div>

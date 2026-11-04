@@ -22,14 +22,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { LoadState } from "@/hooks/use-paged-list";
 import { businessApi, type DashboardSummaryResponse } from "@/lib/api/business";
 import { chatApi, type ChatConversationItem } from "@/lib/api/chat";
+import { formatDate } from "@/lib/contracts";
+import { StatusBadge } from "@/components/common/status-badge";
+import { campaignStatus } from "@/lib/status";
 
-function campaignStatusClass(status: string) {
-  const lower = status.toLowerCase();
-  if (lower === "active") return "bg-emerald-500/15 text-emerald-300";
-  if (lower === "pending" || lower === "draft") return "bg-amber-500/15 text-amber-200";
-  if (lower === "completed") return "bg-blue-500/15 text-blue-300";
-  return "bg-white/10 text-white";
-}
 
 export function BusinessDashboard() {
   const [summary, setSummary] = useState<DashboardSummaryResponse | null>(null);
@@ -201,11 +197,7 @@ export function BusinessDashboard() {
                         <td className="py-3 text-[#CBD5E1]">{row.niche || "General"}</td>
                         <td className="py-3">{row.budget_summary || "Flexible"}</td>
                         <td className="py-3">
-                          <span
-                            className={`rounded-full px-3 py-1 text-xs capitalize ${campaignStatusClass(row.status)}`}
-                          >
-                            {row.status}
-                          </span>
+                          <StatusBadge status={campaignStatus(row.status)} />
                         </td>
                         <td className="py-3 text-[#CBD5E1]">
                           {row.accepted_creators} / {row.creators_needed}
@@ -242,11 +234,7 @@ export function BusinessDashboard() {
                           {row.niche || "General"} · {row.budget_summary || "Flexible"}
                         </p>
                       </div>
-                      <span
-                        className={`shrink-0 rounded-full px-3 py-1 text-xs capitalize ${campaignStatusClass(row.status)}`}
-                      >
-                        {row.status}
-                      </span>
+                      <StatusBadge status={campaignStatus(row.status)} />
                     </div>
                     <div className="mt-3 flex items-center justify-between text-xs text-[#CBD5E1]">
                       <span>Creators Accepted</span>
@@ -345,7 +333,7 @@ export function BusinessDashboard() {
                     <div className="shrink-0 text-right">
                       <p className="text-xs text-[#CBD5E1]">
                         {conv.last_message_at
-                          ? new Date(conv.last_message_at).toLocaleDateString()
+                          ? formatDate(conv.last_message_at)
                           : "New"}
                       </p>
                       {conv.unread_count > 0 ? (

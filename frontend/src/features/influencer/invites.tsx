@@ -9,6 +9,9 @@ import { Button } from "@/components/ui/button";
 import { influencerApi, type InfluencerInviteItem } from "@/lib/api/influencer";
 import { chatApi } from "@/lib/api/chat";
 import { cn } from "@/lib/utils";
+import { formatDate, formatEtbRange } from "@/lib/contracts";
+import { StatusBadge } from "@/components/common/status-badge";
+import { inviteStatus, platformLabel } from "@/lib/status";
 
 function apiMessage(err: unknown, fallback: string) {
   const data = (err as { response?: { data?: { message?: string; error?: { type?: string } } } })?.response?.data;
@@ -24,19 +27,6 @@ const tabs: Array<{ id: "all" | "pending" | "accepted" | "rejected"; label: stri
   { id: "rejected", label: "Rejected" },
 ];
 
-function statusStyle(status: string) {
-  const s = status.toLowerCase();
-  switch (s) {
-    case "pending":
-      return "border-amber-400/30 bg-amber-500/10 text-amber-200";
-    case "accepted":
-      return "border-emerald-400/30 bg-emerald-500/10 text-emerald-200";
-    case "rejected":
-      return "border-rose-400/30 bg-rose-500/10 text-rose-200";
-    default:
-      return "border-white/10 bg-white/5 text-[#CBD5E1]";
-  }
-}
 
 export function InfluencerInvites() {
   const router = useRouter();
@@ -157,22 +147,18 @@ export function InfluencerInvites() {
                   <p className="font-semibold text-white">{inv.campaign?.business_name || "Brand"}</p>
                   <p className="text-sm text-[#CBD5E1]">{inv.campaign?.title}</p>
                 </div>
-                <span
-                  className={cn("rounded-full border px-2.5 py-0.5 text-xs capitalize", statusStyle(inv.status))}
-                >
-                  {inv.status}
-                </span>
+                <StatusBadge status={inviteStatus(inv.status, "influencer")} />
               </div>
               <dl className="mt-3 space-y-1 text-sm text-[#CBD5E1]">
                 <div>
                   <dt className="inline text-[#94A3B8]">Platforms: </dt>
-                  <dd className="inline text-white capitalize">{inv.campaign?.platforms?.join(", ") || "Multi"}</dd>
+                  <dd className="inline text-white">{inv.campaign?.platforms?.map(platformLabel).join(", ") || "Several"}</dd>
                 </div>
                 <div>
                   <dt className="inline text-[#94A3B8]">Budget: </dt>
                   <dd className="inline text-white">
                     {inv.campaign?.budget_min_etb != null && inv.campaign?.budget_max_etb != null
-                      ? `ETB ${inv.campaign.budget_min_etb.toLocaleString()} - ${inv.campaign.budget_max_etb.toLocaleString()}`
+                      ? formatEtbRange(inv.campaign.budget_min_etb, inv.campaign.budget_max_etb)
                       : "Flexible"}
                   </dd>
                 </div>
@@ -180,7 +166,7 @@ export function InfluencerInvites() {
                   <div>
                     <dt className="inline text-[#94A3B8]">Timeline: </dt>
                     <dd className="inline text-white">
-                      {new Date(inv.campaign.start_date).toLocaleDateString()} - {new Date(inv.campaign.end_date).toLocaleDateString()}
+                      {formatDate(inv.campaign.start_date)} - {formatDate(inv.campaign.end_date)}
                     </dd>
                   </div>
                 ) : null}
@@ -215,7 +201,7 @@ export function InfluencerInvites() {
                   <Button
                     type="button"
                     disabled={startingChatId === inv.id}
-                    className="h-10 flex-1 rounded-xl bg-emerald-600 text-white hover:bg-emerald-500 flex items-center justify-center gap-2"
+                    className="h-10 flex-1 rounded-xl bg-[color:var(--adfluence-action)] hover:bg-[color:var(--adfluence-action-hover)] text-white flex items-center justify-center gap-2"
                     onClick={() => handleOpenChat(inv)}
                   >
                     {startingChatId === inv.id ? (

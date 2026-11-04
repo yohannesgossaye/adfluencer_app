@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import type { ContractDetail } from "@/lib/api/business";
 import { contractStatus, deliverableLabel, formatDate, formatEtb } from "@/lib/contracts";
 import { cn } from "@/lib/utils";
+import { StatusBadge } from "@/components/common/status-badge";
 
 function Line({ label, value, strong }: { label: string; value: ReactNode; strong?: boolean }) {
   return (
@@ -36,7 +37,7 @@ export function ContractDetailView({
       <div>
         <div className="flex flex-wrap items-center gap-2">
           <h2 className="text-lg font-semibold text-white">{contract.title}</h2>
-          <span className={cn("rounded-full border px-2 py-0.5 text-xs font-medium", status.badgeClass)}>{status.label}</span>
+          <StatusBadge status={status.badge} />
         </div>
         <p className="mt-1 text-sm text-[#CBD5E1]">
           {role === "business" ? "With " : "From "}

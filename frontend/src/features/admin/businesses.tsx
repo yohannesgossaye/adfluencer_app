@@ -15,6 +15,8 @@ import {
   type BusinessVerificationItem,
 } from "@/lib/api/admin";
 import { cn } from "@/lib/utils";
+import { StatusBadge } from "@/components/common/status-badge";
+import { businessVerificationStatus } from "@/lib/status";
 
 const tabs: Array<{ id: BusinessVerificationFilter; label: string }> = [
   { id: "pending", label: "Awaiting review" },
@@ -23,18 +25,7 @@ const tabs: Array<{ id: BusinessVerificationFilter; label: string }> = [
   { id: "all", label: "All" },
 ];
 
-const statusLabel: Record<string, string> = {
-  pending: "Awaiting review",
-  verified: "Verified",
-  rejected: "Not approved",
-  unsubmitted: "Not submitted",
-};
 
-function badge(status: string) {
-  if (status === "pending") return "border-amber-400/30 bg-amber-500/10 text-amber-200";
-  if (status === "verified") return "border-emerald-400/30 bg-emerald-500/10 text-emerald-200";
-  return "border-rose-400/30 bg-rose-500/10 text-rose-200";
-}
 
 function since(iso?: string) {
   if (!iso) return "";
@@ -267,9 +258,7 @@ export function AdminBusinesses() {
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="font-semibold text-white">{r.business_name}</p>
-                    <span className={cn("rounded-full border px-2 py-0.5 text-[10px] font-medium", badge(r.verification_status))}>
-                      {statusLabel[r.verification_status] ?? r.verification_status}
-                    </span>
+                    <StatusBadge status={businessVerificationStatus(r.verification_status)} />
                   </div>
                   <p className="text-xs text-[#CBD5E1]">
                     {r.owner_full_name}
@@ -314,9 +303,7 @@ export function AdminBusinesses() {
                   <UserAvatar src={detail.logo_url} name={detail.business_name} size="xl" />
                   <div className="min-w-0">
                     <p className="text-lg font-semibold">{detail.business_name}</p>
-                    <span className={cn("rounded-full border px-2 py-0.5 text-[10px] font-medium", badge(detail.verification_status))}>
-                      {statusLabel[detail.verification_status] ?? detail.verification_status}
-                    </span>
+                    <StatusBadge status={businessVerificationStatus(detail.verification_status)} />
                   </div>
                 </div>
 
@@ -404,7 +391,7 @@ export function AdminBusinesses() {
                         onClick={() => void confirm()}
                         className={cn(
                           "h-10 rounded-xl text-white",
-                          decision === "verify" ? "bg-emerald-600 hover:bg-emerald-700" : "bg-rose-600 hover:bg-rose-700",
+                          decision === "verify" ? "bg-[color:var(--adfluence-action)] hover:bg-[color:var(--adfluence-action-hover)]" : "bg-rose-600 hover:bg-rose-700",
                         )}
                       >
                         {busy ? <Loader2 className="mr-2 size-4 animate-spin" aria-hidden /> : null}
@@ -424,7 +411,7 @@ export function AdminBusinesses() {
                       </p>
                     ) : null}
                     {detail.verification_status === "pending" || detail.verification_status === "rejected" ? (
-                      <Button type="button" onClick={() => startDecision("verify")} className="h-10 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700">
+                      <Button type="button" onClick={() => startDecision("verify")} className="h-10 rounded-xl bg-[color:var(--adfluence-action)] hover:bg-[color:var(--adfluence-action-hover)] text-white">
                         <BadgeCheck className="mr-1 size-4" aria-hidden /> {detail.verification_status === "rejected" ? "Verify anyway" : "Verify"}
                       </Button>
                     ) : null}

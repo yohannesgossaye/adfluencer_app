@@ -1,4 +1,5 @@
 /** Shared contract vocabulary for the business and influencer portals. */
+import type { StatusInfo, StatusTone } from "@/lib/status";
 
 export const PLATFORM_FEE_PERCENT = 5; // charged to each side
 
@@ -48,13 +49,6 @@ const STATUS: Record<string, { label: string; business: string; influencer: stri
   disputed: { label: "In dispute", business: "Our team is reviewing a dispute on this contract.", influencer: "Our team is reviewing a dispute on this contract.", tone: "rose" },
 };
 
-const TONE_CLASS: Record<Tone, string> = {
-  amber: "border-amber-400/30 bg-amber-500/10 text-amber-200",
-  sky: "border-sky-400/30 bg-sky-500/10 text-sky-200",
-  emerald: "border-emerald-400/30 bg-emerald-500/10 text-emerald-200",
-  rose: "border-rose-400/30 bg-rose-500/10 text-rose-200",
-  slate: "border-white/15 bg-white/5 text-[#CBD5E1]",
-};
 
 // Badge wording from the creator's side where it differs from the business's.
 const INFLUENCER_LABEL: Record<string, string> = {
@@ -63,10 +57,13 @@ const INFLUENCER_LABEL: Record<string, string> = {
   rejected: "You declined",
 };
 
+const BADGE_TONE: Record<Tone, StatusTone> = { amber: "warning", sky: "info", emerald: "success", rose: "danger", slate: "neutral" };
+
 export function contractStatus(status: string, role: "business" | "influencer") {
   const s = STATUS[status] ?? { label: status.replace(/_/g, " "), business: "", influencer: "", tone: "slate" as Tone };
   const label = role === "influencer" ? (INFLUENCER_LABEL[status] ?? s.label) : s.label;
-  return { label, hint: role === "business" ? s.business : s.influencer, badgeClass: TONE_CLASS[s.tone] };
+  /** `badge` is for <StatusBadge status={…} />. */
+  return { label, hint: role === "business" ? s.business : s.influencer, badge: { label, tone: BADGE_TONE[s.tone] } as StatusInfo };
 }
 
 const round2 = (v: number) => Math.round(v * 100) / 100;

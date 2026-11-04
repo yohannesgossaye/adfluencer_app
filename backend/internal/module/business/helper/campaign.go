@@ -3,7 +3,7 @@ package helper
 import (
 	businessDto "adinfluence_service_app/internal/constant/model/dto/business"
 	commonDto "adinfluence_service_app/internal/constant/model/dto/common"
-	"fmt"
+	"adinfluence_service_app/platform/utils"
 	"strings"
 	"time"
 )
@@ -134,20 +134,11 @@ func ListCampaignsResponse(items []businessDto.CampaignListItem, query businessD
 		items = []businessDto.CampaignListItem{}
 	}
 	return businessDto.ListCampaignsResponse{
-		Items: items,
+		Items:      items,
 		Pagination: commonDto.NewListMeta(query.Page, query.Limit, total),
 	}
 }
 
 func FormatBudgetSummary(min, max *float64) string {
-	if min == nil && max == nil {
-		return ""
-	}
-	if min != nil && max != nil {
-		return fmt.Sprintf("ETB %.0f – %.0f", *min, *max)
-	}
-	if min != nil {
-		return fmt.Sprintf("ETB %.0f+", *min)
-	}
-	return fmt.Sprintf("ETB up to %.0f", *max)
+	return utils.FormatBudgetRange(min, max)
 }
