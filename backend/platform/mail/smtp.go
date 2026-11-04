@@ -1,9 +1,13 @@
 package mail
 
 import (
+	"crypto/rand"
 	"crypto/tls"
+	"encoding/hex"
 	"fmt"
+	"mime"
 	"net"
+	netmail "net/mail"
 	"net/smtp"
 	"strings"
 	"time"
@@ -86,15 +90,29 @@ func (c *Client) Send(to, subject, body string) error {
 	return client.Quit()
 }
 
+// buildMessage writes the headers mail providers expect (Date, Message-ID,
+// a sender name) so messages are not filed as spam, and encodes the subject
+// so non-English titles, such as Amharic contract names, arrive intact.
 func buildMessage(from, to, subject, body string) string {
+	sender := from
+	if addr, err := netmail.ParseAddress(from); err == nil && addr.Name == "" {
+		addr.Name = "Adfluence"
+		sender = addr.String()
+	}
+	domain := "adfluence.local"
+	if at := strings.LastIndex(from, "@"); at >= 0 {
+		domain = strings.Trim(from[at+1:], "> ")
+	}
+	id := make([]byte, 12)
+	_, _ = rand.Read(id)
+
 	var b strings.Builder
-	b.WriteString("From: ")
-	b.WriteString(from)
-	b.WriteString("\r\nTo: ")
-	b.WriteString(to)
-	b.WriteString("\r\nSubject: ")
-	b.WriteString(subject)
-	b.WriteString("\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\n")
-	b.WriteString(body)
+	b.WriteString("From: " + sender + "\r\n")
+	b.WriteString("To: " + to + "\r\n")
+	b.WriteString("Subject: " + mime.QEncoding.Encode("utf-8", subject) + "\r\n")
+	b.WriteString("Date: " + time.Now().Format(time.RFC1123Z) + "\r\n")
+	b.WriteString("Message-ID: <" + hex.EncodeToString(id) + "@" + domain + ">\r\n")
+	b.WriteString("MIME-Version: 1.0\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: 8bit\r\n\r\n")
+	b.WriteString(strings.ReplaceAll(strings.ReplaceAll(body, "\r\n", "\n"), "\n", "\r\n"))
 	return b.String()
 }
