@@ -175,12 +175,18 @@ func mapDisputeDetail(row adminDto.DisputeRow) adminDto.AdminDisputeDetailRespon
 		CreatedAt:        row.CreatedAt,
 		UpdatedAt:        row.UpdatedAt,
 		ResolvedAt:       row.ResolvedAt,
+		Outcome:          row.Outcome,
+		OpenedByRole:     row.OpenedByRole,
+		ContractStatus:   row.ContractStatus,
 	}
 }
 
 func mapDisputeError(err error) error {
 	if errors.Is(err, adminPersist.ErrAdminDisputeNotFound) {
 		return customErr.ErrDisputeNotFound
+	}
+	if errors.Is(err, contractDto.ErrDisputeAlreadyResolved) {
+		return customErr.ErrDisputeAlreadyResolved
 	}
 	return err
 }

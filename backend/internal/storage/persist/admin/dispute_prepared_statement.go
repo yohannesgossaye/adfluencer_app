@@ -60,7 +60,10 @@ const (
 				AND al.entity_id = d.id
 			ORDER BY al.created_at DESC
 			LIMIT 1
-		), '')
+		), ''),
+		COALESCE(d.outcome, ''),
+		CASE WHEN d.opened_by_user_id = ct.business_user_id THEN 'business' ELSE 'influencer' END,
+		ct.status::text
 	FROM disputes d
 	INNER JOIN contracts ct ON ct.id = d.contract_id
 	INNER JOIN campaigns camp ON camp.id = ct.campaign_id
@@ -77,7 +80,7 @@ const (
 		resolved_at = CASE WHEN $2::text IN ('resolved', 'closed') THEN NOW() ELSE NULL END,
 		resolved_by = CASE WHEN $2::text IN ('resolved', 'closed') THEN $3::uuid ELSE NULL END,
 		updated_at = NOW()
-	WHERE id = $1
+	WHERE id = $1 AND status NOT IN ('resolved', 'closed')
 	`
 
 	updateDisputeResolutionNote = `
