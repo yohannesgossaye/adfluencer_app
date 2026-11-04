@@ -66,7 +66,11 @@ func (m *adminModule) GetSupportTicket(ctx context.Context, ticketID string) (*a
 		m.logger.Warn(ctx, "failed to get support ticket", zap.String("ticket_id", ticketID), zap.String("reason", err.Error()))
 		return nil, mapSupportError(err)
 	}
-	return mapAdminSupportDetail(*row), nil
+	detail := mapAdminSupportDetail(*row)
+	if detail.Messages, err = m.threads.Messages(ctx, ticketID); err != nil {
+		return nil, err
+	}
+	return detail, nil
 }
 
 func (m *adminModule) UpdateSupportTicketStatus(ctx context.Context, adminUserID, ticketID string, req adminDto.UpdateSupportTicketStatusRequest, meta authDto.SessionMeta) (*adminDto.UpdateSupportTicketStatusResponse, error) {
@@ -123,6 +127,7 @@ func (m *adminModule) ReplySupportTicket(ctx context.Context, adminUserID, ticke
 	desc := "support ticket reply saved"
 	if adminReply != nil {
 		desc = "support ticket public reply saved"
+		m.threads.NotifyReply(ctx, ticketID, *adminReply)
 	}
 	m.writeAuditAsync(authDto.CreateAuditLogInput{
 		ActorUserID: &adminUserID,
@@ -160,8 +165,9 @@ func mapAdminSupportListItem(row adminDto.SupportTicketRow) adminDto.SupportTick
 		SenderEmail:          row.SenderEmail,
 		SenderRole:           row.SenderRole,
 		RelatedCampaignTitle: row.RelatedCampaignTitle,
-		AdminReply:           row.ResolutionNote,
 		CreatedAt:            row.CreatedAt,
+		LastReplyBy:          row.LastReplyBy,
+		LastActivityAt:       row.LastActivityAt,
 	}
 }
 
@@ -180,10 +186,10 @@ func mapAdminSupportDetail(row adminDto.SupportTicketRow) *adminDto.SupportTicke
 		SenderRole:           row.SenderRole,
 		RelatedCampaignID:    row.RelatedCampaignID,
 		RelatedCampaignTitle: row.RelatedCampaignTitle,
-		AdminReply:           row.ResolutionNote,
 		InternalNote:         row.InternalNote,
 		CreatedAt:            row.CreatedAt,
 		UpdatedAt:            row.UpdatedAt,
+		LastReplyBy:          row.LastReplyBy,
 	}
 }
 

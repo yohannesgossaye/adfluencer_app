@@ -236,6 +236,14 @@ func BusinessRoutes(router chi.Router, rest handler.BusinessHandler, authMiddlew
 					authMiddleware.AuthenticateToken,
 				},
 			},
+			{
+				Method:  http.MethodPost,
+				Path:    "/support/tickets/{ticket_id}/messages",
+				Handler: rest.ReplySupportTicket,
+				Middlewares: []func(next http.Handler) http.Handler{
+					authMiddleware.AuthenticateToken,
+				},
+			},
 		}
 		glue.RegisterRoutes(r, routes)
 	})

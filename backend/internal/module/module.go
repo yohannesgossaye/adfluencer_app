@@ -7,6 +7,7 @@ import (
 	commonDto "adinfluence_service_app/internal/constant/model/dto/common"
 	contractDto "adinfluence_service_app/internal/constant/model/dto/contract"
 	influencerDto "adinfluence_service_app/internal/constant/model/dto/influencer"
+	supportDto "adinfluence_service_app/internal/constant/model/dto/support"
 	"context"
 )
 
@@ -47,6 +48,7 @@ type InfluencerService interface {
 	CreateSupportTicket(ctx context.Context, userID string, req influencerDto.CreateSupportTicketRequest, meta authDto.SessionMeta) (*commonDto.CreatedIDResponse, error)
 	ListSupportTickets(ctx context.Context, userID string) (*influencerDto.ListSupportTicketsResponse, error)
 	GetSupportTicket(ctx context.Context, userID, ticketID string) (*influencerDto.SupportTicketDetailResponse, error)
+	ReplySupportTicket(ctx context.Context, userID, ticketID string, req supportDto.ReplyRequest) (*supportDto.ReplyResult, error)
 	ListActiveCategories(ctx context.Context) ([]influencerDto.CategoryResponse, error)
 }
 
@@ -120,4 +122,5 @@ type BusinessService interface {
 	CreateSupportTicket(ctx context.Context, userID string, req businessDto.CreateSupportTicketRequest, meta authDto.SessionMeta) (*commonDto.CreatedIDResponse, error)
 	ListSupportTickets(ctx context.Context, userID string) (*businessDto.ListSupportTicketsResponse, error)
 	GetSupportTicket(ctx context.Context, userID, ticketID string) (*businessDto.SupportTicketDetailResponse, error)
+	ReplySupportTicket(ctx context.Context, userID, ticketID string, req supportDto.ReplyRequest) (*supportDto.ReplyResult, error)
 }

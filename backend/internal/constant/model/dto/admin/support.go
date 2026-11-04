@@ -35,11 +35,13 @@ func (q ListSupportTicketsQuery) Normalize() ListSupportTicketsQuery {
 }
 
 type SupportTicketStats struct {
-	OpenCount      int `json:"open_count"`
-	HighPriority   int `json:"high_priority_count"`
-	BusinessCount  int `json:"business_count"`
+	OpenCount       int `json:"open_count"`
+	HighPriority    int `json:"high_priority_count"`
+	BusinessCount   int `json:"business_count"`
 	InfluencerCount int `json:"influencer_count"`
-	ResolvedCount  int `json:"resolved_count"`
+	ResolvedCount   int `json:"resolved_count"`
+	// NeedsReply counts unfinished tickets where the user spoke last.
+	NeedsReply int `json:"needs_reply_count"`
 }
 
 type SupportTicketListItem struct {
@@ -55,8 +57,11 @@ type SupportTicketListItem struct {
 	SenderEmail          string    `json:"sender_email"`
 	SenderRole           string    `json:"sender_role"`
 	RelatedCampaignTitle *string   `json:"related_campaign_title,omitempty"`
-	AdminReply           *string   `json:"admin_reply,omitempty"`
 	CreatedAt            time.Time `json:"created_at"`
+	// LastReplyBy is "user" when the user wrote last (they are waiting for
+	// us), "support" when we did, and "" before anyone replied.
+	LastReplyBy    string    `json:"last_reply_by"`
+	LastActivityAt time.Time `json:"last_activity_at"`
 }
 
 type ListSupportTicketsResponse struct {
@@ -79,10 +84,12 @@ type SupportTicketDetailResponse struct {
 	SenderRole           string    `json:"sender_role"`
 	RelatedCampaignID    *string   `json:"related_campaign_id,omitempty"`
 	RelatedCampaignTitle *string   `json:"related_campaign_title,omitempty"`
-	AdminReply           *string   `json:"admin_reply,omitempty"`
 	InternalNote         *string   `json:"internal_note,omitempty"`
 	CreatedAt            time.Time `json:"created_at"`
 	UpdatedAt            time.Time `json:"updated_at"`
+	LastReplyBy          string    `json:"last_reply_by"`
+	// Messages is the conversation after the opening message, oldest first.
+	Messages []supportDto.Message `json:"messages"`
 }
 
 type UpdateSupportTicketStatusRequest struct {
@@ -128,4 +135,6 @@ type SupportTicketRow struct {
 	RelatedCampaignTitle *string
 	CreatedAt            time.Time
 	UpdatedAt            time.Time
+	LastReplyBy          string // "", "user" or "support"
+	LastActivityAt       time.Time
 }

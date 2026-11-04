@@ -3,6 +3,7 @@ package support
 import (
 	adminDto "adinfluence_service_app/internal/constant/model/dto/admin"
 	businessDto "adinfluence_service_app/internal/constant/model/dto/business"
+	supportDto "adinfluence_service_app/internal/constant/model/dto/support"
 	"adinfluence_service_app/internal/storage"
 	"adinfluence_service_app/platform/utils"
 	"context"
@@ -122,6 +123,7 @@ func (s *support) GetAdminTicketStats(ctx context.Context) (*adminDto.SupportTic
 		&stats.BusinessCount,
 		&stats.InfluencerCount,
 		&stats.ResolvedCount,
+		&stats.NeedsReply,
 	); err != nil {
 		return nil, fmt.Errorf("get support ticket stats: %w", err)
 	}
@@ -154,6 +156,8 @@ func (s *support) UpdateTicketStatus(ctx context.Context, ticketID, status, admi
 	return nil
 }
 
+// SaveTicketReply adds the admin's public reply to the conversation and/or
+// replaces the internal note. The ticket is assigned to that admin.
 func (s *support) SaveTicketReply(ctx context.Context, ticketID, adminUserID string, adminReply, internalNote *string) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -161,16 +165,16 @@ func (s *support) SaveTicketReply(ctx context.Context, ticketID, adminUserID str
 	}
 	defer tx.Rollback()
 
+	res, err := tx.ExecContext(ctx, markTicketAnswered, ticketID, adminUserID, adminReply != nil)
+	if err != nil {
+		return fmt.Errorf("assign support ticket: %w", err)
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return ErrTicketNotFound
+	}
 	if adminReply != nil {
-		if _, err := tx.ExecContext(ctx, updateSupportTicketReply, ticketID, strings.TrimSpace(*adminReply), adminUserID); err != nil {
-			return fmt.Errorf("update support ticket reply: %w", err)
-		}
-	} else {
-		if _, err := tx.ExecContext(ctx, `
-			UPDATE support_tickets
-			SET assigned_admin_user_id = $2, updated_at = NOW()
-			WHERE id = $1`, ticketID, adminUserID); err != nil {
-			return fmt.Errorf("assign support ticket: %w", err)
+		if _, err := tx.ExecContext(ctx, insertSupportMessage, utils.GenerateUUID(), ticketID, adminUserID, strings.TrimSpace(*adminReply)); err != nil {
+			return fmt.Errorf("insert support reply: %w", err)
 		}
 	}
 
@@ -187,6 +191,60 @@ func (s *support) SaveTicketReply(ctx context.Context, ticketID, adminUserID str
 		return fmt.Errorf("commit support reply tx: %w", err)
 	}
 	return nil
+}
+
+// AddUserMessage adds the ticket owner's reply. A resolved or closed ticket
+// is opened again. It returns the ticket's status after the reply.
+func (s *support) AddUserMessage(ctx context.Context, userID, ticketID, body string) (supportDto.Message, string, bool, error) {
+	var msg supportDto.Message
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return msg, "", false, fmt.Errorf("begin user reply tx: %w", err)
+	}
+	defer tx.Rollback()
+
+	var before string
+	if err := tx.QueryRowContext(ctx, lockUserTicket, ticketID, userID).Scan(&before); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return msg, "", false, ErrTicketNotFound
+		}
+		return msg, "", false, fmt.Errorf("lock support ticket: %w", err)
+	}
+	msg = supportDto.Message{ID: utils.GenerateUUID(), From: supportDto.FromUser, Body: strings.TrimSpace(body)}
+	if err := tx.QueryRowContext(ctx, insertSupportMessage, msg.ID, ticketID, userID, msg.Body).Scan(&msg.CreatedAt); err != nil {
+		return msg, "", false, fmt.Errorf("insert user reply: %w", err)
+	}
+	var after string
+	if err := tx.QueryRowContext(ctx, markTicketUserReplied, ticketID).Scan(&after); err != nil {
+		return msg, "", false, fmt.Errorf("update ticket after reply: %w", err)
+	}
+	if err := tx.Commit(); err != nil {
+		return msg, "", false, fmt.Errorf("commit user reply tx: %w", err)
+	}
+	return msg, after, before != after, nil
+}
+
+// ListMessages is the public conversation after the opening message, oldest first.
+func (s *support) ListMessages(ctx context.Context, ticketID string) ([]supportDto.Message, error) {
+	rows, err := s.db.QueryContext(ctx, listTicketMessages, ticketID)
+	if err != nil {
+		return nil, fmt.Errorf("list support messages: %w", err)
+	}
+	defer rows.Close()
+	items := make([]supportDto.Message, 0)
+	for rows.Next() {
+		var m supportDto.Message
+		var fromUser bool
+		if err := rows.Scan(&m.ID, &fromUser, &m.SenderName, &m.Body, &m.CreatedAt); err != nil {
+			return nil, fmt.Errorf("scan support message: %w", err)
+		}
+		m.From = supportDto.FromSupport
+		if fromUser {
+			m.From = supportDto.FromUser
+		}
+		items = append(items, m)
+	}
+	return items, rows.Err()
 }
 
 func scanBusinessTicketRows(rows *sql.Rows) ([]businessDto.SupportTicketRecord, error) {
@@ -218,6 +276,8 @@ func scanBusinessTicketRow(row scanner) (*businessDto.SupportTicketRecord, error
 		&campaignID,
 		&campaignTitle,
 		&rec.CreatedAt,
+		&rec.LastReplyBy,
+		&rec.LastActivityAt,
 	); err != nil {
 		return nil, err
 	}
@@ -253,6 +313,8 @@ func scanAdminListRow(row scanner, total *int) (*adminDto.SupportTicketRow, erro
 		&campaignTitle,
 		&rec.CreatedAt,
 		&rec.UpdatedAt,
+		&rec.LastReplyBy,
+		&rec.LastActivityAt,
 		total,
 	); err != nil {
 		return nil, err
@@ -290,6 +352,8 @@ func scanAdminTicketRow(row scanner) (*adminDto.SupportTicketRow, error) {
 		&campaignTitle,
 		&rec.CreatedAt,
 		&rec.UpdatedAt,
+		&rec.LastReplyBy,
+		&rec.LastActivityAt,
 	); err != nil {
 		return nil, err
 	}

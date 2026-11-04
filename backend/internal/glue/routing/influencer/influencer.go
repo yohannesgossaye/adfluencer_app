@@ -188,6 +188,14 @@ func InfluencerRoutes(router chi.Router, rest handler.InfluencerHandler, authMid
 					authMiddleware.AuthenticateToken,
 				},
 			},
+			{
+				Method:  http.MethodPost,
+				Path:    "/support/tickets/{ticket_id}/messages",
+				Handler: rest.ReplySupportTicket,
+				Middlewares: []func(next http.Handler) http.Handler{
+					authMiddleware.AuthenticateToken,
+				},
+			},
 		}
 		glue.RegisterRoutes(r, routes)
 	})
