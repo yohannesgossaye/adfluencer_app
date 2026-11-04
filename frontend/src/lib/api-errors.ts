@@ -32,6 +32,8 @@ const ADMIN_MESSAGES: Record<string, string> = {
   user_not_found: "This account no longer exists.",
   dispute_not_found: "This dispute no longer exists.",
   invalid_dispute_status: "This dispute has already moved on. Refresh the list.",
+  dispute_already_resolved: "This dispute has already been settled. Refresh the list.",
+  invalid_contract_status: "The contract has already changed. Refresh the list.",
   campaign_not_found: "This campaign no longer exists.",
   invalid_campaign_status: "This campaign has already changed status. Refresh the list.",
   category_not_found: "This category no longer exists.",

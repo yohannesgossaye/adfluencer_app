@@ -8,6 +8,7 @@ import { ArrowLeft, Loader2, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import { ContractDetailView } from "@/components/contracts/contract-detail";
+import { ReportProblemButton } from "@/components/contracts/report-problem";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -28,6 +29,7 @@ const FILTERS = [
   { id: "pending_influencer", label: "Waiting for creator" },
   { id: "accepted", label: "Awaiting payment" },
   { id: "active", label: "In progress" },
+  { id: "disputed", label: "In dispute" },
   { id: "completed", label: "Completed" },
 ] as const;
 
@@ -242,13 +244,15 @@ function NewContractSheet({
 
 export function BusinessContracts() {
   const [filter, setFilter] = useState<string>("");
+  const searchParams = useSearchParams();
+  // Emails link here with ?contract_id= to open that contract.
+  const linkedId = searchParams.get("contract_id");
   const [rows, setRows] = useState<ContractListItem[]>([]);
   const [listState, setListState] = useState<"loading" | "ready" | "error">("loading");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(linkedId);
   const [detail, setDetail] = useState<ContractDetail | null>(null);
   const [detailError, setDetailError] = useState<string | null>(null);
-  const [mobileShowDetail, setMobileShowDetail] = useState(false);
-  const searchParams = useSearchParams();
+  const [mobileShowDetail, setMobileShowDetail] = useState(Boolean(linkedId));
   // "Send contract" on an accepted invite links here with both ids.
   const preset = useMemo(() => {
     const campaignId = searchParams.get("campaign_id");
@@ -282,6 +286,10 @@ export function BusinessContracts() {
   useEffect(() => {
     void Promise.resolve().then(loadList);
   }, [loadList]);
+
+  useEffect(() => {
+    if (linkedId) void Promise.resolve().then(() => loadDetail(linkedId));
+  }, [linkedId, loadDetail]);
 
   const select = (id: string) => {
     setSelectedId(id);
@@ -349,6 +357,9 @@ export function BusinessContracts() {
           <Button type="button" onClick={() => setConfirm({ kind: "approve" })} className="h-10 rounded-xl bg-[color:var(--adfluence-action)] hover:bg-[color:var(--adfluence-action-hover)] text-white">
             Approve work and release payout
           </Button>
+        ) : null}
+        {detail.status === "active" ? (
+          <ReportProblemButton contractId={detail.id} role="business" onReported={() => Promise.all([loadList(), loadDetail(detail.id)]).then(() => {})} />
         ) : null}
         {detail.status === "pending_influencer" || detail.status === "accepted" ? (
           <Button type="button" variant="outline" onClick={() => setConfirm({ kind: "cancel" })} className="h-10 rounded-xl border-rose-400/40 bg-transparent text-rose-200 hover:bg-rose-500/10">

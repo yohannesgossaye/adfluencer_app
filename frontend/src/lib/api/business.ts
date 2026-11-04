@@ -343,7 +343,24 @@ export type ContractDetail = {
   completed_at?: string;
   created_at: string;
   updated_at: string;
+  /** The latest problem reported on this contract, open or resolved. */
+  dispute?: ContractDispute;
 };
+
+export type ContractDispute = {
+  id: string;
+  status: string;
+  reason: string;
+  reason_label: string;
+  description: string;
+  opened_by_role: "business" | "influencer";
+  outcome?: "continue" | "complete" | "terminate";
+  resolution_note?: string;
+  created_at: string;
+  resolved_at?: string;
+};
+
+export type ReportProblemRequest = { reason: string; description: string };
 
 export type CreateContractRequest = {
   invite_id: string;
@@ -572,6 +589,11 @@ export const businessApi = {
     const res = await apiClient.get<ApiResponse<ContractDetail>>(
       `/api/v1/business/contracts/${contractId}`
     );
+    return res.data;
+  },
+
+  reportProblem: async (contractId: string, data: ReportProblemRequest): Promise<ApiResponse<ContractDispute>> => {
+    const res = await apiClient.post<ApiResponse<ContractDispute>>(`/api/v1/business/contracts/${contractId}/dispute`, data);
     return res.data;
   },
 

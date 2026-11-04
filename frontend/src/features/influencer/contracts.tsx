@@ -1,11 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import axios from "axios";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { ContractDetailView } from "@/components/contracts/contract-detail";
+import { ReportProblemButton } from "@/components/contracts/report-problem";
 import { Button } from "@/components/ui/button";
 import { influencerApi, type ContractDetail, type ContractListItem } from "@/lib/api/influencer";
 import { contractStatus, formatEtb } from "@/lib/contracts";
@@ -18,6 +20,7 @@ const FILTERS = [
   { id: "pending_influencer", label: "Needs your answer" },
   { id: "accepted", label: "Waiting for payment" },
   { id: "active", label: "In progress" },
+  { id: "disputed", label: "In dispute" },
   { id: "completed", label: "Completed" },
 ] as const;
 
@@ -32,13 +35,15 @@ function apiError(err: unknown, fallback: string) {
 }
 
 export function InfluencerContracts() {
+  // Emails link here with ?contract_id= to open that contract.
+  const linkedId = useSearchParams().get("contract_id");
   const [filter, setFilter] = useState<string>("");
   const [rows, setRows] = useState<ContractListItem[]>([]);
   const [listState, setListState] = useState<"loading" | "ready" | "error">("loading");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(linkedId);
   const [detail, setDetail] = useState<ContractDetail | null>(null);
   const [detailError, setDetailError] = useState<string | null>(null);
-  const [mobileShowDetail, setMobileShowDetail] = useState(false);
+  const [mobileShowDetail, setMobileShowDetail] = useState(Boolean(linkedId));
   const [confirm, setConfirm] = useState<"accept" | "decline" | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -65,6 +70,10 @@ export function InfluencerContracts() {
   useEffect(() => {
     void Promise.resolve().then(loadList);
   }, [loadList]);
+
+  useEffect(() => {
+    if (linkedId) void Promise.resolve().then(() => loadDetail(linkedId));
+  }, [linkedId, loadDetail]);
 
   const select = (id: string) => {
     setSelectedId(id);
@@ -128,6 +137,8 @@ export function InfluencerContracts() {
           </Button>
         </>
       )
+    ) : detail && detail.status === "active" ? (
+      <ReportProblemButton contractId={detail.id} role="influencer" onReported={() => Promise.all([loadList(), loadDetail(detail.id)]).then(() => {})} />
     ) : null;
 
   return (

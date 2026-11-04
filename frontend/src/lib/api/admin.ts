@@ -285,6 +285,9 @@ export type AdminDisputeDetail = {
   created_at: string;
   updated_at: string;
   resolved_at?: string;
+  outcome?: "continue" | "complete" | "terminate";
+  opened_by_role: "business" | "influencer";
+  contract_status: string;
 };
 
 // --- Support Desk Types ---
@@ -633,6 +636,15 @@ export const adminApi = {
       `/api/v1/admin/disputes/${disputeId}/status`,
       data
     );
+    return res.data;
+  },
+
+  /** Settles a dispute: continue, complete (pay the creator) or terminate. Both sides are emailed. */
+  resolveDispute: async (
+    disputeId: string,
+    data: { outcome: "continue" | "complete" | "terminate"; note: string }
+  ): Promise<ApiResponse<unknown>> => {
+    const res = await apiClient.post<ApiResponse<unknown>>(`/api/v1/admin/disputes/${disputeId}/resolve`, data);
     return res.data;
   },
 

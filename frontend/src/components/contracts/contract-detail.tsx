@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
-import type { ContractDetail } from "@/lib/api/business";
+import type { ContractDetail, ContractDispute } from "@/lib/api/business";
+import { outcomeLabel } from "@/lib/disputes";
 import { contractStatus, deliverableLabel, formatDate, formatEtb } from "@/lib/contracts";
 import { cn } from "@/lib/utils";
 import { StatusBadge } from "@/components/common/status-badge";
@@ -11,6 +12,37 @@ function Line({ label, value, strong }: { label: string; value: ReactNode; stron
       <span className={strong ? "text-white" : "text-[#94A3B8]"}>{label}</span>
       <span className="text-right text-white tabular-nums">{value}</span>
     </div>
+  );
+}
+
+const OPEN_DISPUTE = new Set(["open", "under_review", "escalated"]);
+
+/** The latest problem reported on the contract, from the viewer's side. */
+function DisputePanel({ dispute, role }: { dispute: ContractDispute; role: "business" | "influencer" }) {
+  const byViewer = dispute.opened_by_role === role;
+  const by = byViewer ? "you" : dispute.opened_by_role === "business" ? "the business" : "the creator";
+  if (OPEN_DISPUTE.has(dispute.status)) {
+    return (
+      <section aria-label="Reported problem" className="rounded-xl border border-rose-400/30 bg-rose-500/10 p-3 text-sm">
+        <p className="font-semibold text-rose-50">Problem reported: {dispute.reason_label}</p>
+        <p className="mt-0.5 text-xs text-rose-100/80">
+          Reported by {by} on {formatDate(dispute.created_at)}
+        </p>
+        <p className="mt-2 whitespace-pre-wrap text-[#E2E8F0]">{dispute.description}</p>
+        <p className="mt-2 text-xs text-rose-100/90">
+          Our team is reviewing it with both sides. The payment stays held until we decide, and you&apos;ll get an email.
+        </p>
+      </section>
+    );
+  }
+  return (
+    <section aria-label="Resolved problem" className="rounded-xl border border-white/10 bg-black/20 p-3 text-sm">
+      <p className="font-semibold text-white">Problem resolved: {outcomeLabel(dispute.outcome)}</p>
+      <p className="mt-0.5 text-xs text-[#94A3B8]">
+        {dispute.reason_label}, reported by {by} · decided {formatDate(dispute.resolved_at)}
+      </p>
+      {dispute.resolution_note ? <p className="mt-2 whitespace-pre-wrap text-[#CBD5E1]">{dispute.resolution_note}</p> : null}
+    </section>
   );
 }
 
@@ -28,6 +60,7 @@ export function ContractDetailView({
   actions?: ReactNode;
 }) {
   const status = contractStatus(contract.status, role);
+  const disputeOpen = contract.dispute ? OPEN_DISPUTE.has(contract.dispute.status) : false;
   const fees = contract.fees;
   const counterparty =
     role === "business" ? contract.influencer?.creator_name || "Creator" : contract.business?.business_name || "Business";
@@ -43,8 +76,12 @@ export function ContractDetailView({
           {role === "business" ? "With " : "From "}
           <span className="text-white">{counterparty}</span> · {contract.campaign?.title}
         </p>
-        {status.hint ? <p className="mt-2 rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-[#E2E8F0]">{status.hint}</p> : null}
+        {status.hint && !disputeOpen ? (
+          <p className="mt-2 rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-[#E2E8F0]">{status.hint}</p>
+        ) : null}
       </div>
+
+      {contract.dispute ? <DisputePanel dispute={contract.dispute} role={role} /> : null}
 
       {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
 
