@@ -227,7 +227,7 @@ export function AdminSupport() {
             errorText="Tickets could not be loaded."
             onRetry={list.retry}
           >
-            <ul className="max-h-[70vh] space-y-3 overflow-y-auto pr-1 lg:max-h-[calc(100vh-220px)]">
+            <ul className="max-h-[70vh] space-y-3 overflow-y-auto pr-1 lg:max-h-[calc(100vh_-_220px)]">
               {tickets.map((t) => {
                 const active = t.id === selectedId;
                 return (
