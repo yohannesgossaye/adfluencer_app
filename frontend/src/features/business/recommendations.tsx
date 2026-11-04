@@ -4,8 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Sparkles, Users, RefreshCw } from "lucide-react";
-
+import { BadgeCheck, MapPin, Search, SlidersHorizontal, Users, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { ListStatus, LoadMore } from "@/components/common/list-status";
@@ -14,545 +13,425 @@ import { Input } from "@/components/ui/input";
 import {
   businessApi,
   type CampaignListItem,
-  type RecommendationItem,
-  type InviteResponse,
+  type CreatorSearchItem,
+  type SearchCreatorsResponse,
 } from "@/lib/api/business";
-import { usePagedList, type LoadState } from "@/hooks/use-paged-list";
-import { apiErrorType, businessErrorMessage } from "@/lib/api-errors";
-import { getInitials } from "@/lib/utils";
-import { formatDate, formatEtbRange } from "@/lib/contracts";
-import { StatusBadge } from "@/components/common/status-badge";
-import { campaignStatus, inviteStatus } from "@/lib/status";
+import { usePagedList } from "@/hooks/use-paged-list";
+import { businessErrorMessage } from "@/lib/api-errors";
+import { cn, getInitials } from "@/lib/utils";
+import { formatEtbRange } from "@/lib/contracts";
+import { platformLabel } from "@/lib/status";
 
-const platformOptions = ["All platforms", "TikTok", "Instagram", "YouTube", "Telegram"] as const;
-const scoreOptions = ["Any score", "80+", "85+", "90+", "95+"] as const;
-const sortOptions = [
-  "Best match",
-  "Followers",
-  "Price low to high",
-  "Price high to low",
-] as const;
+const PLATFORMS = [
+  { value: "", label: "All platforms" },
+  { value: "tiktok", label: "TikTok" },
+  { value: "instagram", label: "Instagram" },
+  { value: "youtube", label: "YouTube" },
+  { value: "telegram", label: "Telegram" },
+  { value: "facebook", label: "Facebook" },
+];
 
-// Filters run on the server so they cover every match, not just the first page.
-const MIN_SCORE: Record<string, number | undefined> = { "80+": 80, "85+": 85, "90+": 90, "95+": 95 };
-const SORT: Record<string, string> = {
-  "Best match": "match",
-  Followers: "followers",
-  "Price low to high": "price_low",
-  "Price high to low": "price_high",
-};
+// Same bands as the backend (helper.ClassifyCreatorSize).
+const SIZES = [
+  { value: "", label: "Any audience size" },
+  { value: "nano", label: "Nano · under 10K" },
+  { value: "micro", label: "Micro · 10K–70K" },
+  { value: "mid", label: "Mid · 70K–110K" },
+  { value: "macro", label: "Macro · 110K–500K" },
+  { value: "mega", label: "Mega · 500K+" },
+];
 
+const SORTS = [
+  { value: "best", label: "Best match" },
+  { value: "followers", label: "Most followers" },
+  { value: "engagement", label: "Highest engagement" },
+  { value: "price_low", label: "Price: low to high" },
+  { value: "price_high", label: "Price: high to low" },
+];
+
+const field =
+  "h-11 w-full min-w-0 rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)] px-3 text-sm text-white outline-none focus:border-[color:var(--adfluence-orange)] focus:ring-2 focus:ring-[color:var(--adfluence-orange)]/25";
+
+const compact = new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 });
+
+function reach(c: CreatorSearchItem) {
+  const parts = [
+    c.tiktok_followers ? `TikTok ${compact.format(c.tiktok_followers)}` : "",
+    c.instagram_followers ? `Instagram ${compact.format(c.instagram_followers)}` : "",
+    c.youtube_subscribers ? `YouTube ${compact.format(c.youtube_subscribers)}` : "",
+  ].filter(Boolean);
+  return parts.length ? parts.join(" · ") : `${compact.format(c.total_followers)} followers`;
+}
+
+const INVITED = new Set(["pending", "accepted"]);
+
+/**
+ * Find creators: search and filter every approved creator. Choosing a
+ * campaign ranks them by fit (match %) and lets the business invite them.
+ */
 export function Recommendations() {
   const searchParams = useSearchParams();
-  const initialCampaignId = searchParams.get("campaign_id");
-
   const [campaigns, setCampaigns] = useState<CampaignListItem[]>([]);
   const [categories, setCategories] = useState<Array<{ id: string; name: string; slug: string }>>([]);
-  const [selectedCampaignId, setSelectedCampaignId] = useState<string>(initialCampaignId || "");
-  const [invites, setInvites] = useState<InviteResponse[]>([]);
-  const [campaignsState, setCampaignsState] = useState<LoadState>("loading");
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [invitingId, setInvitingId] = useState<string | null>(null);
+  const [campaignId, setCampaignId] = useState(searchParams.get("campaign_id") ?? "");
 
   const [search, setSearch] = useState("");
-  const [query, setQuery] = useState("");
-  const [nicheFilter, setNicheFilter] = useState("All niches");
-  const [platformFilter, setPlatformFilter] = useState("All platforms");
-  const [scoreFilter, setScoreFilter] = useState("Any score");
-  const [sortBy, setSortBy] = useState("Best match");
+  const [q, setQ] = useState("");
+  const [niche, setNiche] = useState("");
+  const [platform, setPlatform] = useState("");
+  const [size, setSize] = useState("");
+  const [budget, setBudget] = useState("");
+  const [maxPrice, setMaxPrice] = useState<number | undefined>();
+  const [sort, setSort] = useState("best");
+  const [invitingId, setInvitingId] = useState<string | null>(null);
+  // On phones the filters fold away so creators show on the first screen.
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
-  // 1. Campaigns (for the picker) and categories (for the niche filter).
-  const loadInitialData = useCallback(async () => {
-    const [campRes, catRes] = await Promise.allSettled([
-      businessApi.listCampaigns({ page: 1, limit: 50 }),
-      businessApi.listCategories(),
-    ]);
-    if (catRes.status === "fulfilled" && catRes.value.data?.items) {
-      setCategories(catRes.value.data.items);
-    }
-    if (campRes.status === "rejected") {
-      setCampaignsState("error");
-      return;
-    }
-    // Only drafts (preview) and live campaigns can have recommendations.
-    const items = (campRes.value.data?.items ?? []).filter((c) => c.status === "draft" || c.status === "active");
-    setCampaigns(items);
-    // A campaign_id from a link is used only if it can have matches (draft or live).
-    setSelectedCampaignId((current) => (items.some((c) => c.id === current) ? current : items[0]?.id || ""));
-    setCampaignsState("ready");
+  useEffect(() => {
+    void Promise.allSettled([businessApi.listCampaigns({ page: 1, limit: 50 }), businessApi.listCategories()]).then(([camp, cat]) => {
+      if (cat.status === "fulfilled") setCategories(cat.value.data?.items ?? []);
+      if (camp.status === "fulfilled") {
+        // Only drafts (to preview fit) and live campaigns can be ranked for.
+        setCampaigns((camp.value.data?.items ?? []).filter((c) => c.status === "draft" || c.status === "active"));
+      }
+    });
   }, []);
 
+  // Typing settles for a moment before searching.
   useEffect(() => {
-    void Promise.resolve().then(loadInitialData);
-  }, [loadInitialData]);
-
-  useEffect(() => {
-    const t = setTimeout(() => setQuery(search.trim()), 300);
+    const t = setTimeout(() => setQ(search.trim()), 300);
     return () => clearTimeout(t);
   }, [search]);
+  useEffect(() => {
+    const t = setTimeout(() => {
+      const n = Number(budget.replace(/[^\d]/g, ""));
+      setMaxPrice(n > 0 ? n : undefined);
+    }, 400);
+    return () => clearTimeout(t);
+  }, [budget]);
 
-  // 2. Matches for the selected campaign, filtered and sorted by the server.
   const fetchPage = useCallback(
-    async (page: number) => {
-      if (!selectedCampaignId || campaignsState !== "ready" || !campaigns.some((c) => c.id === selectedCampaignId)) {
-        return { items: [] as RecommendationItem[], pagination: { total_docs: 0 } };
-      }
-      const params = {
-        search: query || undefined,
-        niche: nicheFilter === "All niches" ? undefined : nicheFilter,
-        platform: platformFilter === "All platforms" ? undefined : platformFilter.toLowerCase(),
-        min_score: MIN_SCORE[scoreFilter],
-        sort: SORT[sortBy],
-        page,
-      };
-      let res = (await businessApi.listRecommendations(selectedCampaignId, params)).data;
-      const filtered = Boolean(params.search || params.niche || params.platform || params.min_score);
-      // A new campaign has no matches yet: generate them once, then list again.
-      if (page === 1 && !filtered && (res?.items?.length ?? 0) === 0) {
-        await businessApi.generateRecommendations(selectedCampaignId);
-        res = (await businessApi.listRecommendations(selectedCampaignId, params)).data;
-      }
-      return res;
-    },
-    [selectedCampaignId, campaignsState, campaigns, query, nicheFilter, platformFilter, scoreFilter, sortBy],
+    async (page: number) =>
+      (
+        await businessApi.searchCreators({
+          q: q || undefined,
+          niche: niche || undefined,
+          platform: platform || undefined,
+          size: size || undefined,
+          max_price: maxPrice,
+          campaign_id: campaignId || undefined,
+          sort,
+          page,
+        })
+      ).data as SearchCreatorsResponse,
+    [q, niche, platform, size, maxPrice, campaignId, sort],
   );
   const list = usePagedList(fetchPage);
-  const recommendations: RecommendationItem[] = list.items;
-  const notVerified = list.state === "error" && apiErrorType(list.error) === "account_not_verified";
+  const creators: CreatorSearchItem[] = list.items;
+  const rankedFor = list.last?.ranked_for;
+  const campaign = useMemo(() => campaigns.find((c) => c.id === campaignId), [campaigns, campaignId]);
+  const canInvite = campaign?.status === "active";
 
-  // 3. Invites already sent for this campaign (to mark "Invited").
-  useEffect(() => {
-    if (!selectedCampaignId) return;
-    let cancelled = false;
-    businessApi
-      .listInvites(selectedCampaignId)
-      .then((res) => !cancelled && setInvites(res.data?.items ?? []))
-      .catch(() => !cancelled && setInvites([]));
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedCampaignId]);
-
-  const handleGenerateRecommendations = async () => {
-    if (!selectedCampaignId) return;
-    setIsGenerating(true);
-    try {
-      await businessApi.generateRecommendations(selectedCampaignId);
-      await list.reload();
-      toast.success("Matches refreshed.");
-    } catch (err) {
-      toast.error(businessErrorMessage(err, "Could not refresh matches for this campaign."));
-    } finally {
-      setIsGenerating(false);
-    }
+  const filtered = Boolean(q || niche || platform || size || maxPrice);
+  const activeFilters = [campaignId, niche, platform, size, maxPrice].filter(Boolean).length;
+  const clearFilters = () => {
+    setSearch("");
+    setQ("");
+    setNiche("");
+    setPlatform("");
+    setSize("");
+    setBudget("");
+    setMaxPrice(undefined);
+    setSort("best");
   };
 
-  const selectedCampaign = useMemo(
-    () => campaigns.find((c) => c.id === selectedCampaignId) ?? campaigns[0],
-    [campaigns, selectedCampaignId],
-  );
-
-  // Declined or withdrawn invites can be sent again (the server reopens them).
-  const invitedInfluencerIds = useMemo(
-    () =>
-      new Set(
-        invites.filter((inv) => inv.status === "pending" || inv.status === "accepted").map((inv) => inv.influencer_user_id),
-      ),
-    [invites],
-  );
-  const isDraft = selectedCampaign?.status === "draft";
-
-  const onInvite = async (influencerId: string, name: string) => {
-    if (!selectedCampaignId || invitedInfluencerIds.has(influencerId)) return;
-    setInvitingId(influencerId);
+  const invite = async (c: CreatorSearchItem) => {
+    if (!campaign || !canInvite) return;
+    setInvitingId(c.influencer_user_id);
     try {
-      const res = await businessApi.createInvite(selectedCampaignId, {
-        influencer_user_id: influencerId,
-        message: `Hello ${name}, we'd love to collaborate with you on our campaign "${selectedCampaign?.title || "our campaign"}".`,
+      await businessApi.createInvite(campaign.id, {
+        influencer_user_id: c.influencer_user_id,
+        message: `Hello ${c.creator_name}, we'd love to work with you on our campaign "${campaign.title}".`,
       });
-      if (res.data?.id) {
-        const inv = await businessApi.listInvites(selectedCampaignId);
-        setInvites(inv.data?.items ?? []);
-        toast.success(`Invitation sent to ${name}.`);
-      }
+      toast.success(`Invitation sent to ${c.creator_name}.`);
+      await list.reload();
     } catch (err) {
-      toast.error(businessErrorMessage(err, `Could not send the invitation to ${name}.`));
+      toast.error(businessErrorMessage(err, `Could not send the invitation to ${c.creator_name}.`));
     } finally {
       setInvitingId(null);
     }
   };
 
   return (
-    <div className="space-y-6 text-white">
+    <div className="min-w-0 space-y-5 text-white">
       <section className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-white">Recommended Influencers</h1>
-          <p className="mt-1 text-sm text-[#CBD5E1]">
-            Creators ranked for your campaign based on niche, platform, budget, and audience fit.
+          <h1 className="text-2xl font-semibold">Find creators</h1>
+          <p className="mt-1 max-w-2xl text-sm text-[#CBD5E1]">
+            Search every approved creator by name, niche, platform, audience size and price. Choose a campaign to rank them by fit and send invites.
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {selectedCampaignId ? (
-            <Button
-              onClick={handleGenerateRecommendations}
-              disabled={isGenerating}
-              variant="outline"
-              className="h-11 rounded-xl border-white/15 bg-transparent px-4 text-white hover:bg-white/10"
-            >
-              <RefreshCw className={`mr-2 size-4 ${isGenerating ? "animate-spin" : ""}`} />
-              Refresh AI Matches
-            </Button>
-          ) : null}
-          <Button
-            asChild
-            className="h-11 rounded-xl bg-[color:var(--adfluence-action)] px-5 text-white hover:bg-[color:var(--adfluence-action-hover)]"
-          >
-            <Link href="/business/campaigns/create">Create New Campaign</Link>
-          </Button>
-        </div>
+        <Button asChild className="h-11 rounded-xl bg-[color:var(--adfluence-action)] px-5 text-white hover:bg-[color:var(--adfluence-action-hover)]">
+          <Link href="/business/campaigns/create">Create campaign</Link>
+        </Button>
       </section>
 
-      {/* Campaign Selector / Context */}
-      <section className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-4 md:p-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold text-white">Select Campaign Context</h2>
-          {campaigns.length > 0 ? (
-            <select
-              value={selectedCampaignId}
-              onChange={(e) => setSelectedCampaignId(e.target.value)}
-              className="h-10 rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)] px-3 text-sm font-medium text-white outline-none focus:border-[color:var(--adfluence-orange)] focus:ring-2 focus:ring-[color:var(--adfluence-orange)]/25"
-            >
+      <section aria-label="Search and filters" className="space-y-3 rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-4 md:p-5">
+        <div className="flex gap-2">
+        <div className="relative min-w-0 flex-1">
+          <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-[#94A3B8]" aria-hidden />
+          <Input
+            aria-label="Search creators"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by name, niche, city or topic, e.g. “football”, “Hana”, “Hawassa”"
+            className="h-12 rounded-xl border-white/10 bg-[color:var(--adfluence-surface)] pl-9 text-white placeholder:text-[#94A3B8] focus-visible:border-[color:var(--adfluence-orange)] focus-visible:ring-[color:var(--adfluence-orange)]/25"
+          />
+        </div>
+          <Button
+            type="button"
+            variant="outline"
+            aria-expanded={filtersOpen}
+            aria-controls="creator-filters"
+            onClick={() => setFiltersOpen((o) => !o)}
+            className="h-12 shrink-0 rounded-xl border-white/15 bg-transparent px-3 text-white hover:bg-white/10 sm:hidden"
+          >
+            <SlidersHorizontal className="mr-1.5 size-4" aria-hidden />
+            Filters{activeFilters ? ` (${activeFilters})` : ""}
+          </Button>
+        </div>
+        <div id="creator-filters" className={cn("gap-3 sm:grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6", filtersOpen ? "grid" : "hidden")}>
+          <label className="space-y-1 xl:col-span-2">
+            <span className="text-xs text-[#94A3B8]">Rank for campaign</span>
+            <select value={campaignId} onChange={(e) => setCampaignId(e.target.value)} className={field}>
+              <option value="">No campaign: browse all</option>
               {campaigns.map((c) => (
-                <option key={c.id} value={c.id} className="bg-[color:var(--adfluence-surface)]">
-                  {c.title} ({c.status})
+                <option key={c.id} value={c.id}>
+                  {c.title}
+                  {c.status === "draft" ? " (draft)" : ""}
                 </option>
               ))}
             </select>
-          ) : null}
+          </label>
+          <label className="space-y-1">
+            <span className="text-xs text-[#94A3B8]">Niche</span>
+            <select value={niche} onChange={(e) => setNiche(e.target.value)} className={field}>
+              <option value="">All niches</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.slug}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="space-y-1">
+            <span className="text-xs text-[#94A3B8]">Platform</span>
+            <select value={platform} onChange={(e) => setPlatform(e.target.value)} className={field}>
+              {PLATFORMS.map((p) => (
+                <option key={p.value} value={p.value}>
+                  {p.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="space-y-1">
+            <span className="text-xs text-[#94A3B8]">Audience size</span>
+            <select value={size} onChange={(e) => setSize(e.target.value)} className={field}>
+              {SIZES.map((s) => (
+                <option key={s.value} value={s.value}>
+                  {s.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="space-y-1">
+            <span className="text-xs text-[#94A3B8]">Your budget per creator (ETB)</span>
+            <Input inputMode="numeric" value={budget} onChange={(e) => setBudget(e.target.value)} placeholder="e.g. 10000" className={cn(field, "h-11")} />
+          </label>
         </div>
-
-        {isDraft && selectedCampaign ? (
-          <p role="status" className="mt-4 rounded-xl border border-amber-400/30 bg-amber-500/10 p-3 text-sm text-amber-50">
-            This campaign is still a draft. You can preview matches, but{" "}
-            <Link href={`/business/campaigns/${selectedCampaign.id}`} className="underline">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p role="status" className="text-sm text-[#CBD5E1]">
+            {list.state === "ready" && list.total != null ? (
+              <>
+                <span className="font-semibold text-white">{list.total}</span> creator{list.total === 1 ? "" : "s"}
+                {rankedFor ? (
+                  <>
+                    {" "}
+                    ranked for <span className="text-white">{rankedFor.title}</span>
+                  </>
+                ) : null}
+              </>
+            ) : (
+              "Searching…"
+            )}
+          </p>
+          <div className="flex items-center gap-2">
+            {filtered ? (
+              <Button type="button" variant="ghost" onClick={clearFilters} className="h-10 rounded-xl text-white hover:bg-white/10">
+                <X className="mr-1 size-4" aria-hidden /> Clear filters
+              </Button>
+            ) : null}
+            <label className="flex items-center gap-2 text-sm text-[#94A3B8]">
+              Sort
+              <select value={sort} onChange={(e) => setSort(e.target.value)} className={cn(field, "h-10 w-auto")}>
+                {SORTS.map((s) => (
+                  <option key={s.value} value={s.value}>
+                    {s.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        </div>
+        {campaign && campaign.status === "draft" ? (
+          <p className="rounded-xl border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-50">
+            “{campaign.title}” is a draft: you can see who fits, but{" "}
+            <Link href={`/business/campaigns/${campaign.id}`} className="underline">
               publish it
             </Link>{" "}
-            before inviting creators.
+            to send invites.
           </p>
+        ) : !campaign && campaigns.length > 0 ? (
+          <p className="text-xs text-[#94A3B8]">Choose a campaign above to see each creator&apos;s match and invite them.</p>
         ) : null}
-        {selectedCampaign ? (
-          <div className="mt-4 grid gap-3 text-sm text-[#CBD5E1] md:grid-cols-2 xl:grid-cols-4">
-            <p>
-              Campaign title: <span className="text-white font-medium">{selectedCampaign.title}</span>
-            </p>
-            <p>
-              Status: <StatusBadge status={campaignStatus(selectedCampaign.status)} />
-            </p>
-            <p>
-              Primary Platform:{" "}
-              <span className="text-white">{selectedCampaign.primary_platform || "All"}</span>
-            </p>
-            <p>
-              Budget:{" "}
-              <span className="text-white">{selectedCampaign.budget_summary || "Standard"}</span>
-            </p>
-            <p>
-              Creators Needed:{" "}
-              <span className="text-white">{selectedCampaign.creators_needed}</span>
-            </p>
-            <p>
-              Invites Sent:{" "}
-              <span className="text-white">{selectedCampaign.invites_sent}</span>
-            </p>
-            <p className="md:col-span-2 xl:col-span-2">
-              Timeline:{" "}
-              <span className="text-white">
-                {selectedCampaign.start_date
-                  ? `${formatDate(selectedCampaign.start_date)} - ${formatDate(selectedCampaign.end_date)}`
-                  : "Flexible"}
-              </span>
-            </p>
-          </div>
-        ) : (
-          <div className="mt-3 text-sm text-[#CBD5E1]">
-            <p>No campaigns created yet. Create a campaign first to get tailored creator recommendations.</p>
-          </div>
-        )}
       </section>
 
-      {/* Filter Toolbar */}
-      <section className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-4 md:p-5">
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-          <Input
-            aria-label="Search creator name"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search creator name"
-            className="h-11 rounded-xl border-white/10 bg-[color:var(--adfluence-surface)] text-white placeholder:text-[#94A3B8] focus-visible:border-[color:var(--adfluence-orange)] focus-visible:ring-[color:var(--adfluence-orange)]/25"
-          />
-
-          <select
-            value={nicheFilter}
-            onChange={(e) => setNicheFilter(e.target.value)}
-            className="h-11 w-full rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)] px-3 text-sm text-white outline-none focus:border-[color:var(--adfluence-orange)] focus:ring-2 focus:ring-[color:var(--adfluence-orange)]/25"
-          >
-            <option value="All niches" className="bg-[color:var(--adfluence-surface)]">
-              All niches
-            </option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.name} className="bg-[color:var(--adfluence-surface)]">
-                {c.name}
-              </option>
-            ))}
-          </select>
-
-          <select
-            value={platformFilter}
-            onChange={(e) => setPlatformFilter(e.target.value)}
-            className="h-11 w-full rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)] px-3 text-sm text-white outline-none focus:border-[color:var(--adfluence-orange)] focus:ring-2 focus:ring-[color:var(--adfluence-orange)]/25"
-          >
-            {platformOptions.map((option) => (
-              <option key={option} value={option} className="bg-[color:var(--adfluence-surface)]">
-                {option}
-              </option>
-            ))}
-          </select>
-
-          <select
-            value={scoreFilter}
-            onChange={(e) => setScoreFilter(e.target.value)}
-            className="h-11 w-full rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)] px-3 text-sm text-white outline-none focus:border-[color:var(--adfluence-orange)] focus:ring-2 focus:ring-[color:var(--adfluence-orange)]/25"
-          >
-            {scoreOptions.map((option) => (
-              <option key={option} value={option} className="bg-[color:var(--adfluence-surface)]">
-                {option}
-              </option>
-            ))}
-          </select>
-
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
-            className="h-11 w-full rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)] px-3 text-sm text-white outline-none focus:border-[color:var(--adfluence-orange)] focus:ring-2 focus:ring-[color:var(--adfluence-orange)]/25"
-          >
-            {sortOptions.map((option) => (
-              <option key={option} value={option} className="bg-[color:var(--adfluence-surface)]">
-                {option}
-              </option>
-            ))}
-          </select>
-        </div>
-      </section>
-
-      {campaignsState === "error" ? (
-        <p role="alert" className="rounded-xl border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-100">
-          Your campaigns could not be loaded.{" "}
-          <button
-            type="button"
-            className="underline"
-            onClick={() => {
-              setCampaignsState("loading");
-              void loadInitialData();
-            }}
-          >
-            Try again
-          </button>
-        </p>
-      ) : null}
-
-      <section className="flex flex-col gap-6 2xl:grid 2xl:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="order-2 2xl:order-1">
-          {notVerified ? (
-            <p role="alert" className="rounded-xl border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-100">
-              Recommended creators appear once your business is verified. Check your{" "}
-              <Link href="/business/profile" className="underline">
-                business profile
-              </Link>{" "}
-              for the status.
-            </p>
-          ) : list.state !== "ready" || campaignsState === "loading" ? (
-            <ListStatus
-              state={campaignsState === "loading" ? "loading" : list.state}
-              isEmpty={false}
-              emptyText=""
-              errorText="Matches could not be loaded."
-              onRetry={list.retry}
-            >
-              {null}
-            </ListStatus>
-          ) : recommendations.length > 0 ? (
-            <>
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              {recommendations.map((influencer) => {
-                const isInvited = invitedInfluencerIds.has(influencer.influencer_user_id);
-                const isInvitingThis = invitingId === influencer.influencer_user_id;
-
-                return (
-                  <article
-                    key={influencer.influencer_user_id}
-                    className="group rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-4 shadow-[0_8px_24px_rgba(2,6,23,0.24)] transition-transform duration-200 hover:-translate-y-1"
-                  >
-                    <div className="relative flex h-44 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-[#0B1A2B] via-white/5 to-[color:var(--adfluence-orange)]/20 border border-white/10">
-                      {influencer.profile_image_url ? (
-                        <Image
-                          src={influencer.profile_image_url}
-                          alt={influencer.creator_name}
-                          fill
-                          className="object-cover"
-                        />
-                      ) : (
-                        <div className="flex flex-col items-center justify-center gap-1">
-                          <span className="text-3xl font-extrabold text-white uppercase tracking-wider">
-                            {getInitials(influencer.creator_name, "CR")}
-                          </span>
-                          <span className="text-xs text-[#94A3B8]">
-                            {influencer.primary_niche || "Creator"}
-                          </span>
-                        </div>
-                      )}
-                      {influencer.is_verified ? (
-                        <span className="absolute right-2 top-2 rounded-full bg-[#0B1A2B]/90 px-2 py-1 text-xs font-medium text-emerald-300">
-                          Verified
-                        </span>
-                      ) : null}
-                    </div>
-
-                    <div className="mt-4 space-y-2">
-                      <h3 className="text-lg font-semibold text-white truncate">{influencer.creator_name}</h3>
-                      <p className="text-sm capitalize text-[#CBD5E1] truncate">
-                        {influencer.primary_niche || "Creator"} •{" "}
-                        {influencer.platforms?.length ? influencer.platforms.join(", ") : "Social"}
-                      </p>
-                      <p className="text-sm text-[#CBD5E1]">
-                        {influencer.total_followers.toLocaleString()} followers
-                        {influencer.engagement_rate
-                          ? ` • ${influencer.engagement_rate}% engagement`
-                          : ""}
-                      </p>
-                      <p className="text-sm text-[#CBD5E1]">
-                        {influencer.min_price_etb != null && influencer.max_price_etb != null
-                          ? `Price: ${formatEtbRange(influencer.min_price_etb, influencer.max_price_etb)}`
-                          : "Price not set"}
-                      </p>
-                    </div>
-
-                    <div className="mt-4">
-                      <div className="mb-1 flex items-center justify-between text-xs">
-                        <span className="text-[#CBD5E1]">Match score</span>
-                        <span className="font-semibold text-white">{influencer.match_score}%</span>
-                      </div>
-                      <div className="h-2 rounded-full bg-white/10">
-                        <div
-                          className="h-2 rounded-full bg-[color:var(--adfluence-action)]"
-                          style={{ width: `${influencer.match_score}%` }}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="mt-4 grid grid-cols-2 gap-2">
-                      <Button
-                        asChild
-                        className="h-10 rounded-xl bg-white/10 text-white hover:bg-white/15"
-                      >
-                        <Link
-                          href={`/business/influencers/${influencer.influencer_user_id}${
-                            selectedCampaignId ? `?campaign_id=${selectedCampaignId}` : ""
-                          }`}
-                        >
-                          View Profile
-                        </Link>
-                      </Button>
-                      <Button
-                        onClick={() =>
-                          onInvite(influencer.influencer_user_id, influencer.creator_name)
-                        }
-                        disabled={isInvited || isInvitingThis || !selectedCampaignId || isDraft}
-                        title={isDraft ? "Publish this campaign to invite creators" : undefined}
-                        className="h-10 rounded-xl bg-[color:var(--adfluence-action)] text-white hover:bg-[color:var(--adfluence-action-hover)] disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        {isInvitingThis
-                          ? "Sending..."
-                          : isInvited
-                            ? "Invited"
-                            : "Invite"}
-                      </Button>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-            <LoadMore
-              shown={recommendations.length}
-              total={list.total}
-              hasMore={list.hasMore}
-              loading={list.loadingMore}
-              onLoadMore={list.loadMore}
+      <ListStatus
+        state={list.state}
+        isEmpty={creators.length === 0}
+        errorText="Creators could not be loaded."
+        onRetry={list.retry}
+        emptyText={
+          <>
+            <Users className="mx-auto size-10 text-[#CBD5E1]/40" aria-hidden />
+            <p className="mt-3 text-lg font-medium text-white">No creators match these filters</p>
+            <p className="mt-1">Try another niche or platform, or a higher budget.</p>
+            {filtered ? (
+              <Button type="button" onClick={clearFilters} className="mt-4 h-11 rounded-xl bg-white/10 px-5 text-white hover:bg-white/15">
+                Clear filters
+              </Button>
+            ) : null}
+          </>
+        }
+      >
+        <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {creators.map((c) => (
+            <CreatorCard
+              key={c.influencer_user_id}
+              creator={c}
+              campaignId={campaignId}
+              showMatch={Boolean(rankedFor)}
+              canInvite={canInvite}
+              inviting={invitingId === c.influencer_user_id}
+              onInvite={() => void invite(c)}
             />
-            </>
+          ))}
+        </ul>
+        <LoadMore shown={creators.length} total={list.total} hasMore={list.hasMore} loading={list.loadingMore} onLoadMore={list.loadMore} />
+      </ListStatus>
+    </div>
+  );
+}
+
+function CreatorCard({
+  creator: c,
+  campaignId,
+  showMatch,
+  canInvite,
+  inviting,
+  onInvite,
+}: {
+  creator: CreatorSearchItem;
+  campaignId: string;
+  showMatch: boolean;
+  canInvite: boolean;
+  inviting: boolean;
+  onInvite: () => void;
+}) {
+  const invited = c.invite_status ? INVITED.has(c.invite_status) : false;
+  const price = c.min_price_etb != null || c.max_price_etb != null ? formatEtbRange(c.min_price_etb, c.max_price_etb) : "Price on request";
+  return (
+    <li className="flex flex-col rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-4">
+      <div className="flex items-start gap-3">
+        <div className="relative size-14 shrink-0 overflow-hidden rounded-full border border-white/10 bg-gradient-to-br from-[#4C1D95] to-[color:var(--adfluence-action)]">
+          {c.profile_image_url ? (
+            <Image src={c.profile_image_url} alt="" fill sizes="56px" className="object-cover" />
           ) : (
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-12 text-center">
-              <Users className="mx-auto size-12 text-[#CBD5E1]/40" />
-              <p className="mt-3 text-lg font-medium text-white">No creator matches found</p>
-              <p className="mt-1 text-sm text-[#CBD5E1]">
-                {campaigns.length === 0
-                  ? "Create a campaign first to generate AI creator matches."
-                  : "Try adjusting your filters or click Refresh AI Matches to generate recommendations."}
-              </p>
-              {selectedCampaignId ? (
-                <Button
-                  onClick={handleGenerateRecommendations}
-                  disabled={isGenerating}
-                  className="mt-4 h-11 rounded-xl bg-[color:var(--adfluence-action)] px-5 text-white hover:bg-[color:var(--adfluence-action-hover)]"
-                >
-                  <Sparkles className="mr-2 size-4" />
-                  Generate Matches for This Campaign
-                </Button>
-              ) : null}
-            </div>
+            <span className="flex size-full items-center justify-center text-lg font-bold">{getInitials(c.creator_name, "CR")}</span>
           )}
         </div>
-
-        {/* Right Sidebar: Matching details & Live Sent Invites */}
-        <aside className="order-1 space-y-4 2xl:order-2">
-          <div className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-5">
-            <h3 className="text-lg font-semibold text-white">How matching works</h3>
-            <ul className="mt-3 space-y-2 text-sm text-[#CBD5E1]">
-              <li>• Niche fit aligns creator content with campaign category.</li>
-              <li>• Platform fit prioritizes creators active on selected channels.</li>
-              <li>• Budget fit checks creator pricing against your campaign range.</li>
-              <li>• Audience fit reflects reach and engagement consistency.</li>
-              <li>• Admin verification boosts trusted creator recommendations.</li>
-            </ul>
+        <div className="min-w-0 flex-1">
+          <h3 className="flex items-center gap-1.5 font-semibold">
+            <span className="truncate">{c.creator_name}</span>
+            {c.is_verified ? <BadgeCheck className="size-4 shrink-0 text-sky-300" aria-label="Approved by Adfluence" /> : null}
+          </h3>
+          <p className="flex items-center gap-1 text-xs text-[#94A3B8]">
+            {c.city ? (
+              <>
+                <MapPin className="size-3" aria-hidden /> {c.city} ·{" "}
+              </>
+            ) : null}
+            <span className="capitalize">{c.size}</span> creator
+          </p>
+          <div className="mt-1.5 flex flex-wrap gap-1">
+            {c.niches.map((n) => (
+              <span key={n} className="rounded-full border border-white/15 px-2 py-0.5 text-[11px] text-[#E2E8F0]">
+                {n}
+              </span>
+            ))}
           </div>
+        </div>
+      </div>
 
-          <div className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-5">
-            <h3 className="text-lg font-semibold text-white">Selected / Invited Creators</h3>
-            <div className="mt-3 space-y-3">
-              {invites.length === 0 ? (
-                <p className="text-sm text-[#CBD5E1]">No creators invited yet.</p>
-              ) : (
-                invites.map((invite) => (
-                  <div
-                    key={invite.id}
-                    className="rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)] p-3"
-                  >
-                    <p className="text-sm font-medium text-white">
-                      {invite.creator_name || "Creator"}
-                    </p>
-                    <StatusBadge status={inviteStatus(invite.status)} className="mt-1.5" />
-                    <Button
-                      asChild
-                      className="mt-3 h-9 w-full rounded-xl bg-white/10 text-white hover:bg-white/15"
-                    >
-                      <Link href="/business/messages">Message</Link>
-                    </Button>
-                  </div>
-                ))
-              )}
-            </div>
+      {c.bio ? <p className="mt-3 line-clamp-2 text-sm text-[#CBD5E1]">{c.bio}</p> : null}
+
+      <dl className="mt-3 space-y-1 text-sm">
+        <div className="flex justify-between gap-3">
+          <dt className="text-[#94A3B8]">Reach</dt>
+          <dd className="truncate text-right">{reach(c)}</dd>
+        </div>
+        <div className="flex justify-between gap-3">
+          <dt className="text-[#94A3B8]">Engagement</dt>
+          <dd>{c.engagement_rate ? `${c.engagement_rate}%` : "—"}</dd>
+        </div>
+        <div className="flex justify-between gap-3">
+          <dt className="text-[#94A3B8]">Price</dt>
+          <dd className="tabular-nums">{price}</dd>
+        </div>
+        {c.platforms.length ? (
+          <div className="flex justify-between gap-3">
+            <dt className="text-[#94A3B8]">Platforms</dt>
+            <dd className="truncate text-right">{c.platforms.map(platformLabel).join(", ")}</dd>
           </div>
-        </aside>
-      </section>
-    </div>
+        ) : null}
+      </dl>
+
+      {showMatch && c.match_score != null ? (
+        <div className="mt-3">
+          <div className="mb-1 flex justify-between text-xs">
+            <span className="text-[#CBD5E1]">Campaign match</span>
+            <span className="font-semibold">{Math.round(c.match_score)}%</span>
+          </div>
+          <div className="h-2 rounded-full bg-white/10" aria-hidden>
+            <div className="h-2 rounded-full bg-[color:var(--adfluence-action)]" style={{ width: `${Math.min(100, c.match_score)}%` }} />
+          </div>
+        </div>
+      ) : null}
+
+      <div className="mt-auto grid grid-cols-2 gap-2 pt-4">
+        <Button asChild className="h-10 rounded-xl bg-white/10 text-white hover:bg-white/15">
+          <Link href={`/business/influencers/${c.influencer_user_id}${campaignId ? `?campaign_id=${campaignId}` : ""}`}>View profile</Link>
+        </Button>
+        <Button
+          type="button"
+          onClick={onInvite}
+          disabled={!canInvite || invited || inviting}
+          title={!campaignId ? "Choose a live campaign to invite" : !canInvite ? "Publish the campaign to invite" : undefined}
+          className="h-10 rounded-xl bg-[color:var(--adfluence-action)] text-white hover:bg-[color:var(--adfluence-action-hover)] disabled:opacity-50"
+        >
+          {inviting ? "Sending…" : invited ? "Invited" : "Invite"}
+        </Button>
+      </div>
+    </li>
   );
 }

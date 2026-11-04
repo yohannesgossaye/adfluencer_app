@@ -152,7 +152,7 @@ export function InfluencerProfile({ influencerId }: InfluencerProfileProps) {
         <p className="text-lg font-semibold">Creator Not Found</p>
         <p className="mt-1 text-sm text-[#CBD5E1]">The creator profile you are looking for does not exist or has been removed.</p>
         <Button asChild className="mt-4 bg-[color:var(--adfluence-action)] text-white hover:bg-[color:var(--adfluence-action-hover)]">
-          <Link href="/business/recommendations">Back to Recommendations</Link>
+          <Link href="/business/recommendations">Back to Find creators</Link>
         </Button>
       </div>
     );

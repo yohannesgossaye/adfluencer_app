@@ -267,7 +267,7 @@ export function BusinessDashboard() {
               variant="outline"
               className="h-10 rounded-xl border-white/15 bg-transparent px-4 text-white hover:bg-white/10"
             >
-              <Link href="/business/recommendations">See all recommendations</Link>
+              <Link href="/business/recommendations">Find creators</Link>
             </Button>
           </div>
           {summary?.top_recommendations && summary.top_recommendations.length > 0 ? (

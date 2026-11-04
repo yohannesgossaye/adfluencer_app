@@ -29,7 +29,7 @@ export const businessNav: NavItem[] = [
     icon: "sparkles",
   },
   {
-    label: "Recommendations",
+    label: "Find creators",
     href: "/business/recommendations",
     icon: "recommendations",
   },
