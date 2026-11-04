@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import axios from "axios";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -11,6 +12,11 @@ import { businessApi, type SupportTicket } from "@/lib/api/business";
 import { influencerApi } from "@/lib/api/influencer";
 import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/contracts";
+import { StatusBadge } from "@/components/common/status-badge";
+import { ticketStatus } from "@/lib/status";
+import { isTicketDone } from "@/lib/support";
+
+import { TicketConversation } from "./ticket-conversation";
 
 export type SupportRole = "business" | "influencer";
 
@@ -42,14 +48,6 @@ const PRIORITIES = [
   { value: "urgent", label: "Urgent" },
 ];
 
-const STATUS_LABEL: Record<string, string> = {
-  open: "Open",
-  in_review: "In review",
-  resolved: "Resolved",
-  escalated: "Escalated",
-  closed: "Closed",
-};
-
 const field =
   "w-full min-w-0 rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)] px-3 py-2 text-sm text-white outline-none placeholder:text-[#94A3B8] focus:border-[color:var(--adfluence-orange)] focus:ring-2 focus:ring-[color:var(--adfluence-orange)]/25";
 
@@ -72,6 +70,8 @@ export function UserSupportPage({ role, subtitle }: { role: SupportRole; subtitl
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [ticketsState, setTicketsState] = useState<"loading" | "ready" | "error">("loading");
   const [submitting, setSubmitting] = useState(false);
+  // The reply email links here with ?ticket_id= to open that conversation.
+  const [openId, setOpenId] = useState<string | null>(useSearchParams().get("ticket_id"));
 
   const loadTickets = useCallback(async () => {
     try {
@@ -106,7 +106,7 @@ export function UserSupportPage({ role, subtitle }: { role: SupportRole; subtitl
       } else {
         await influencerApi.createSupportTicket({ ...base, related_invite_id: related || undefined });
       }
-      toast.success("Your request was sent. Our team will reply here.");
+      toast.success("Your request was sent. Our team will reply here and by email.");
       setSubject("");
       setMessage("");
       setPriority("normal");
@@ -128,7 +128,8 @@ export function UserSupportPage({ role, subtitle }: { role: SupportRole; subtitl
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <form
-          className="space-y-4 rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-5"
+          // On smaller screens an open conversation comes first; the form returns with "My requests".
+          className={cn("space-y-4 rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-5", openId && "hidden xl:block")}
           onSubmit={(e) => {
             e.preventDefault();
             void submit();
@@ -185,38 +186,49 @@ export function UserSupportPage({ role, subtitle }: { role: SupportRole; subtitl
           </Button>
         </form>
 
-        <section className="space-y-3 rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-5">
-          <h2 className="text-lg font-semibold">My requests</h2>
-          {ticketsState === "loading" ? (
-            <p className="flex items-center gap-2 text-sm text-[#94A3B8]"><Loader2 className="size-4 animate-spin" aria-hidden /> Loading…</p>
-          ) : ticketsState === "error" ? (
-            <p role="alert" className="text-sm text-rose-200">
-              Could not load your requests.{" "}
-              <button type="button" className="underline" onClick={() => void loadTickets()}>Try again</button>
-            </p>
-          ) : tickets.length === 0 ? (
-            <p className="text-sm text-[#CBD5E1]">You haven’t contacted support yet.</p>
+        <section className="min-w-0 space-y-3 rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-5">
+          {openId ? (
+            <TicketConversation role={role} ticketId={openId} onBack={() => setOpenId(null)} onChanged={() => void loadTickets()} />
           ) : (
-            <ul className="space-y-2">
-              {tickets.map((t) => (
-                <li key={t.id} className="rounded-xl border border-white/10 bg-[rgba(255,255,255,0.04)] p-3">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="font-medium">{t.subject}</p>
-                    <span className="rounded-full border border-white/15 px-2 py-0.5 text-[10px] text-[#CBD5E1]">{STATUS_LABEL[t.status] ?? t.status}</span>
-                  </div>
-                  <p className="mt-0.5 text-xs text-[#94A3B8]">
-                    {t.issue_type_label || t.issue_type} · {formatDate(t.created_at)}
-                    {t.related_campaign_title ? ` · ${t.related_campaign_title}` : ""}
-                  </p>
-                  {t.admin_reply ? (
-                    <p className="mt-2 rounded-lg border border-emerald-400/20 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-50">
-                      <span className="font-medium">Adfluence: </span>
-                      {t.admin_reply}
-                    </p>
-                  ) : null}
-                </li>
-              ))}
-            </ul>
+            <>
+              <h2 className="text-lg font-semibold">My requests</h2>
+              {ticketsState === "loading" ? (
+                <p className="flex items-center gap-2 text-sm text-[#94A3B8]"><Loader2 className="size-4 animate-spin" aria-hidden /> Loading…</p>
+              ) : ticketsState === "error" ? (
+                <p role="alert" className="text-sm text-rose-200">
+                  Could not load your requests.{" "}
+                  <button type="button" className="underline" onClick={() => void loadTickets()}>Try again</button>
+                </p>
+              ) : tickets.length === 0 ? (
+                <p className="text-sm text-[#CBD5E1]">You haven’t contacted support yet.</p>
+              ) : (
+                <ul className="space-y-2">
+                  {tickets.map((t) => (
+                    <li key={t.id}>
+                      <button
+                        type="button"
+                        onClick={() => setOpenId(t.id)}
+                        className="w-full rounded-xl border border-white/10 bg-[rgba(255,255,255,0.04)] p-3 text-left transition-colors hover:border-white/20 focus-visible:outline-2 focus-visible:outline-[color:var(--adfluence-orange)]"
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <p className="min-w-0 font-medium">{t.subject}</p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {t.last_reply_by === "support" && !isTicketDone(t.status) ? (
+                              <StatusBadge status={{ label: "Support replied", tone: "success" }} />
+                            ) : null}
+                            <StatusBadge status={ticketStatus(t.status)} />
+                          </div>
+                        </div>
+                        <p className="mt-0.5 text-xs text-[#94A3B8]">
+                          {t.issue_type_label || t.issue_type} · {formatDate(t.last_activity_at || t.created_at)}
+                          {t.related_campaign_title ? ` · ${t.related_campaign_title}` : ""}
+                        </p>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </>
           )}
         </section>
       </div>

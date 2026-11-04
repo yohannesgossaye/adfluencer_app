@@ -1,5 +1,6 @@
 import { apiClient } from "@/lib/api/api-client";
 import type { ApiResponse } from "@/lib/api/auth";
+import type { LastReplyBy, SupportMessage, SupportReplyResult } from "@/lib/support";
 
 // --- Dashboard Types ---
 export type DashboardGreeting = {
@@ -381,10 +382,13 @@ export type SupportTicket = {
   issue_type_label?: string;
   priority: string;
   status: string;
-  admin_reply?: string;
   related_campaign_id?: string;
   related_campaign_title?: string;
   created_at: string;
+  last_reply_by: LastReplyBy;
+  last_activity_at: string;
+  /** Only on the single-ticket response: the conversation after the opening message. */
+  messages?: SupportMessage[];
 };
 
 export type CreateSupportTicketRequest = {
@@ -633,6 +637,11 @@ export const businessApi = {
     const res = await apiClient.get<ApiResponse<{ items: SupportTicket[] }>>(
       "/api/v1/business/support/tickets"
     );
+    return res.data;
+  },
+
+  replySupportTicket: async (ticketId: string, message: string): Promise<ApiResponse<SupportReplyResult>> => {
+    const res = await apiClient.post<ApiResponse<SupportReplyResult>>(`/api/v1/business/support/tickets/${ticketId}/messages`, { message });
     return res.data;
   },
 

@@ -20,6 +20,8 @@ import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/contracts";
 import { StatusBadge } from "@/components/common/status-badge";
 import { priorityLevel, ticketStatus } from "@/lib/status";
+import { ReplyBox, SupportThread } from "@/components/support/support-thread";
+import { isTicketDone as isDone } from "@/lib/support";
 
 type RoleFilter = "all" | "business" | "influencer";
 type StatusFilter = "all" | "open" | "in_review" | "escalated" | "resolved";
@@ -30,9 +32,6 @@ const fieldShell =
 
 
 
-function isDone(status: string) {
-  return status === "resolved" || status === "closed";
-}
 
 function messagePreview(text: string, max = 100) {
   const t = (text || "").trim();
@@ -50,7 +49,6 @@ export function AdminSupport() {
   const [selectedDetail, setSelectedDetail] = useState<AdminSupportTicketDetail | null>(null);
   const [mobileShowDetail, setMobileShowDetail] = useState(false);
   const [notesDraft, setNotesDraft] = useState("");
-  const [replyDraft, setReplyDraft] = useState("");
 
   const fetchPage = useCallback(
     async (page: number) => {
@@ -70,6 +68,7 @@ export function AdminSupport() {
     business_count: 0,
     influencer_count: 0,
     resolved_count: 0,
+    needs_reply_count: 0,
   };
   // The selection follows the list (filters change it).
   const selectedId = tickets.some((t) => t.id === pickedId) ? pickedId : (tickets[0]?.id ?? null);
@@ -82,7 +81,6 @@ export function AdminSupport() {
         if (res.data) {
           setSelectedDetail(res.data);
           setNotesDraft(res.data.internal_note || "");
-          setReplyDraft(res.data.admin_reply || "");
         }
       } catch (err) {
         toast.error(adminErrorMessage(err, "The ticket could not be opened."));
@@ -113,20 +111,31 @@ export function AdminSupport() {
     }
   };
 
-  const saveNotesForSelected = async () => {
-    if (!selectedId) return;
+  const refreshSelected = async (id: string) => {
+    const res = await adminApi.getSupportTicket(id);
+    if (res.data) setSelectedDetail(res.data);
+  };
+
+  // A public reply: added to the conversation and emailed to the user.
+  const sendReply = async (id: string, text: string) => {
+    try {
+      await adminApi.replySupportTicket(id, { admin_reply: text });
+    } catch (err) {
+      toast.error(adminErrorMessage(err, "The reply could not be sent."));
+      throw err;
+    }
+    toast.success("Reply sent. The user has been emailed.");
+    await Promise.all([loadTickets(), refreshSelected(id).catch(() => {})]);
+  };
+
+  const saveNote = async () => {
+    if (!selectedId || !notesDraft.trim()) return;
     setSaving(true);
     try {
-      await adminApi.replySupportTicket(selectedId, {
-        admin_reply: replyDraft.trim() || undefined,
-        internal_note: notesDraft.trim() || undefined,
-      });
-      toast.success(replyDraft.trim() ? "Reply and notes saved." : "Notes saved.");
-      await loadTickets();
-      const res = await adminApi.getSupportTicket(selectedId);
-      if (res.data) setSelectedDetail(res.data);
+      await adminApi.replySupportTicket(selectedId, { internal_note: notesDraft.trim() });
+      toast.success("Internal note saved.");
     } catch (err) {
-      toast.error(adminErrorMessage(err, "The reply could not be saved."));
+      toast.error(adminErrorMessage(err, "The note could not be saved."));
     } finally {
       setSaving(false);
     }
@@ -140,6 +149,7 @@ export function AdminSupport() {
   }, []);
 
   const statCards = [
+    { label: "Waiting for reply", value: list.state !== "ready" ? "—" : String(stats.needs_reply_count) },
     { label: "Open tickets", value: list.state !== "ready" ? "—" : String(stats.open_count) },
     { label: "High priority", value: list.state !== "ready" ? "—" : String(stats.high_priority_count) },
     { label: "Business requests", value: list.state !== "ready" ? "—" : String(stats.business_count) },
@@ -156,7 +166,7 @@ export function AdminSupport() {
         </p>
       </header>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-6">
         {statCards.map((s) => (
           <article
             key={s.label}
@@ -240,10 +250,15 @@ export function AdminSupport() {
                         <div className="min-w-0">
                           <p className="truncate font-semibold text-white">{t.subject}</p>
                           <p className="text-xs text-[#94A3B8]">
-                            {t.sender_name} · {t.sender_role === "influencer" ? "Creator" : "Business"} · {formatDate(t.created_at)}
+                            {t.sender_name} · {t.sender_role === "influencer" ? "Creator" : "Business"} · {formatDate(t.last_activity_at || t.created_at)}
                           </p>
                         </div>
                         <div className="flex flex-col items-end gap-1">
+                          {!isDone(t.status) && t.last_reply_by === "user" ? (
+                            <StatusBadge status={{ label: "User replied", tone: "warning" }} />
+                          ) : !isDone(t.status) && t.last_reply_by === "" ? (
+                            <StatusBadge status={{ label: "New", tone: "info" }} />
+                          ) : null}
                           <StatusBadge status={ticketStatus(t.status)} />
                           <StatusBadge status={{ ...priorityLevel(t.priority), label: `${priorityLevel(t.priority).label} priority` }} />
                         </div>
@@ -312,7 +327,7 @@ export function AdminSupport() {
         >
           {!shownDetail ? (
             <div className="flex h-full min-h-[200px] flex-col items-center justify-center text-center text-sm text-[#94A3B8]">
-              Select a ticket to view details, internal notes, and post an official reply.
+              Select a ticket to see the conversation and reply.
             </div>
           ) : (
             <div className="space-y-4">
@@ -344,49 +359,44 @@ export function AdminSupport() {
                 <StatusBadge status={{ ...priorityLevel(shownDetail.priority), label: `${priorityLevel(shownDetail.priority).label} priority` }} />
                 <StatusBadge status={ticketStatus(shownDetail.status)} />
               </div>
-              <div>
-                <p className="text-xs font-medium uppercase tracking-wide text-[#94A3B8]">Message</p>
-                <p className="mt-2 rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)]/60 p-3 text-sm leading-relaxed text-[#CBD5E1]">
-                  {shownDetail.message}
+              {shownDetail.related_campaign_title ? (
+                <p className="text-xs text-[#94A3B8]">
+                  About: <span className="text-white">{shownDetail.related_campaign_title}</span>
                 </p>
-              </div>
-              <div>
-                <p className="text-xs font-medium uppercase tracking-wide text-[#94A3B8]">
-                  Related campaign / context
-                </p>
-                <p className="mt-1 text-sm text-white">{shownDetail.related_campaign_title ?? "—"}</p>
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium uppercase tracking-wide text-[#94A3B8]">
-                  Admin internal notes
+              ) : null}
+              <SupportThread
+                viewer="support"
+                opening={{ name: shownDetail.sender_name, body: shownDetail.message, created_at: shownDetail.created_at }}
+                messages={shownDetail.messages ?? []}
+              />
+              <ReplyBox
+                key={shownDetail.id}
+                label="Reply to the user"
+                placeholder="e.g. We've confirmed your payment. The creator can start now."
+                hint={`Added to the conversation and emailed to ${shownDetail.sender_email}.`}
+                onSend={(text) => sendReply(shownDetail.id, text)}
+              />
+              <div className="space-y-1.5 border-t border-white/10 pt-4">
+                <label htmlFor="support-internal-note" className="text-xs font-medium uppercase tracking-wide text-[#94A3B8]">
+                  Internal note (only admins see this)
                 </label>
                 <textarea
-                  className={cn(fieldShell, "min-h-[88px] resize-y")}
+                  id="support-internal-note"
+                  className={cn(fieldShell, "min-h-[72px] resize-y")}
                   value={notesDraft}
                   onChange={(e) => setNotesDraft(e.target.value)}
-                  placeholder="Internal notes visible only to admins"
+                  placeholder="e.g. Waiting for the bank statement."
                 />
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-11 w-full rounded-xl border-white/15 text-white lg:h-9 lg:w-auto"
+                  disabled={saving || !notesDraft.trim()}
+                  onClick={saveNote}
+                >
+                  {saving ? "Saving…" : "Save note"}
+                </Button>
               </div>
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium uppercase tracking-wide text-[#94A3B8]">
-                  Official reply to user
-                </label>
-                <textarea
-                  value={replyDraft}
-                  onChange={(e) => setReplyDraft(e.target.value)}
-                  placeholder="e.g. We’re looking into this and will update within 24h."
-                  className={cn(fieldShell, "min-h-[110px] resize-y")}
-                />
-                <p className="text-xs text-[#94A3B8]">The user sees this reply on their support page.</p>
-              </div>
-              <Button
-                type="button"
-                className="h-11 w-full rounded-xl bg-[color:var(--adfluence-action)] text-white hover:bg-[color:var(--adfluence-action-hover)] lg:h-10 lg:w-auto"
-                disabled={saving}
-                onClick={saveNotesForSelected}
-              >
-                {saving ? "Saving…" : "Save note & reply"}
-              </Button>
             </div>
           )}
         </section>
