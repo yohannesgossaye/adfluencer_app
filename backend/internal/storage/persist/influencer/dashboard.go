@@ -2,6 +2,7 @@ package influencer
 
 import (
 	influencerDto "adinfluence_service_app/internal/constant/model/dto/influencer"
+	"adinfluence_service_app/platform/utils"
 	"context"
 	"database/sql"
 	"fmt"
@@ -88,16 +89,7 @@ func (p *influencer) ListDashboardActiveContracts(ctx context.Context, influence
 }
 
 func formatBudgetSummary(min, max *float64) string {
-	if min == nil && max == nil {
-		return ""
-	}
-	if min != nil && max != nil {
-		return fmt.Sprintf("ETB %.0f – %.0f", *min, *max)
-	}
-	if min != nil {
-		return fmt.Sprintf("ETB %.0f+", *min)
-	}
-	return fmt.Sprintf("ETB up to %.0f", *max)
+	return utils.FormatBudgetRange(min, max)
 }
 
 func nullFloatPtr(v sql.NullFloat64) *float64 {

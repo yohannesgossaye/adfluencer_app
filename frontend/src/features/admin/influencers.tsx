@@ -17,6 +17,9 @@ import {
 import { usePagedList } from "@/hooks/use-paged-list";
 import { cn } from "@/lib/utils";
 import { UserAvatar } from "@/components/common/user-avatar";
+import { formatDate, formatEtbRange } from "@/lib/contracts";
+import { StatusBadge } from "@/components/common/status-badge";
+import { creatorStatus } from "@/lib/status";
 
 const tabs: Array<{ id: "all" | "pending" | "approved" | "rejected"; label: string }> = [
   { id: "all", label: "All" },
@@ -25,28 +28,11 @@ const tabs: Array<{ id: "all" | "pending" | "approved" | "rejected"; label: stri
   { id: "rejected", label: "Rejected" },
 ];
 
-const STATUS_LABEL: Record<string, string> = {
-  pending_profile: "Profile not submitted",
-  pending_approval: "Waiting for review",
-  pending: "Waiting for review",
-  active: "Approved",
-  approved: "Approved",
-  rejected: "Rejected",
-  blocked: "Blocked",
-  removed: "Removed",
-};
 
 const canApprove = (status: string) => status === "pending" || status === "pending_approval";
 // The backend rejects only submitted or approved creators.
 const canReject = (status: string) => canApprove(status) || status === "active" || status === "approved";
 
-function statusBadge(s: string) {
-  const lower = s.toLowerCase();
-  if (lower === "pending" || lower === "pending_approval") return "border-amber-400/30 bg-amber-500/10 text-amber-200";
-  if (lower === "pending_profile") return "border-white/15 bg-white/5 text-[#CBD5E1]";
-  if (lower === "approved" || lower === "active") return "border-emerald-400/30 bg-emerald-500/10 text-emerald-200";
-  return "border-rose-400/30 bg-rose-500/10 text-rose-200";
-}
 
 export function AdminInfluencers() {
   const [tab, setTab] = useState<(typeof tabs)[number]["id"]>("pending");
@@ -263,21 +249,14 @@ export function AdminInfluencers() {
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="font-semibold text-white">{r.creator_name}</p>
-                    <span
-                      className={cn(
-                        "rounded-full border px-2 py-0.5 text-[10px] font-medium",
-                        statusBadge(r.status),
-                      )}
-                    >
-                      {STATUS_LABEL[r.status] ?? r.status.replace(/_/g, " ")}
-                    </span>
+                    <StatusBadge status={creatorStatus(r.status)} />
                   </div>
                   <p className="text-xs text-[#CBD5E1]">
                     {r.primary_niche || "General"} · {r.primary_platform || "Multi"} · {r.total_followers.toLocaleString()} followers
                     {r.engagement_rate != null ? ` · ${r.engagement_rate}% engagement` : ""}
                   </p>
                   <p className="mt-1 text-xs text-[#94A3B8]">
-                    {r.status === "pending_profile" ? "Last updated" : "Submitted"} {new Date(r.submitted_at).toLocaleDateString()}
+                    {r.status === "pending_profile" ? "Last updated" : "Submitted"} {formatDate(r.submitted_at)}
                   </p>
                   <p className="mt-1 text-xs text-[#CBD5E1]">
                     Profile {r.completeness_percent}% complete
@@ -348,9 +327,7 @@ export function AdminInfluencers() {
             </div>
             <h2 className="text-lg font-semibold text-white">Details — {selected.profile?.creator_name || "Creator"}</h2>
             <p className="mt-1">
-              <span className={cn("rounded-full border px-2 py-0.5 text-[10px] font-medium", statusBadge(selected.status))}>
-                {STATUS_LABEL[selected.status] ?? selected.status.replace(/_/g, " ")}
-              </span>
+              <StatusBadge status={creatorStatus(selected.status)} />
             </p>
             {canApprove(selected.status) || canReject(selected.status) ? (
               <div className="mt-3 flex flex-wrap gap-2">
@@ -390,7 +367,7 @@ export function AdminInfluencers() {
             ) : null}
             {selected.profile?.min_price_etb != null ? (
               <p className="mt-2 text-sm text-[#CBD5E1]">
-                <span className="text-white">Pricing:</span> ETB {selected.profile.min_price_etb.toLocaleString()} - {selected.profile.max_price_etb?.toLocaleString()}
+                <span className="text-white">Pricing:</span> {formatEtbRange(selected.profile.min_price_etb, selected.profile.max_price_etb)}
               </p>
             ) : null}
 

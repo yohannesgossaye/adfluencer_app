@@ -16,25 +16,14 @@ import {
 import { adminErrorMessage } from "@/lib/api-errors";
 import { usePagedList } from "@/hooks/use-paged-list";
 import { cn } from "@/lib/utils";
+import { StatusBadge } from "@/components/common/status-badge";
+import { disputeStatus, priorityLevel } from "@/lib/status";
 
-const STATUS_LABEL: Record<string, string> = {
-  open: "Open",
-  under_review: "Under review",
-  escalated: "Escalated",
-  resolved: "Resolved",
-  closed: "Closed",
-};
 
 function isFinished(status: string) {
   return status === "resolved" || status === "closed";
 }
 
-function sev(s: string) {
-  const lower = s.toLowerCase();
-  if (lower === "high") return "text-rose-300";
-  if (lower === "medium") return "text-amber-200";
-  return "text-[#CBD5E1]";
-}
 
 export function AdminDisputes() {
   const [tab, setTab] = useState<"open" | "resolved">("open");
@@ -207,9 +196,10 @@ export function AdminDisputes() {
                   {d.business_name} ↔ {d.influencer_name} · {d.campaign_title}
                 </p>
                 <p className="mt-1 text-xs text-[#94A3B8]">{d.issue_type_label || d.issue_type}</p>
-                <p className={cn("text-xs font-medium capitalize", sev(d.severity))}>
-                  {d.severity} severity · {STATUS_LABEL[d.status] ?? d.status}
-                </p>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  <StatusBadge status={disputeStatus(d.status)} />
+                  <StatusBadge status={{ ...priorityLevel(d.severity), label: `${priorityLevel(d.severity).label} severity` }} />
+                </div>
                 <p className="mt-2 line-clamp-2 text-xs text-[#CBD5E1]">{d.preview}</p>
               </button>
             ))}
@@ -244,7 +234,7 @@ export function AdminDisputes() {
             </div>
             <h2 className="text-lg font-semibold text-white">{shownDetail.title}</h2>
             <p className="text-xs text-[#CBD5E1]">
-              Status: <span className="text-white">{STATUS_LABEL[shownDetail.status] ?? shownDetail.status}</span>
+              Status: <StatusBadge status={disputeStatus(shownDetail.status)} />
             </p>
             <p className="text-xs text-[#CBD5E1]">
               Between <span className="text-white">{shownDetail.business_name}</span> (business) and{" "}

@@ -13,6 +13,7 @@ import { chatApi } from "@/lib/api/chat";
 import { apiErrorType, businessErrorMessage } from "@/lib/api-errors";
 
 import { UserAvatar } from "@/components/common/user-avatar";
+import { formatEtbRange } from "@/lib/contracts";
 
 type InfluencerProfileProps = {
   influencerId: string;
@@ -274,7 +275,7 @@ export function InfluencerProfile({ influencerId }: InfluencerProfileProps) {
           <p className="text-xs text-[#CBD5E1]">Price Range</p>
           <p className="mt-2 text-xl font-bold text-[color:var(--adfluence-orange)]">
             {creator.min_price_etb != null && creator.max_price_etb != null
-              ? `ETB ${creator.min_price_etb.toLocaleString()} – ${creator.max_price_etb.toLocaleString()}`
+              ? formatEtbRange(creator.min_price_etb, creator.max_price_etb)
               : notProvided}
           </p>
         </article>

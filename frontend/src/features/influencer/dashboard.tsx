@@ -13,6 +13,9 @@ import {
 import { chatApi, type ChatConversationItem } from "@/lib/api/chat";
 import { OPTIONAL_PROFILE_ITEMS, REQUIRED_FOR_SUBMIT } from "@/lib/influencer-profile";
 import { UserAvatar } from "@/components/common/user-avatar";
+import { contractStatus, formatDate, formatEtb } from "@/lib/contracts";
+import { StatusBadge } from "@/components/common/status-badge";
+import { inviteStatus } from "@/lib/status";
 
 function KpiCard({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
@@ -112,7 +115,7 @@ export function InfluencerDashboard() {
         />
         <KpiCard
           label="Earned"
-          value={`ETB ${Math.round(kpis?.total_completed_earnings_etb ?? 0).toLocaleString()}`}
+          value={formatEtb(Math.round(kpis?.total_completed_earnings_etb ?? 0))}
           hint="From completed contracts"
         />
         <KpiCard
@@ -186,12 +189,10 @@ export function InfluencerDashboard() {
                 <p className="mt-2 text-xs text-[#94A3B8]">Budget: {inv.budget_summary || "Flexible"}</p>
                 {inv.end_date ? (
                   <p className="text-xs text-[#94A3B8]">
-                    Deadline: {new Date(inv.end_date).toLocaleDateString()}
+                    Deadline: {formatDate(inv.end_date)}
                   </p>
                 ) : null}
-                <span className="mt-2 inline-flex w-fit rounded-full border border-amber-400/30 bg-amber-500/10 px-2 py-0.5 text-xs text-amber-200">
-                  Waiting for your reply
-                </span>
+                <StatusBadge status={inviteStatus("pending", "influencer")} className="mt-2" />
                 {/* Answering happens on the Invites page, which shows the full brief and confirms a decline. */}
                 <Button
                   asChild
@@ -212,14 +213,14 @@ export function InfluencerDashboard() {
           <div className="rounded-xl border border-white/10 bg-[#06111F] p-3">
             <p className="text-xs text-[#CBD5E1]">Pending payout</p>
             <p className="text-lg font-semibold text-amber-200">
-              ETB {Math.round(earnings?.pending_payout_etb ?? 0).toLocaleString()}
+              {formatEtb(Math.round(earnings?.pending_payout_etb ?? 0))}
             </p>
           </div>
           <div className="rounded-xl border border-white/10 bg-[#06111F] p-3">
             <p className="text-xs text-[#CBD5E1]">Next payout</p>
             <p className="text-lg font-semibold text-white">
               {earnings?.next_payout_at
-                ? new Date(earnings.next_payout_at).toLocaleDateString()
+                ? formatDate(earnings.next_payout_at)
                 : "No payout scheduled"}
             </p>
           </div>
@@ -280,7 +281,7 @@ export function InfluencerDashboard() {
                   className="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-[#06111F] px-3 py-2 text-sm"
                 >
                   <span className="truncate text-[#CBD5E1]">{c.counterparty_name || c.title}</span>
-                  <span className="shrink-0 text-xs text-emerald-300">Active</span>
+                  <StatusBadge status={contractStatus(c.status, "influencer").badge} />
                 </li>
               ))}
             </ul>

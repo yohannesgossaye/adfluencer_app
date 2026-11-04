@@ -13,9 +13,11 @@ import {
   type InfluencerPortfolioItem,
   type InfluencerProfileResponse,
 } from "@/lib/api/influencer";
-import { CREATOR_STATUS, REQUIRED_FOR_SUBMIT } from "@/lib/influencer-profile";
+import { REQUIRED_FOR_SUBMIT } from "@/lib/influencer-profile";
 import { parseAmount } from "@/lib/numbers";
-import { cn, getInitials } from "@/lib/utils";
+import { getInitials } from "@/lib/utils";
+import { StatusBadge } from "@/components/common/status-badge";
+import { creatorStatus } from "@/lib/status";
 
 // Values match what the server stores (lowercase); labels are for display.
 const platformOptions = [
@@ -28,12 +30,6 @@ const platformLabel = (v: string) => platformOptions.find((o) => o.value === v.t
 type NumberField = "followers" | "engagement" | "priceMin" | "priceMax";
 
 
-const STATUS_TONE = {
-  neutral: "border-white/15 bg-white/5 text-[#CBD5E1]",
-  amber: "border-amber-400/30 bg-amber-500/15 text-amber-200",
-  green: "border-emerald-400/30 bg-emerald-500/15 text-emerald-200",
-  rose: "border-rose-400/30 bg-rose-500/15 text-rose-200",
-} as const;
 
 export function InfluencerProfile() {
   const [profileData, setProfileData] = useState<InfluencerProfileResponse | null>(null);
@@ -362,9 +358,7 @@ export function InfluencerProfile() {
           </p>
           <div className="mt-2 flex flex-wrap justify-center gap-2 md:justify-start">
             {userStatus ? (
-              <span className={cn("rounded-full border px-2 py-0.5 text-xs", STATUS_TONE[CREATOR_STATUS[userStatus]?.tone ?? "neutral"])}>
-                {CREATOR_STATUS[userStatus]?.label ?? userStatus}
-              </span>
+              <StatusBadge status={creatorStatus(userStatus)} />
             ) : null}
             <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-xs text-[#CBD5E1]">
               Profile {completeness}% complete
@@ -412,7 +406,7 @@ export function InfluencerProfile() {
             type="button"
             onClick={() => void onSubmitForReview()}
             disabled={isSubmitting || isSaving}
-            className="h-11 rounded-xl bg-emerald-600 px-5 text-white hover:bg-emerald-500"
+            className="h-11 rounded-xl bg-[color:var(--adfluence-action)] hover:bg-[color:var(--adfluence-action-hover)] px-5 text-white"
           >
             {isDirty ? "Save & " : ""}
             {isRejected ? "Re-apply for Verification" : "Submit for Verification"}

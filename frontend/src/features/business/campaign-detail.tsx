@@ -11,6 +11,8 @@ import { Button } from "@/components/ui/button";
 import { businessApi, type CampaignDetail, type InviteResponse } from "@/lib/api/business";
 import { deliverableLabel, formatDate, formatEtb } from "@/lib/contracts";
 import { cn } from "@/lib/utils";
+import { StatusBadge } from "@/components/common/status-badge";
+import { campaignStatus, inviteStatus } from "@/lib/status";
 
 const STATUS: Record<string, { label: string; className: string; hint: string }> = {
   draft: { label: "Draft", className: "border-amber-400/30 bg-amber-500/10 text-amber-200", hint: "Only you can see this campaign. Publish it to invite creators." },
@@ -20,12 +22,6 @@ const STATUS: Record<string, { label: string; className: string; hint: string }>
   cancelled: { label: "Cancelled", className: "border-white/15 bg-white/5 text-[#CBD5E1]", hint: "This campaign was cancelled." },
 };
 
-const INVITE_STATUS: Record<string, string> = {
-  pending: "Waiting for reply",
-  accepted: "Accepted",
-  rejected: "Declined",
-  cancelled: "Cancelled",
-};
 
 function apiError(err: unknown, fallback: string) {
   if (axios.isAxiosError(err)) {
@@ -152,7 +148,7 @@ export function CampaignDetailPage({ campaignId }: { campaignId: string }) {
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-2xl font-semibold">{campaign.title}</h1>
-              <span className={cn("rounded-full border px-2 py-0.5 text-xs font-medium", status.className)}>{status.label}</span>
+              <StatusBadge status={campaignStatus(campaign.status)} />
             </div>
             <p className="mt-1 text-sm text-[#CBD5E1]">{status.hint}</p>
           </div>
@@ -252,12 +248,12 @@ export function CampaignDetailPage({ campaignId }: { campaignId: string }) {
                   <Link href={`/business/influencers/${inv.influencer_user_id}?campaign_id=${campaign.id}`} className="font-medium text-white hover:underline">
                     {inv.creator_name || "Creator"}
                   </Link>
-                  <p className="text-xs text-[#94A3B8]">{INVITE_STATUS[inv.status] ?? inv.status} · sent {formatDate(inv.created_at)}</p>
+                  <p className="text-xs text-[#94A3B8]">{inviteStatus(inv.status).label} · sent {formatDate(inv.created_at)}</p>
                 </div>
                 {inv.status === "pending" ? (
                   confirmInvite === inv.id ? (
                     <span className="flex gap-2">
-                      <Button type="button" size="sm" disabled={busy} onClick={() => void cancelInvite(inv)} className="h-9 rounded-lg bg-rose-600 text-white hover:bg-rose-700">
+                      <Button type="button" size="sm" disabled={busy} onClick={() => void cancelInvite(inv)} className="h-9 rounded-lg bg-rose-600 text-white hover:bg-rose-500">
                         Withdraw invite
                       </Button>
                       <Button type="button" size="sm" variant="ghost" disabled={busy} onClick={() => setConfirmInvite(null)} className="h-9 rounded-lg text-white hover:bg-white/10">

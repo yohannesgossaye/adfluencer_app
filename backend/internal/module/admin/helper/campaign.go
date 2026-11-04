@@ -2,6 +2,7 @@ package helper
 
 import (
 	adminDto "adinfluence_service_app/internal/constant/model/dto/admin"
+	"adinfluence_service_app/platform/utils"
 	"fmt"
 )
 
@@ -32,16 +33,7 @@ func FormatPaymentSummary(paid, pending int) string {
 }
 
 func FormatBudgetSummary(min, max *float64) string {
-	if min == nil && max == nil {
-		return ""
-	}
-	if min != nil && max != nil {
-		return fmt.Sprintf("ETB %.0f – %.0f", *min, *max)
-	}
-	if min != nil {
-		return fmt.Sprintf("ETB %.0f+", *min)
-	}
-	return fmt.Sprintf("ETB up to %.0f", *max)
+	return utils.FormatBudgetRange(min, max)
 }
 
 func DisputeTitle(issueTypeLabel, campaignTitle string) string {

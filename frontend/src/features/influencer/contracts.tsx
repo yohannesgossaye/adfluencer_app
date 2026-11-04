@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { influencerApi, type ContractDetail, type ContractListItem } from "@/lib/api/influencer";
 import { contractStatus, formatEtb } from "@/lib/contracts";
 import { cn } from "@/lib/utils";
+import { StatusBadge } from "@/components/common/status-badge";
 
 const FILTERS = [
   { id: "", label: "All" },
@@ -106,7 +107,7 @@ export function InfluencerContracts() {
               type="button"
               disabled={busy}
               onClick={() => void run()}
-              className={cn("h-10 rounded-xl text-white", confirm === "accept" ? "bg-emerald-600 hover:bg-emerald-700" : "bg-rose-600 hover:bg-rose-700")}
+              className={cn("h-10 rounded-xl text-white", confirm === "accept" ? "bg-[color:var(--adfluence-action)] hover:bg-[color:var(--adfluence-action-hover)]" : "bg-rose-600 hover:bg-rose-700")}
             >
               {busy ? <Loader2 className="mr-2 size-4 animate-spin" aria-hidden /> : null}
               {confirm === "accept" ? "Accept contract" : "Decline contract"}
@@ -118,7 +119,7 @@ export function InfluencerContracts() {
         </div>
       ) : (
         <>
-          <Button type="button" onClick={() => setConfirm("accept")} className="h-10 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700">
+          <Button type="button" onClick={() => setConfirm("accept")} className="h-10 rounded-xl bg-[color:var(--adfluence-action)] hover:bg-[color:var(--adfluence-action-hover)] text-white">
             Accept
           </Button>
           <Button type="button" variant="outline" onClick={() => setConfirm("decline")} className="h-10 rounded-xl border-rose-400/40 bg-transparent text-rose-200 hover:bg-rose-500/10">
@@ -183,7 +184,7 @@ export function InfluencerContracts() {
                   <div className="min-w-0">
                     <p className="font-semibold text-white">{r.title}</p>
                     <p className="text-xs text-[#CBD5E1]">{r.counterparty_name} · {r.campaign_title}</p>
-                    <span className={cn("mt-2 inline-block rounded-full border px-2 py-0.5 text-[10px] font-medium", st.badgeClass)}>{st.label}</span>
+                    <StatusBadge status={st.badge} className="mt-2" />
                   </div>
                   <span className="shrink-0 text-sm font-semibold tabular-nums">{formatEtb(r.influencer_receivable_etb || r.amount_etb)}</span>
                 </button>

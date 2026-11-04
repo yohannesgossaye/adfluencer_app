@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { businessApi, type SupportTicket } from "@/lib/api/business";
 import { influencerApi } from "@/lib/api/influencer";
 import { cn } from "@/lib/utils";
+import { formatDate } from "@/lib/contracts";
 
 export type SupportRole = "business" | "influencer";
 
@@ -204,7 +205,7 @@ export function UserSupportPage({ role, subtitle }: { role: SupportRole; subtitl
                     <span className="rounded-full border border-white/15 px-2 py-0.5 text-[10px] text-[#CBD5E1]">{STATUS_LABEL[t.status] ?? t.status}</span>
                   </div>
                   <p className="mt-0.5 text-xs text-[#94A3B8]">
-                    {t.issue_type_label || t.issue_type} · {new Date(t.created_at).toLocaleDateString()}
+                    {t.issue_type_label || t.issue_type} · {formatDate(t.created_at)}
                     {t.related_campaign_title ? ` · ${t.related_campaign_title}` : ""}
                   </p>
                   {t.admin_reply ? (

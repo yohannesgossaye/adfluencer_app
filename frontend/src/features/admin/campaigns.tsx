@@ -15,6 +15,9 @@ import {
 import { usePagedList } from "@/hooks/use-paged-list";
 import { adminErrorMessage } from "@/lib/api-errors";
 import { cn } from "@/lib/utils";
+import { formatDate } from "@/lib/contracts";
+import { StatusBadge } from "@/components/common/status-badge";
+import { campaignStatus } from "@/lib/status";
 
 const statuses = [
   { id: "draft", label: "Draft" },
@@ -24,22 +27,7 @@ const statuses = [
   { id: "cancelled", label: "Cancelled" },
 ];
 
-const STATUS_LABEL: Record<string, string> = Object.fromEntries(statuses.map((s) => [s.id, s.label]));
 
-function badge(s: string) {
-  switch (s.toLowerCase()) {
-    case "draft":
-      return "bg-white/10 text-[#CBD5E1]";
-    case "active":
-      return "bg-emerald-500/15 text-emerald-200";
-    case "completed":
-      return "bg-sky-500/15 text-sky-200";
-    case "paused":
-      return "bg-rose-500/15 text-rose-200";
-    default:
-      return "bg-white/10 text-[#CBD5E1]";
-  }
-}
 
 export function AdminCampaigns() {
   const [status, setStatus] = useState<string>("all");
@@ -197,12 +185,10 @@ export function AdminCampaigns() {
                   <p className="font-semibold text-white">{r.title}</p>
                   <p className="text-sm text-[#CBD5E1]">{r.business_name}</p>
                 </div>
-                <span className={cn("rounded-full px-2 py-0.5 text-xs", badge(r.status))}>
-                  {STATUS_LABEL[r.status] ?? r.status}
-                </span>
+                <StatusBadge status={campaignStatus(r.status)} />
               </div>
               <p className="mt-2 text-xs text-[#94A3B8]">
-                {r.niche || "General"} · {r.budget_summary || "Flexible"} · {r.creators_invited} creators invited · Created {new Date(r.created_at).toLocaleDateString()}
+                {r.niche || "General"} · {r.budget_summary || "Flexible"} · {r.creators_invited} creators invited · Created {formatDate(r.created_at)}
               </p>
               <p className="mt-1 text-xs text-[#CBD5E1]">
                 Contracts: {r.contract_summary} · Payment: {r.payment_summary}
@@ -210,7 +196,7 @@ export function AdminCampaigns() {
               {r.status === "active" || r.status === "paused" ? (
                 <div className="mt-3 flex flex-wrap gap-2">
                   {r.status === "active" ? (
-                    <Button size="sm" disabled={busyId === r.id} className="h-11 bg-rose-500/20 text-rose-100 hover:bg-rose-500/30 sm:h-8" onClick={() => askPause(r)}>
+                    <Button size="sm" disabled={busyId === r.id} className="h-11 border border-rose-400/50 bg-transparent text-rose-200 hover:bg-rose-500/10 sm:h-8" onClick={() => askPause(r)}>
                       Pause…
                     </Button>
                   ) : (

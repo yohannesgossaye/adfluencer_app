@@ -16,27 +16,15 @@ import {
 import { usePagedList } from "@/hooks/use-paged-list";
 import { adminErrorMessage } from "@/lib/api-errors";
 import { cn } from "@/lib/utils";
+import { formatDate } from "@/lib/contracts";
+import { StatusBadge } from "@/components/common/status-badge";
+import { accountStatus } from "@/lib/status";
 
 /** Accounts that can't log in and can be restored. */
 function isLocked(status: string) {
   return status === "blocked" || status === "removed" || status === "suspended";
 }
 
-function statusStyle(s: string) {
-  const lower = s.toLowerCase();
-  switch (lower) {
-    case "active":
-      return "border-emerald-400/30 bg-emerald-500/10 text-emerald-200";
-    case "pending":
-      return "border-amber-400/30 bg-amber-500/10 text-amber-200";
-    case "blocked":
-    case "suspended":
-    case "rejected":
-      return "border-rose-400/30 bg-rose-500/10 text-rose-200";
-    default:
-      return "border-white/10 bg-white/5 text-[#94A3B8]";
-  }
-}
 
 export function AdminUsers() {
   const [roleFilter, setRoleFilter] = useState<"all" | "business" | "influencer" | "admin">("all");
@@ -201,21 +189,14 @@ export function AdminUsers() {
                   <p className="font-semibold text-white">{u.name}</p>
                   <p className="text-sm text-[#CBD5E1]">{u.email}</p>
                   <p className="mt-1 text-xs capitalize text-[#94A3B8]">
-                    {u.role} · Joined {new Date(u.joined_at).toLocaleDateString()}
-                    {u.last_active_at ? ` · Last active ${new Date(u.last_active_at).toLocaleDateString()}` : ""}
+                    {u.role} · Joined {formatDate(u.joined_at)}
+                    {u.last_active_at ? ` · Last active ${formatDate(u.last_active_at)}` : ""}
                   </p>
                   <p className="mt-1 text-xs text-[#94A3B8]">
                     Campaigns {u.campaigns_count} · Contracts {u.contracts_count}
                   </p>
                 </div>
-                <span
-                  className={cn(
-                    "rounded-full border px-2.5 py-0.5 text-xs capitalize",
-                    statusStyle(u.status),
-                  )}
-                >
-                  {u.status}
-                </span>
+                <StatusBadge status={accountStatus(u.status)} />
               </div>
               {u.status_reason && isLocked(u.status) ? (
                 <p className="mt-2 text-xs text-[#CBD5E1]">Reason: {u.status_reason}</p>
@@ -227,7 +208,7 @@ export function AdminUsers() {
                   {isLocked(u.status) ? (
                     <Button
                       size="sm"
-                      className="h-11 border border-emerald-500/40 bg-emerald-500/25 text-emerald-100 hover:bg-emerald-500/35 sm:h-8"
+                      className="h-11 border border-white/15 bg-transparent text-white hover:bg-white/10 sm:h-8"
                       onClick={() => askRestore(u)}
                     >
                       {u.status === "removed" ? "Restore account" : "Unblock"}
@@ -235,7 +216,7 @@ export function AdminUsers() {
                   ) : (
                     <Button
                       size="sm"
-                      className="h-11 bg-rose-500/20 text-rose-100 hover:bg-rose-500/30 sm:h-8"
+                      className="h-11 border border-rose-400/50 bg-transparent text-rose-200 hover:bg-rose-500/10 sm:h-8"
                       onClick={() => askBlock(u)}
                     >
                       Block…

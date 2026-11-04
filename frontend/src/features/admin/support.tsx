@@ -16,34 +16,16 @@ import {
 import { usePagedList } from "@/hooks/use-paged-list";
 import { adminErrorMessage } from "@/lib/api-errors";
 import { cn } from "@/lib/utils";
+import { formatDate } from "@/lib/contracts";
+import { StatusBadge } from "@/components/common/status-badge";
+import { priorityLevel, ticketStatus } from "@/lib/status";
 
 type FilterKey = "all" | "business" | "influencer" | "open" | "in_review" | "escalated" | "resolved" | "high";
 
 const fieldShell =
   "w-full min-w-0 rounded-xl border border-white/10 bg-[color:var(--adfluence-surface)]/60 px-3 py-2 text-sm text-white outline-none placeholder:text-[#94A3B8] focus:border-[color:var(--adfluence-orange)]/40 focus:ring-2 focus:ring-[color:var(--adfluence-orange)]/25";
 
-function priorityClass(p: string) {
-  const lower = p.toLowerCase();
-  if (lower === "high") return "text-rose-200";
-  if (lower === "medium") return "text-amber-200";
-  return "text-[#CBD5E1]";
-}
 
-function statusLabel(s: string) {
-  const lower = s.toLowerCase();
-  switch (lower) {
-    case "in_review":
-      return "In review";
-    case "resolved":
-      return "Resolved";
-    case "escalated":
-      return "Escalated";
-    case "closed":
-      return "Closed";
-    default:
-      return "Open";
-  }
-}
 
 function isDone(status: string) {
   return status === "resolved" || status === "closed";
@@ -123,7 +105,7 @@ export function AdminSupport() {
     setBusyId(id);
     try {
       await adminApi.updateSupportTicketStatus(id, { status });
-      toast.success(`Ticket marked ${statusLabel(status).toLowerCase()}.`);
+      toast.success(`Ticket marked ${ticketStatus(status).label.toLowerCase()}.`);
       await loadTickets();
       if (selectedId === id) {
         const res = await adminApi.getSupportTicket(id);
@@ -244,12 +226,12 @@ export function AdminSupport() {
                         <div className="min-w-0">
                           <p className="truncate font-semibold text-white">{t.subject}</p>
                           <p className="text-xs text-[#94A3B8]">
-                            {t.sender_name} · <span className="capitalize">{t.sender_role}</span> · {new Date(t.created_at).toLocaleDateString()}
+                            {t.sender_name} · {t.sender_role === "influencer" ? "Creator" : "Business"} · {formatDate(t.created_at)}
                           </p>
                         </div>
-                        <div className="text-right text-xs">
-                          <p className={cn("font-medium", priorityClass(t.priority))}>{t.priority} priority</p>
-                          <p className="mt-0.5 text-[#CBD5E1]">{statusLabel(t.status)}</p>
+                        <div className="flex flex-col items-end gap-1">
+                          <StatusBadge status={ticketStatus(t.status)} />
+                          <StatusBadge status={{ ...priorityLevel(t.priority), label: `${priorityLevel(t.priority).label} priority` }} />
                         </div>
                       </div>
                       <p className="mt-2 line-clamp-2 text-xs text-[#CBD5E1]">{messagePreview(t.message_preview)}</p>
@@ -266,7 +248,7 @@ export function AdminSupport() {
                         <Button
                           type="button"
                           size="sm"
-                          className="h-11 flex-1 border border-amber-400/30 bg-amber-500/15 text-amber-100 sm:h-8 sm:flex-none"
+                          className="h-11 flex-1 bg-white/10 text-white hover:bg-white/15 sm:h-8 sm:flex-none"
                           disabled={busyId === t.id || t.status === "in_review"}
                           onClick={() => setStatus(t.id, "in_review")}
                         >
@@ -275,7 +257,7 @@ export function AdminSupport() {
                         <Button
                           type="button"
                           size="sm"
-                          className="h-11 flex-1 bg-emerald-500/20 text-emerald-100 sm:h-8 sm:flex-none"
+                          className="h-11 flex-1 bg-white/10 text-white hover:bg-white/15 sm:h-8 sm:flex-none"
                           disabled={busyId === t.id}
                           onClick={() => setStatus(t.id, isDone(t.status) ? "open" : "resolved")}
                         >
@@ -284,7 +266,7 @@ export function AdminSupport() {
                         <Button
                           type="button"
                           size="sm"
-                          className="h-11 flex-1 bg-rose-500/20 text-rose-100 sm:h-8 sm:flex-none"
+                          className="h-11 flex-1 border border-rose-400/50 bg-transparent text-rose-200 hover:bg-rose-500/10 sm:h-8 sm:flex-none"
                           disabled={busyId === t.id || t.status === "escalated" || isDone(t.status)}
                           onClick={() => setStatus(t.id, "escalated")}
                         >
@@ -335,22 +317,18 @@ export function AdminSupport() {
               <div>
                 <h2 className="text-lg font-semibold text-white">{shownDetail.subject}</h2>
                 <p className="mt-1 text-xs text-[#94A3B8]">
-                  {shownDetail.sender_name} · {shownDetail.sender_email} · {new Date(shownDetail.created_at).toLocaleDateString()}
+                  {shownDetail.sender_name} · {shownDetail.sender_email} · {formatDate(shownDetail.created_at)}
                 </p>
               </div>
               <div className="flex flex-wrap gap-2 text-xs">
-                <span className="rounded-full border border-white/15 bg-white/5 px-2 py-1 capitalize text-[#CBD5E1]">
-                  {shownDetail.sender_role}
+                <span className="rounded-full border border-white/15 bg-white/5 px-2 py-0.5 text-[#CBD5E1]">
+                  {shownDetail.sender_role === "influencer" ? "Creator" : "Business"}
                 </span>
-                <span className="rounded-full border border-white/15 bg-white/5 px-2 py-1 text-[#CBD5E1]">
+                <span className="rounded-full border border-white/15 bg-white/5 px-2 py-0.5 text-[#CBD5E1]">
                   {shownDetail.issue_type_label || shownDetail.issue_type}
                 </span>
-                <span className={cn("rounded-full border px-2 py-1", priorityClass(shownDetail.priority))}>
-                  {shownDetail.priority} priority
-                </span>
-                <span className="rounded-full border border-white/15 bg-white/5 px-2 py-1 text-[#CBD5E1]">
-                  {statusLabel(shownDetail.status)}
-                </span>
+                <StatusBadge status={{ ...priorityLevel(shownDetail.priority), label: `${priorityLevel(shownDetail.priority).label} priority` }} />
+                <StatusBadge status={ticketStatus(shownDetail.status)} />
               </div>
               <div>
                 <p className="text-xs font-medium uppercase tracking-wide text-[#94A3B8]">Message</p>
