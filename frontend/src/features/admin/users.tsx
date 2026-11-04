@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { ConfirmActionDialog, type ConfirmActionRequest } from "@/components/common/confirm-action-dialog";
+import { FilterChips } from "@/components/common/filter-chips";
 import { ListStatus, LoadMore } from "@/components/common/list-status";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,7 +16,6 @@ import {
 } from "@/lib/api/admin";
 import { usePagedList } from "@/hooks/use-paged-list";
 import { adminErrorMessage } from "@/lib/api-errors";
-import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/contracts";
 import { StatusBadge } from "@/components/common/status-badge";
 import { accountStatus } from "@/lib/status";
@@ -28,7 +28,7 @@ function isLocked(status: string) {
 
 export function AdminUsers() {
   const [roleFilter, setRoleFilter] = useState<"all" | "business" | "influencer" | "admin">("all");
-  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "pending" | "blocked" | "removed">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "pending" | "rejected" | "blocked" | "removed">("all");
   const [search, setSearch] = useState("");
   const [query, setQuery] = useState("");
 
@@ -107,7 +107,7 @@ export function AdminUsers() {
       <div>
         <h1 className="text-2xl font-semibold text-white">Users</h1>
         <p className="mt-1 max-w-2xl text-sm text-[#CBD5E1]">
-          Manage businesses, influencers, and admin accounts. Blocked users cannot log in.
+          Businesses, creators and admin accounts. Blocked accounts cannot log in.
         </p>
       </div>
 
@@ -130,37 +130,33 @@ export function AdminUsers() {
         ))}
       </section>
 
-      <div className="flex flex-wrap gap-2">
-        {(["all", "business", "influencer", "admin"] as const).map((r) => (
-          <button
-            key={r}
-            type="button"
-            onClick={() => setRoleFilter(r)}
-            className={cn(
-              "inline-flex min-h-11 items-center rounded-full border px-4 py-2 text-sm font-medium capitalize transition-colors sm:min-h-0 sm:px-3 sm:py-1.5 sm:text-xs",
-              roleFilter === r
-                ? "border-transparent bg-[color:var(--adfluence-action)] text-white"
-                : "border-white/10 bg-white/5 text-[#CBD5E1] hover:text-white",
-            )}
-          >
-            {r}
-          </button>
-        ))}
-        {(["all", "active", "pending", "blocked", "removed"] as const).map((s) => (
-          <button
-            key={s}
-            type="button"
-            onClick={() => setStatusFilter(s)}
-            className={cn(
-              "inline-flex min-h-11 items-center rounded-full border px-4 py-2 text-sm font-medium capitalize transition-colors sm:min-h-0 sm:px-3 sm:py-1.5 sm:text-xs",
-              statusFilter === s
-                ? "border-white/20 bg-white/15 text-white"
-                : "border-white/10 bg-white/5 text-[#CBD5E1] hover:text-white",
-            )}
-          >
-            {s}
-          </button>
-        ))}
+      <div className="space-y-3">
+        <FilterChips
+          label="Role"
+          showLabel
+          value={roleFilter}
+          onChange={setRoleFilter}
+          options={[
+            { value: "all", label: "Everyone" },
+            { value: "business", label: "Businesses" },
+            { value: "influencer", label: "Creators" },
+            { value: "admin", label: "Admins" },
+          ]}
+        />
+        <FilterChips
+          label="Status"
+          showLabel
+          value={statusFilter}
+          onChange={setStatusFilter}
+          options={[
+            { value: "all", label: "Any status" },
+            { value: "active", label: "Active" },
+            { value: "pending", label: "Pending" },
+            { value: "rejected", label: "Changes requested" },
+            { value: "blocked", label: "Blocked" },
+            { value: "removed", label: "Removed" },
+          ]}
+        />
       </div>
 
       <Input

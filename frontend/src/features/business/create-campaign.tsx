@@ -139,6 +139,8 @@ function campaignToForm(c: CampaignDetail): CampaignFormState {
   };
 }
 
+type FieldErrors = Partial<Record<keyof CampaignFormState, string>>;
+
 function toggleArrayValue(arr: string[], value: string) {
   return arr.includes(value) ? arr.filter((entry) => entry !== value) : [...arr, value];
 }
@@ -156,6 +158,13 @@ export function CreateCampaign({ campaignId }: { campaignId?: string } = {}) {
   const [loadingCampaign, setLoadingCampaign] = useState(isEdit);
   const [categories, setCategories] = useState<Array<{ id: string; name: string; slug: string }>>([]);
   const [error, setError] = useState<string>("");
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const fieldError = (name: keyof CampaignFormState) =>
+    fieldErrors[name] ? (
+      <span role="alert" className="block text-xs font-medium text-rose-300">
+        {fieldErrors[name]}
+      </span>
+    ) : null;
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -192,57 +201,27 @@ export function CreateCampaign({ campaignId }: { campaignId?: string } = {}) {
 
 
   const onSubmit = async () => {
-    if (!form.title.trim() || form.title.trim().length < 3) {
-      setError("Please enter a campaign title (at least 3 characters).");
-      return;
-    }
-    if (!form.goal) {
-      setError("Please select a campaign goal.");
-      return;
-    }
-    if (!form.description.trim() || form.description.trim().length < 20) {
-      setError("Please enter a campaign description (at least 20 characters).");
-      return;
-    }
-    if (!form.niche) {
-      setError("Please select an industry / niche.");
-      return;
-    }
-    if (!form.location) {
-      setError("Please select a campaign location (e.g. Addis Ababa).");
-      return;
-    }
-    if (form.platforms.length === 0) {
-      setError("Please select at least one target platform.");
-      return;
-    }
-    if (!form.budgetRange) {
-      setError("Please select a budget range.");
-      return;
-    }
-    if (!form.creatorSize) {
-      setError("Please select a preferred creator size.");
-      return;
-    }
-    if (!form.startDate) {
-      setError("Please select a campaign start date.");
-      return;
-    }
-    if (!form.endDate) {
-      setError("Please select a campaign end date.");
-      return;
-    }
-    if (form.endDate < form.startDate) {
-      setError("Campaign end date must be on or after the start date.");
-      return;
-    }
+    // Check everything at once and show each problem next to its field.
+    const problems: FieldErrors = {};
+    if (form.title.trim().length < 3) problems.title = "Enter a title of at least 3 characters.";
+    if (!form.goal) problems.goal = "Choose a goal.";
+    if (form.description.trim().length < 20) problems.description = "Describe the campaign in at least 20 characters.";
+    if (!form.niche) problems.niche = "Choose an industry or niche.";
+    if (!form.location) problems.location = "Choose where the campaign runs.";
+    if (form.platforms.length === 0) problems.platforms = "Choose at least one platform.";
+    if (!form.budgetRange) problems.budgetRange = "Choose a budget range.";
+    if (!form.creatorSize) problems.creatorSize = "Choose a creator size.";
+    if (!form.startDate) problems.startDate = "Choose a start date.";
+    if (!form.endDate) problems.endDate = "Choose an end date.";
+    else if (form.startDate && form.endDate < form.startDate) problems.endDate = "The end date must be on or after the start date.";
     const creators = Number(form.creatorsNeeded || "1");
-    if (!Number.isInteger(creators) || creators < 1 || creators > 50) {
-      setError("Number of creators needed must be between 1 and 50.");
-      return;
-    }
-    if (form.deliverables.length === 0) {
-      setError("Please choose at least one deliverable (e.g. TikTok video).");
+    if (!Number.isInteger(creators) || creators < 1 || creators > 50) problems.creatorsNeeded = "Enter a number from 1 to 50.";
+    if (form.deliverables.length === 0) problems.deliverables = "Choose at least one deliverable, e.g. TikTok video.";
+    setFieldErrors(problems);
+    const first = Object.keys(problems)[0];
+    if (first) {
+      setError(`Please fix ${Object.keys(problems).length === 1 ? "the highlighted field" : `the ${Object.keys(problems).length} highlighted fields`}.`);
+      document.getElementById(`field-${first}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
 
@@ -387,7 +366,8 @@ export function CreateCampaign({ campaignId }: { campaignId?: string } = {}) {
             <h2 className="text-lg font-semibold">Campaign Basics</h2>
             <div className="grid gap-4 md:grid-cols-2">
               <label className="space-y-2 md:col-span-2">
-                <span className="text-sm text-[#CBD5E1]">Campaign title *</span>
+                <span id="field-title" className="text-sm text-[#CBD5E1]">Campaign title *</span>
+                {fieldError("title")}
                 <Input
                   value={form.title}
                   onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))}
@@ -396,7 +376,8 @@ export function CreateCampaign({ campaignId }: { campaignId?: string } = {}) {
                 />
               </label>
               <label className="space-y-2">
-                <span className="text-sm text-[#CBD5E1]">Campaign goal *</span>
+                <span id="field-goal" className="text-sm text-[#CBD5E1]">Campaign goal *</span>
+                {fieldError("goal")}
                 <select
                   value={form.goal}
                   onChange={(e) => setForm((prev) => ({ ...prev, goal: e.target.value }))}
@@ -413,7 +394,8 @@ export function CreateCampaign({ campaignId }: { campaignId?: string } = {}) {
                 </select>
               </label>
               <label className="space-y-2 md:col-span-2">
-                <span className="text-sm text-[#CBD5E1]">Campaign description *</span>
+                <span id="field-description" className="text-sm text-[#CBD5E1]">Campaign description *</span>
+                {fieldError("description")}
                 <textarea
                   value={form.description}
                   onChange={(e) =>
@@ -431,7 +413,8 @@ export function CreateCampaign({ campaignId }: { campaignId?: string } = {}) {
             <h2 className="text-lg font-semibold">Targeting</h2>
             <div className="grid gap-4 md:grid-cols-2">
               <label className="space-y-2">
-                <span className="text-sm text-[#CBD5E1]">Industry / niche *</span>
+                <span id="field-niche" className="text-sm text-[#CBD5E1]">Industry / niche *</span>
+                {fieldError("niche")}
                 <select
                   value={form.niche}
                   onChange={(e) => setForm((prev) => ({ ...prev, niche: e.target.value }))}
@@ -459,7 +442,8 @@ export function CreateCampaign({ campaignId }: { campaignId?: string } = {}) {
                 />
               </label>
               <label className="space-y-2">
-                <span className="text-sm text-[#CBD5E1]">Location *</span>
+                <span id="field-location" className="text-sm text-[#CBD5E1]">Location *</span>
+                {fieldError("location")}
                 <select
                   value={form.location}
                   onChange={(e) => setForm((prev) => ({ ...prev, location: e.target.value }))}
@@ -477,7 +461,8 @@ export function CreateCampaign({ campaignId }: { campaignId?: string } = {}) {
                 </select>
               </label>
               <div className="space-y-2">
-                <p className="text-sm text-[#CBD5E1]">Platforms *</p>
+                <p id="field-platforms" className="text-sm text-[#CBD5E1]">Platforms *</p>
+                {fieldError("platforms")}
                 <div className="flex flex-wrap gap-2">
                   {platforms.map((platform) => (
                     <label
@@ -507,7 +492,8 @@ export function CreateCampaign({ campaignId }: { campaignId?: string } = {}) {
             <h2 className="text-lg font-semibold">Budget &amp; Creator Type</h2>
             <div className="grid gap-4 md:grid-cols-2">
               <label className="space-y-2">
-                <span className="text-sm text-[#CBD5E1]">Budget range *</span>
+                <span id="field-budgetRange" className="text-sm text-[#CBD5E1]">Budget range *</span>
+                {fieldError("budgetRange")}
                 <select
                   value={form.budgetRange}
                   onChange={(e) =>
@@ -531,7 +517,8 @@ export function CreateCampaign({ campaignId }: { campaignId?: string } = {}) {
                 </select>
               </label>
               <label className="space-y-2">
-                <span className="text-sm text-[#CBD5E1]">Preferred creator size *</span>
+                <span id="field-creatorSize" className="text-sm text-[#CBD5E1]">Preferred creator size *</span>
+                {fieldError("creatorSize")}
                 <select
                   value={form.creatorSize}
                   onChange={(e) =>
@@ -550,7 +537,8 @@ export function CreateCampaign({ campaignId }: { campaignId?: string } = {}) {
                 </select>
               </label>
               <label className="space-y-2 md:col-span-2">
-                <span className="text-sm text-[#CBD5E1]">Number of creators needed</span>
+                <span id="field-creatorsNeeded" className="text-sm text-[#CBD5E1]">Number of creators needed</span>
+                {fieldError("creatorsNeeded")}
                 <Input
                   type="number"
                   min={1}
@@ -571,7 +559,8 @@ export function CreateCampaign({ campaignId }: { campaignId?: string } = {}) {
             <h2 className="text-lg font-semibold">Deliverables &amp; Timeline</h2>
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2 md:col-span-2">
-                <p className="text-sm text-[#CBD5E1]">Deliverables</p>
+                <p id="field-deliverables" className="text-sm text-[#CBD5E1]">Deliverables *</p>
+                {fieldError("deliverables")}
                 <div className="flex flex-wrap gap-2">
                   {deliverables.map((deliverable) => (
                     <label
@@ -595,7 +584,8 @@ export function CreateCampaign({ campaignId }: { campaignId?: string } = {}) {
                 </div>
               </div>
               <label className="space-y-2">
-                <span className="text-sm text-[#CBD5E1]">Campaign start date *</span>
+                <span id="field-startDate" className="text-sm text-[#CBD5E1]">Campaign start date *</span>
+                {fieldError("startDate")}
                 <Input
                   type="date"
                   value={form.startDate}
@@ -604,7 +594,8 @@ export function CreateCampaign({ campaignId }: { campaignId?: string } = {}) {
                 />
               </label>
               <label className="space-y-2">
-                <span className="text-sm text-[#CBD5E1]">Campaign end date *</span>
+                <span id="field-endDate" className="text-sm text-[#CBD5E1]">Campaign end date *</span>
+                {fieldError("endDate")}
                 <Input
                   type="date"
                   value={form.endDate}

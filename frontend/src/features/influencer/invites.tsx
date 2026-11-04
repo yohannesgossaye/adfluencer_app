@@ -8,10 +8,10 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { influencerApi, type InfluencerInviteItem } from "@/lib/api/influencer";
 import { chatApi } from "@/lib/api/chat";
-import { cn } from "@/lib/utils";
 import { formatDate, formatEtbRange } from "@/lib/contracts";
 import { StatusBadge } from "@/components/common/status-badge";
 import { inviteStatus, platformLabel } from "@/lib/status";
+import { FilterChips } from "@/components/common/filter-chips";
 
 function apiMessage(err: unknown, fallback: string) {
   const data = (err as { response?: { data?: { message?: string; error?: { type?: string } } } })?.response?.data;
@@ -24,7 +24,7 @@ const tabs: Array<{ id: "all" | "pending" | "accepted" | "rejected"; label: stri
   { id: "all", label: "All" },
   { id: "pending", label: "Pending" },
   { id: "accepted", label: "Accepted" },
-  { id: "rejected", label: "Rejected" },
+  { id: "rejected", label: "Declined" },
 ];
 
 
@@ -101,23 +101,15 @@ export function InfluencerInvites() {
         </p>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        {tabs.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => { setTab(t.id); setListState("loading"); }}
-            className={cn(
-              "rounded-full border px-4 py-2 text-sm font-medium transition-colors",
-              tab === t.id
-                ? "border-transparent bg-[color:var(--adfluence-action)] text-white"
-                : "border-white/10 bg-[rgba(255,255,255,0.06)] text-[#CBD5E1] hover:border-white/20 hover:text-white",
-            )}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+      <FilterChips
+        label="Invite status"
+        value={tab}
+        onChange={(v) => {
+          setTab(v);
+          setListState("loading");
+        }}
+        options={tabs.map((t) => ({ value: t.id, label: t.label }))}
+      />
 
       {listState === "loading" ? (
         <p role="status" className="flex items-center gap-2 p-6 text-sm text-[#94A3B8]">

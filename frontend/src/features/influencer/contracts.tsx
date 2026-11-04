@@ -11,6 +11,7 @@ import { influencerApi, type ContractDetail, type ContractListItem } from "@/lib
 import { contractStatus, formatEtb } from "@/lib/contracts";
 import { cn } from "@/lib/utils";
 import { StatusBadge } from "@/components/common/status-badge";
+import { FilterChips } from "@/components/common/filter-chips";
 
 const FILTERS = [
   { id: "", label: "All" },
@@ -136,23 +137,15 @@ export function InfluencerContracts() {
         <p className="mt-1 max-w-2xl text-sm text-[#CBD5E1]">Review terms from businesses, accept the ones you want, and follow your payouts.</p>
       </div>
 
-      <div className="flex flex-wrap gap-2" role="tablist" aria-label="Contract status">
-        {FILTERS.map((f) => (
-          <button
-            key={f.id || "all"}
-            type="button"
-            role="tab"
-            aria-selected={filter === f.id}
-            onClick={() => { setFilter(f.id); setListState("loading"); }}
-            className={cn(
-              "inline-flex min-h-11 items-center rounded-full border px-4 py-2 text-sm font-medium transition-colors sm:min-h-0",
-              filter === f.id ? "border-transparent bg-[color:var(--adfluence-action)] text-white" : "border-white/10 bg-[rgba(255,255,255,0.06)] text-[#CBD5E1] hover:text-white",
-            )}
-          >
-            {f.label}
-          </button>
-        ))}
-      </div>
+      <FilterChips
+        label="Contract status"
+        value={filter}
+        onChange={(v) => {
+          setFilter(v);
+          setListState("loading");
+        }}
+        options={FILTERS.map((f) => ({ value: f.id, label: f.label }))}
+      />
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_440px]">
         <div className={cn("min-w-0 space-y-3", mobileShowDetail && "hidden xl:block")}>

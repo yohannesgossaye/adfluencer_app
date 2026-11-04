@@ -14,10 +14,10 @@ import {
 } from "@/lib/api/admin";
 import { usePagedList } from "@/hooks/use-paged-list";
 import { adminErrorMessage } from "@/lib/api-errors";
-import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/contracts";
 import { StatusBadge } from "@/components/common/status-badge";
 import { campaignStatus } from "@/lib/status";
+import { FilterChips } from "@/components/common/filter-chips";
 
 const statuses = [
   { id: "draft", label: "Draft" },
@@ -120,35 +120,12 @@ export function AdminCampaigns() {
         ))}
       </section>
 
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={() => setStatus("all")}
-          className={cn(
-            "inline-flex min-h-11 items-center rounded-full border px-4 py-2 text-sm transition-colors sm:min-h-0 sm:px-3 sm:py-1.5 sm:text-xs",
-            status === "all"
-              ? "border-transparent bg-[color:var(--adfluence-action)] text-white"
-              : "border-white/10 text-[#CBD5E1]",
-          )}
-        >
-          All statuses
-        </button>
-        {statuses.map((s) => (
-          <button
-            key={s.id}
-            type="button"
-            onClick={() => setStatus(s.id)}
-            className={cn(
-              "inline-flex min-h-11 items-center rounded-full border px-4 py-2 text-sm capitalize transition-colors sm:min-h-0 sm:px-3 sm:py-1.5 sm:text-xs",
-              status === s.id
-                ? "border-transparent bg-[color:var(--adfluence-action)] text-white"
-                : "border-white/10 text-[#CBD5E1]",
-            )}
-          >
-            {s.label}
-          </button>
-        ))}
-      </div>
+      <FilterChips
+        label="Campaign status"
+        value={status}
+        onChange={setStatus}
+        options={[{ value: "all", label: "All statuses" }, ...statuses.map((s) => ({ value: s.id, label: s.label }))]}
+      />
 
       <div className="flex flex-wrap gap-3">
         <Input

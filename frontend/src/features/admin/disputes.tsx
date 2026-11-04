@@ -18,6 +18,7 @@ import { usePagedList } from "@/hooks/use-paged-list";
 import { cn } from "@/lib/utils";
 import { StatusBadge } from "@/components/common/status-badge";
 import { disputeStatus, priorityLevel } from "@/lib/status";
+import { FilterChips } from "@/components/common/filter-chips";
 
 
 function isFinished(status: string) {
@@ -152,23 +153,15 @@ export function AdminDisputes() {
         </p>
       </div>
 
-      <div className="flex gap-2">
-        {(["open", "resolved"] as const).map((t) => (
-          <button
-            key={t}
-            type="button"
-            onClick={() => setTab(t)}
-            className={cn(
-              "inline-flex min-h-11 items-center rounded-full border px-4 py-2 text-sm capitalize transition-colors sm:min-h-0",
-              tab === t
-                ? "border-transparent bg-[color:var(--adfluence-action)] text-white"
-                : "border-white/10 bg-white/5 text-[#CBD5E1]",
-            )}
-          >
-            {t === "open" ? "Open & under review" : "Resolved"}
-          </button>
-        ))}
-      </div>
+      <FilterChips
+        label="Disputes"
+        value={tab}
+        onChange={setTab}
+        options={[
+          { value: "open", label: "Open & under review" },
+          { value: "resolved", label: "Resolved" },
+        ]}
+      />
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_400px]">
         <div className={cn("space-y-3", mobileShowDetail && shownDetail && "hidden xl:block")}>
