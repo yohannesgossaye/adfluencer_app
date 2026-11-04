@@ -62,7 +62,7 @@ export function HeroDeal() {
   const { openSignup } = useMarketingAuth();
 
   return (
-    <section className="mx-auto grid max-w-[1200px] items-center gap-12 px-5 pt-10 pb-14 sm:px-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,460px)] lg:gap-16 lg:pt-16 lg:pb-24">
+    <section className="mx-auto grid max-w-[1200px] items-center gap-12 px-5 pt-10 pb-14 sm:px-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,460px)] lg:min-h-[calc(100svh_-_73px)] lg:content-center lg:gap-16 lg:py-12">
       <div>
         <h1 className="font-[family-name:var(--font-display)] text-[42px] leading-[1.02] font-extrabold tracking-[-0.03em] text-white sm:text-6xl lg:text-[60px] lg:leading-[1] xl:text-[72px] xl:leading-[0.98]">
           Find the creators Ethiopia actually listens to.
