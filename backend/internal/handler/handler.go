@@ -41,6 +41,7 @@ type BusinessHandler interface {
 	OpenDispute(w http.ResponseWriter, r *http.Request)
 	CancelContract(w http.ResponseWriter, r *http.Request)
 	GetDashboardSummary(w http.ResponseWriter, r *http.Request)
+	SearchCreators(w http.ResponseWriter, r *http.Request)
 	ListSupportCampaignOptions(w http.ResponseWriter, r *http.Request)
 	CreateSupportTicket(w http.ResponseWriter, r *http.Request)
 	ListSupportTickets(w http.ResponseWriter, r *http.Request)

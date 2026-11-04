@@ -117,6 +117,7 @@ type BusinessService interface {
 	OpenDispute(ctx context.Context, userID, contractID string, req contractDto.OpenDisputeRequest) (*contractDto.DisputeSummary, error)
 	CancelContract(ctx context.Context, userID, contractID string, meta authDto.SessionMeta) (*businessDto.ContractMutationResponse, error)
 	GetDashboardSummary(ctx context.Context, userID string) (*businessDto.DashboardSummaryResponse, error)
+	SearchCreators(ctx context.Context, userID string, query businessDto.SearchCreatorsQuery) (*businessDto.SearchCreatorsResponse, error)
 	ListSupportCampaignOptions(ctx context.Context, userID string) (*businessDto.ListSupportCampaignOptionsResponse, error)
 	ListActiveCategories(ctx context.Context) ([]businessDto.CampaignCategoryResponse, error)
 	CreateSupportTicket(ctx context.Context, userID string, req businessDto.CreateSupportTicketRequest, meta authDto.SessionMeta) (*commonDto.CreatedIDResponse, error)

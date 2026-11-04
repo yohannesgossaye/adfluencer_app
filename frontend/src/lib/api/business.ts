@@ -236,6 +236,48 @@ export type RecommendationItem = {
   rank_position?: number;
 };
 
+export type CreatorSearchItem = {
+  influencer_user_id: string;
+  creator_name: string;
+  profile_image_url?: string;
+  city?: string;
+  bio?: string;
+  niches: string[];
+  platforms: string[];
+  total_followers: number;
+  tiktok_followers: number;
+  instagram_followers: number;
+  youtube_subscribers: number;
+  /** nano, micro, mid, macro or mega */
+  size: string;
+  engagement_rate?: number;
+  min_price_etb?: number;
+  max_price_etb?: number;
+  is_verified: boolean;
+  /** Only when ranked for a campaign. */
+  match_score?: number;
+  score_breakdown?: ScoreBreakdown;
+  invite_status?: string;
+};
+
+export type SearchCreatorsParams = {
+  q?: string;
+  niche?: string;
+  platform?: string;
+  size?: string;
+  max_price?: number;
+  campaign_id?: string;
+  sort?: string;
+  page?: number;
+  limit?: number;
+};
+
+export type SearchCreatorsResponse = {
+  items: CreatorSearchItem[];
+  pagination: { total_docs: number; page: number; limit: number; total_pages: number; has_next_page: boolean };
+  ranked_for?: { id: string; title: string; status: string };
+};
+
 export type InfluencerViewDetail = {
   influencer_user_id: string;
   creator_name: string;
@@ -507,6 +549,12 @@ export const businessApi = {
     const res = await apiClient.post<ApiResponse<{ generated: number; total: number }>>(
       `/api/v1/business/campaigns/${campaignId}/recommendations/generate`
     );
+    return res.data;
+  },
+
+  /** "Find creators": approved creators, filtered; ranked for a campaign when campaign_id is given. */
+  searchCreators: async (params: SearchCreatorsParams): Promise<ApiResponse<SearchCreatorsResponse>> => {
+    const res = await apiClient.get<ApiResponse<SearchCreatorsResponse>>("/api/v1/business/creators", { params });
     return res.data;
   },
 
