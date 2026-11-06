@@ -81,8 +81,12 @@ func TestDuplicateChatsAreMerged(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	// Recreate the old situation: the rule allowed one chat per pair and campaign.
+	// Recreate production before 00006 exactly: the old rule (one chat per
+	// pair and campaign) in place, and a pair with a campaign chat plus a
+	// campaign-less "Direct message" chat.
 	exec(`DROP INDEX uq_conversations_pair`)
+	exec(`CREATE UNIQUE INDEX uq_conversations_pair_campaign ON conversations (pair_low, pair_high,
+		(COALESCE(campaign_id, '00000000-0000-0000-0000-000000000000'::uuid))) WHERE pair_low IS NOT NULL`)
 	newChat := func(campaign any, age string) string {
 		var id string
 		if err := db.QueryRow(`INSERT INTO conversations (campaign_id, status, pair_low, pair_high, created_at)
@@ -137,5 +141,45 @@ func TestDuplicateChatsAreMerged(t *testing.T) {
 	// The new rule is in place: a second chat for the pair is refused.
 	if _, err := db.Exec(`INSERT INTO conversations (status, pair_low, pair_high) VALUES ('active', LEAST($1::uuid, $2::uuid), GREATEST($1::uuid, $2::uuid))`, f.business, f.creator); err == nil {
 		t.Fatal("a second chat for the same pair was allowed")
+	}
+}
+
+// The case that stopped production: the oldest chat has no campaign and a
+// newer duplicate has one, with the old per-campaign rule still in place.
+func TestMergeWhenOldestChatHasNoCampaign(t *testing.T) {
+	db := testutil.MigratedDB(t)
+	f := newPair(t, db)
+	exec := func(query string, args ...any) {
+		t.Helper()
+		if _, err := db.Exec(query, args...); err != nil {
+			t.Fatal(err)
+		}
+	}
+	exec(`DROP INDEX uq_conversations_pair`)
+	exec(`CREATE UNIQUE INDEX uq_conversations_pair_campaign ON conversations (pair_low, pair_high,
+		(COALESCE(campaign_id, '00000000-0000-0000-0000-000000000000'::uuid))) WHERE pair_low IS NOT NULL`)
+	var direct, campaignChat string
+	db.QueryRow(`INSERT INTO conversations (campaign_id, status, pair_low, pair_high, created_at)
+		VALUES (NULL, 'active', LEAST($1::uuid, $2::uuid), GREATEST($1::uuid, $2::uuid), NOW() - interval '5 days') RETURNING id`, f.business, f.creator).Scan(&direct)
+	db.QueryRow(`INSERT INTO conversations (campaign_id, status, pair_low, pair_high, created_at)
+		VALUES ($3, 'active', LEAST($1::uuid, $2::uuid), GREATEST($1::uuid, $2::uuid), NOW() - interval '1 day') RETURNING id`, f.business, f.creator, f.campaignA).Scan(&campaignChat)
+	exec(`INSERT INTO messages (conversation_id, sender_user_id, receiver_user_id, body) VALUES ($1, $2, $3, 'hello'), ($4, $3, $2, 'hi back')`,
+		direct, f.business, f.creator, campaignChat)
+
+	raw, err := os.ReadFile("../../../../../migration/versions/00006_one_chat_per_pair.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(strings.Split(string(raw), "-- +goose Down")[0]); err != nil {
+		t.Fatalf("migration failed: %v", err)
+	}
+	var convs, msgs int
+	var keeper string
+	var campaign sql.NullString
+	db.QueryRow(`SELECT count(*) FROM conversations`).Scan(&convs)
+	db.QueryRow(`SELECT id, campaign_id FROM conversations`).Scan(&keeper, &campaign)
+	db.QueryRow(`SELECT count(*) FROM messages WHERE conversation_id = $1`, keeper).Scan(&msgs)
+	if convs != 1 || keeper != direct || msgs != 2 || campaign.String != f.campaignA {
+		t.Fatalf("after merge: %d chats, keeper %s (want %s), %d messages, campaign %q (want A)", convs, keeper, direct, msgs, campaign.String)
 	}
 }
