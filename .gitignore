@@ -5,3 +5,7 @@ docs/
 .env
 .env.*
 !.env.example
+
+# Playwright reports and failure screenshots
+frontend/test-results/
+frontend/playwright-report/
