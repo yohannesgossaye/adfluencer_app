@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { authApi } from "@/lib/api/auth";
 import { authErrorMessage } from "@/lib/api-errors";
+import { SignedOutNotice } from "@/components/auth/signed-out-notice";
 
 type LoginFormProps = {
   idPrefix?: string;
@@ -34,7 +35,6 @@ export function LoginForm({
   const { setSession } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -52,7 +52,6 @@ export function LoginForm({
       const res = await authApi.login({
         email: email.trim(),
         password,
-        remember_me: rememberMe,
         next: nextParam,
       });
 
@@ -74,6 +73,7 @@ export function LoginForm({
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
+      <SignedOutNotice />
       <div className="space-y-2">
         <label htmlFor={`${idPrefix}-email`} className="text-sm text-[#CBD5E1]">
           Email
@@ -104,15 +104,7 @@ export function LoginForm({
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
-        <label className="flex items-center gap-2 text-[#CBD5E1]">
-          <input
-            type="checkbox"
-            checked={rememberMe}
-            onChange={(e) => setRememberMe(e.target.checked)}
-            className="h-4 w-4 rounded border-white/25 bg-transparent accent-[color:var(--adfluence-orange)]"
-          />
-          Remember me
-        </label>
+        <span className="text-xs text-[#94A3B8]">For your security, you&apos;re signed out after 15 minutes of inactivity.</span>
         <Link href="/auth/forgot-password" className="text-[#CBD5E1] hover:text-white">
           Forgot password?
         </Link>

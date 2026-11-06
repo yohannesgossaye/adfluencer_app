@@ -11,6 +11,7 @@ import { useAuth } from "@/components/providers/auth-provider";
 import { Input } from "@/components/ui/input";
 import { authApi } from "@/lib/api/auth";
 import { authErrorMessage } from "@/lib/api-errors";
+import { SignedOutNotice } from "@/components/auth/signed-out-notice";
 
 export function AdminLoginPageFeature() {
   const router = useRouter();
@@ -35,6 +36,8 @@ export function AdminLoginPageFeature() {
         email: email.trim(),
         password,
         portal: "admin",
+        // After an automatic sign-out, come back to the page the admin was on (the server checks it is internal).
+        next: new URLSearchParams(window.location.search).get("next") || undefined,
       });
 
       if (res.data) {
@@ -68,6 +71,7 @@ export function AdminLoginPageFeature() {
           </div>
         </div>
         <form onSubmit={onSubmit} className="space-y-4">
+          <SignedOutNotice />
           <div className="space-y-2">
             <label htmlFor="admin-email" className="text-sm text-[#CBD5E1]">
               Email

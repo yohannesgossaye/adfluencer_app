@@ -2,6 +2,8 @@
 
 import * as React from "react";
 
+import { clearStoredSession, markActivity, rememberSessionLimits } from "@/lib/session";
+
 import {
   AUTH_TOKEN_STORAGE_KEY,
   REFRESH_TOKEN_STORAGE_KEY,
@@ -96,6 +98,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (tokens) {
         setAccessTokenState(tokens.access_token);
         window.localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, tokens.access_token);
+        // Logging in counts as activity; keep the server's session limits.
+        rememberSessionLimits(tokens);
+        markActivity();
         if (tokens.refresh_token) {
           window.localStorage.setItem(
             REFRESH_TOKEN_STORAGE_KEY,
@@ -140,6 +145,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       window.localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
       window.localStorage.removeItem(REFRESH_TOKEN_STORAGE_KEY);
       window.localStorage.removeItem(AUTH_USER_STORAGE_KEY);
+      clearStoredSession();
       // Go home with a fresh page load. Clearing the session first would let the
       // portal guard send the user to that portal's login (e.g. the admin login)
       // before any later navigation runs.
