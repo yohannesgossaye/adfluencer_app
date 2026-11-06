@@ -21,6 +21,7 @@ import { formatDate, formatEtbRange } from "@/lib/contracts";
 import { StatusBadge } from "@/components/common/status-badge";
 import { creatorStatus } from "@/lib/status";
 import { FilterChips } from "@/components/common/filter-chips";
+import { canOptimize } from "@/lib/images";
 
 const tabs: Array<{ id: "all" | "pending" | "approved" | "rejected"; label: string }> = [
   { id: "all", label: "All" },
@@ -67,7 +68,7 @@ export function AdminInfluencers() {
       ).data,
     [tab, query],
   );
-  const list = usePagedList(fetchPage);
+  const list = usePagedList(["admin", "creators", { tab, query }], fetchPage);
   const rows: InfluencerApplicationItem[] = list.items;
   const loadList = list.reload;
   // The selection follows the list: if the picked creator isn't in it (other tab or search), show the first one.
@@ -376,7 +377,7 @@ export function AdminInfluencers() {
                       src={selected.profile.portfolio_items[0].file_url}
                       alt={selected.profile.creator_name}
                       fill
-                      unoptimized
+                      unoptimized={!canOptimize(selected.profile.portfolio_items[0].file_url)}
                       className="object-cover"
                       sizes="360px"
                     />

@@ -49,7 +49,7 @@ export function AdminUsers() {
       ).data,
     [roleFilter, statusFilter, query],
   );
-  const list = usePagedList(fetchPage);
+  const list = usePagedList(["admin", "users", { roleFilter, statusFilter, query }], fetchPage);
   const users = list.items;
   const stats: AdminUserStats = list.last?.stats ?? { total: 0, active: 0, blocked: 0, pending: 0 };
   const loadUsers = list.reload;

@@ -14,7 +14,7 @@ import { campaignStatus, platformLabel } from "@/lib/status";
 
 export function CampaignsList() {
   const fetchPage = useCallback(async (page: number) => (await businessApi.listCampaigns({ page })).data, []);
-  const list = usePagedList(fetchPage);
+  const list = usePagedList(["business", "campaigns"], fetchPage);
   const campaigns: CampaignListItem[] = list.items;
 
   return (

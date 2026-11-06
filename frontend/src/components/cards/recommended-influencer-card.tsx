@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { getInitials } from "@/lib/utils";
+import { canOptimize } from "@/lib/images";
 
 export type RecommendedInfluencerCardData = {
   id: string;
@@ -23,7 +24,7 @@ export function RecommendedInfluencerCard({ influencer }: { influencer: Recommen
     <article className="adfluence-glass overflow-hidden rounded-2xl border border-white/15">
       <div className="relative flex h-44 items-center justify-center overflow-hidden bg-gradient-to-br from-[#0B1A2B] via-white/5 to-[color:var(--adfluence-orange)]/20">
         {influencer.imageUrl ? (
-          <Image src={influencer.imageUrl} alt={influencer.name} fill className="object-cover" />
+          <Image src={influencer.imageUrl} alt={influencer.name} fill sizes="(max-width: 640px) 100vw, 320px" unoptimized={!canOptimize(influencer.imageUrl)} className="object-cover" />
         ) : (
           <span className="text-3xl font-extrabold uppercase tracking-wider text-white" aria-hidden>
             {getInitials(influencer.name, "CR")}

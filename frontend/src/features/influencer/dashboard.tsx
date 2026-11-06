@@ -1,21 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
 import { ArrowRight, MessageSquare } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import {
-  influencerApi,
-  type InfluencerDashboardSummaryResponse,
-  type ContractListItem,
-} from "@/lib/api/influencer";
-import { chatApi, type ChatConversationItem } from "@/lib/api/chat";
 import { OPTIONAL_PROFILE_ITEMS, REQUIRED_FOR_SUBMIT } from "@/lib/influencer-profile";
 import { UserAvatar } from "@/components/common/user-avatar";
 import { contractStatus, formatDate, formatEtb } from "@/lib/contracts";
 import { StatusBadge } from "@/components/common/status-badge";
 import { inviteStatus } from "@/lib/status";
+import { loadState, useContracts, useConversations, useInfluencerDashboard } from "@/lib/queries";
 
 function KpiCard({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
@@ -30,39 +24,13 @@ function KpiCard({ label, value, hint }: { label: string; value: string; hint?: 
 }
 
 export function InfluencerDashboard() {
-  const [summary, setSummary] = useState<InfluencerDashboardSummaryResponse | null>(null);
-  const [conversations, setConversations] = useState<ChatConversationItem[]>([]);
-  const [contracts, setContracts] = useState<ContractListItem[]>([]);
-  const [loadState, setLoadState] = useState<"loading" | "ready" | "error">("loading");
-
-  const loadDashboard = async () => {
-    try {
-      const [sumRes, chatRes, contRes] = await Promise.allSettled([
-        influencerApi.getDashboardSummary(),
-        chatApi.listConversations(),
-        influencerApi.listContracts(),
-      ]);
-
-      if (sumRes.status !== "fulfilled" || !sumRes.value.data) {
-        setLoadState("error");
-        return;
-      }
-      setSummary(sumRes.value.data);
-      if (chatRes.status === "fulfilled") {
-        setConversations(chatRes.value.data ?? []);
-      }
-      if (contRes.status === "fulfilled" && contRes.value.data?.items) {
-        setContracts(contRes.value.data.items);
-      }
-      setLoadState("ready");
-    } catch {
-      setLoadState("error");
-    }
-  };
-
-  useEffect(() => {
-    void Promise.resolve().then(loadDashboard);
-  }, []);
+  const summaryQuery = useInfluencerDashboard();
+  const conversationsQuery = useConversations();
+  const contractsQuery = useContracts("influencer");
+  const summary = summaryQuery.data ?? null;
+  const conversations = conversationsQuery.data ?? [];
+  const contracts = contractsQuery.data ?? [];
+  const loadStatus = loadState(summaryQuery);
 
   const kpis = summary?.kpis;
   const completeness = summary?.completeness;
@@ -72,14 +40,14 @@ export function InfluencerDashboard() {
 
   const activeContracts = contracts.filter((c) => c.status.toLowerCase() === "active");
 
-  if (loadState === "loading") {
+  if (loadStatus === "loading") {
     return <p role="status" className="p-6 text-sm text-[#94A3B8]">Loading your dashboard…</p>;
   }
-  if (loadState === "error") {
+  if (loadStatus === "error") {
     return (
       <div role="alert" className="rounded-2xl border border-rose-400/30 bg-rose-500/10 p-6 text-sm text-rose-100">
         Your dashboard could not be loaded.{" "}
-        <button type="button" className="underline" onClick={() => { setLoadState("loading"); void loadDashboard(); }}>
+        <button type="button" className="underline" onClick={() => void summaryQuery.refetch()}>
           Try again
         </button>
       </div>

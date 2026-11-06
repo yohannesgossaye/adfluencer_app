@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useState } from "react";
 import { cn, getInitials } from "@/lib/utils";
+import { canOptimize } from "@/lib/images";
 
 export interface UserAvatarProps {
   src?: string | null;
@@ -48,7 +49,7 @@ export function UserAvatar({
           src={src}
           alt={name || "Avatar"}
           fill
-          unoptimized
+          unoptimized={!canOptimize(src)}
           className="object-cover"
           sizes={sizes}
           onError={() => setHasError(true)}

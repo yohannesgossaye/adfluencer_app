@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useQueryClient } from "@tanstack/react-query";
 
 import {
   AUTH_TOKEN_STORAGE_KEY,
@@ -127,6 +128,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     []
   );
 
+  // Cached API answers belong to the signed-in person: drop them whenever
+  // someone else signs in (or nobody is), so one account never sees another's data.
+  const queryClient = useQueryClient();
+  const cacheOwner = React.useRef<string | null>(null);
+  React.useEffect(() => {
+    const id = user?.id ?? null;
+    if (cacheOwner.current && cacheOwner.current !== id) queryClient.clear();
+    cacheOwner.current = id;
+  }, [user?.id, queryClient]);
+
   const logout = React.useCallback(async () => {
     const refreshToken = window.localStorage.getItem(REFRESH_TOKEN_STORAGE_KEY) || undefined;
     try {
@@ -140,12 +151,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       window.localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
       window.localStorage.removeItem(REFRESH_TOKEN_STORAGE_KEY);
       window.localStorage.removeItem(AUTH_USER_STORAGE_KEY);
+      queryClient.clear();
       // Go home with a fresh page load. Clearing the session first would let the
       // portal guard send the user to that portal's login (e.g. the admin login)
       // before any later navigation runs.
       window.location.replace("/");
     }
-  }, []);
+  }, [queryClient]);
 
   const value = React.useMemo(
     () => ({
