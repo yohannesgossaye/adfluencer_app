@@ -2,7 +2,9 @@ package initiator
 
 import (
 	"adinfluence_service_app/platform/jwt"
+	"adinfluence_service_app/platform/secrets"
 	"adinfluence_service_app/platform/utils"
+	"context"
 	"log"
 	"net/netip"
 	"os"
@@ -72,6 +74,31 @@ type JWTConfig struct {
 	SecretKey      string
 	AccessTokenTTL time.Duration
 	Sessions       jwt.SessionPolicy
+}
+
+// LoadVault runs first at startup: it reads .env, then, when VAULT_ADDR is
+// set, applies every key from Vault over it. Without Vault access the API
+// refuses to start: running on stale or missing secrets would be worse.
+// Docker restarts it, so it comes up by itself once Vault is unsealed.
+func LoadVault() *secrets.Vault {
+	_ = godotenv.Load()
+
+	vault, err := secrets.FromEnv()
+	if err != nil {
+		log.Fatal(err)
+	}
+	if vault == nil {
+		return nil
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	names, err := vault.Apply(ctx)
+	if err != nil {
+		log.Fatalf("cannot load configuration from Vault %s: %v", vault.Path(), err)
+	}
+	// Names only, never values.
+	log.Printf("loaded %d keys from Vault %s: %s", len(names), vault.Path(), strings.Join(names, ", "))
+	return vault
 }
 
 func Load() *Config {
