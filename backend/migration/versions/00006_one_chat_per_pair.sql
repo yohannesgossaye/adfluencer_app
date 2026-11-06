@@ -5,6 +5,10 @@
 -- empty "Direct message" chat next to the real one. Merge every pair's chats
 -- into its oldest one, then allow only one chat per pair.
 
+-- The old rule (one chat per pair and campaign) goes first: while merging, a
+-- keeper takes a campaign that one of its duplicates still has.
+DROP INDEX IF EXISTS uq_conversations_pair_campaign;
+
 CREATE TEMP TABLE chat_pair_dupes ON COMMIT DROP AS
 SELECT id, keeper
 FROM (
@@ -58,7 +62,6 @@ WHERE c.id = lm.conversation_id;
 -- The emptied duplicates go (their participant rows go with them).
 DELETE FROM conversations c USING chat_pair_dupes d WHERE c.id = d.id;
 
-DROP INDEX IF EXISTS uq_conversations_pair_campaign;
 CREATE UNIQUE INDEX IF NOT EXISTS uq_conversations_pair
     ON conversations (pair_low, pair_high)
     WHERE pair_low IS NOT NULL;
