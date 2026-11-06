@@ -32,9 +32,6 @@ type AuthPersisitence interface {
 	GetPhoneVerificationTokenByHash(ctx context.Context, userID, tokenHash string) (*authDto.PhoneVerificationToken, error)
 	CompletePhoneVerification(ctx context.Context, userID, tokenID string) error
 	CreateAuditLog(ctx context.Context, input authDto.CreateAuditLogInput) error
-	GetLoginLockout(ctx context.Context, email string) (*authDto.LoginLockout, error)
-	SaveLoginLockout(ctx context.Context, lockout authDto.LoginLockout) error
-	ClearLoginLockout(ctx context.Context, email string) error
 	InsertRateLimitEvent(ctx context.Context, scope, rateKey string) error
 	CountRateLimitEvents(ctx context.Context, scope, rateKey string, since time.Time) (int, error)
 }

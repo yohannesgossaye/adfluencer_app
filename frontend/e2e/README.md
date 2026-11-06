@@ -4,7 +4,7 @@ A robot uses the real site in Chrome to check the main flows on every pull reque
 
 | Test | Flow |
 |---|---|
-| `login.spec.ts` | Business, creator and admin each log in |
+| `login.spec.ts` | Business, creator and admin each log in; 5 wrong passwords pause logins with a clear message |
 | `find-creators.spec.ts` | Search "football", rank for a campaign, invite |
 | `invite.spec.ts` | Creator accepts an invite |
 | `dispute.spec.ts` | Business reports a problem, admin resolves it |

@@ -2,7 +2,9 @@ package initiator
 
 import (
 	"adinfluence_service_app/platform/jwt"
+	"adinfluence_service_app/platform/utils"
 	"log"
+	"net/netip"
 	"os"
 	"strconv"
 	"strings"
@@ -21,6 +23,11 @@ type Config struct {
 	CORSOrigins  []string
 	// MigrateOnStart applies pending migrations before serving (default true).
 	MigrateOnStart bool
+	// RedisURL holds the login attempt counters (e.g. redis://redis:6379/0).
+	// Empty keeps them in this process's memory.
+	RedisURL string
+	// TrustedProxies may set X-Real-IP / X-Forwarded-For (CIDRs).
+	TrustedProxies []netip.Prefix
 	DB             DBConfig
 	JWT            JWTConfig
 	SMTP           SMTPConfig
@@ -78,6 +85,8 @@ func Load() *Config {
 		AppEnv:         Getenv("APP_ENV", "production"),
 		CORSOrigins:    parseList(Getenv("CORS_ORIGINS", defaultCORSOrigins)),
 		MigrateOnStart: Getenv("MIGRATE_ON_START", "true") == "true",
+		RedisURL:       Getenv("REDIS_URL", ""),
+		TrustedProxies: utils.ParseTrustedProxies(Getenv("TRUSTED_PROXIES", utils.DefaultTrustedProxies)),
 		DB:             loadDBConfig(),
 		JWT:            loadJWTConfig(),
 		SMTP:           loadSMTPConfig(),

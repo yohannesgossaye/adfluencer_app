@@ -29,7 +29,7 @@ func TestSessionLimits(t *testing.T) {
 			AdminIdle: 10 * time.Minute, AdminMaxAge: 8 * time.Hour,
 		},
 	})
-	m := InitAuthModule(authPersist.InitAuthPersistence(db, log), tokens, nil, nil, nil, "http://localhost:3000", "", false, log)
+	m := InitAuthModule(authPersist.InitAuthPersistence(db, log), tokens, nil, nil, nil, nil, "http://localhost:3000", "", false, log)
 	ctx := context.Background()
 	meta := authDto.SessionMeta{IPAddress: "127.0.0.1", UserAgent: "test"}
 

@@ -5,6 +5,7 @@ import (
 	"adinfluence_service_app/internal/constant/model/response"
 	"errors"
 	"net/http"
+	"strconv"
 
 	"github.com/jackc/pgx/v5/pgconn"
 )
@@ -26,6 +27,10 @@ func WriteServiceError(w http.ResponseWriter, err error, mappings ...ErrorMappin
 }
 
 func WriteServiceErrorOr(w http.ResponseWriter, err error, fallbackCode, fallbackMsg string, mappings ...ErrorMapping) {
+	var wait *customErr.WaitError
+	if errors.As(err, &wait) {
+		w.Header().Set("Retry-After", strconv.Itoa(wait.RetryAfterSeconds()))
+	}
 	for _, m := range mappings {
 		if errors.Is(err, m.Err) {
 			response.SendErrorResponse(w, m.Status, m.Code, err, err.Error())

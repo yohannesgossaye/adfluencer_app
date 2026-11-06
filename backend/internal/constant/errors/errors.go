@@ -49,6 +49,7 @@ var (
 	ErrPortfolioLimitReached      = errors.New("portfolio limit reached")
 	ErrPortfolioItemNotFound      = errors.New("portfolio item not found")
 	ErrLoginLocked                = errors.New("too many failed login attempts")
+	ErrTooManyAttempts            = errors.New("too many attempts from this network")
 	ErrForgotPasswordRateLimit    = errors.New("too many password reset requests")
 	ErrContactRateLimit           = errors.New("too many contact messages")
 	ErrContactUnavailable         = errors.New("contact messages are not available right now")
@@ -128,6 +129,7 @@ var ErrorMap = map[error]int{
 	ErrPortfolioLimitReached:      http.StatusConflict,
 	ErrPortfolioItemNotFound:      http.StatusNotFound,
 	ErrLoginLocked:                http.StatusTooManyRequests,
+	ErrTooManyAttempts:            http.StatusTooManyRequests,
 	ErrForgotPasswordRateLimit:    http.StatusTooManyRequests,
 	ErrContactRateLimit:           http.StatusTooManyRequests,
 	ErrContactUnavailable:         http.StatusServiceUnavailable,

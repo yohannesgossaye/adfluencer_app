@@ -137,7 +137,7 @@ func (h *authHandler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.service.ForgotPassword(ctx, req); err != nil {
+	if err := h.service.ForgotPassword(ctx, req, sessionMetaFromRequest(r)); err != nil {
 		httputil.WriteServiceErrorOr(w, err, "forgot_password_failed", "failed to process forgot password request")
 		return
 	}
