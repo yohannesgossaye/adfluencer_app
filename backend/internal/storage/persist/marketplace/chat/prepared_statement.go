@@ -19,24 +19,26 @@ const messageColumns = `
 	created_at,
 	updated_at`
 
-// Conversations are unique per participant pair (+ campaign) thanks to
-// uq_conversations_pair_campaign; pair_low/pair_high hold the two user ids in
-// a fixed order.
+// One conversation per participant pair (uq_conversations_pair, migration
+// 00006), whatever campaign it was opened from; pair_low/pair_high hold the
+// two user ids in a fixed order.
 const (
 	insertConversation = `
 		INSERT INTO conversations (campaign_id, status, pair_low, pair_high, created_at, updated_at)
 		VALUES ($1, 'active', LEAST($2::uuid, $3::uuid), GREATEST($2::uuid, $3::uuid), now(), now())
-		ON CONFLICT (pair_low, pair_high, (COALESCE(campaign_id, '00000000-0000-0000-0000-000000000000'::uuid)))
-			WHERE pair_low IS NOT NULL
+		ON CONFLICT (pair_low, pair_high) WHERE pair_low IS NOT NULL
 		DO NOTHING
 		RETURNING id
 	`
 
+	// The pair's existing chat; one opened without a campaign takes the
+	// campaign it is now opened from, so it carries a useful label.
 	findConversationByPair = `
-		SELECT id FROM conversations
+		UPDATE conversations
+		SET campaign_id = COALESCE(campaign_id, $3::uuid)
 		WHERE pair_low = LEAST($1::uuid, $2::uuid)
 		  AND pair_high = GREATEST($1::uuid, $2::uuid)
-		  AND campaign_id IS NOT DISTINCT FROM $3::uuid
+		RETURNING id
 	`
 
 	insertParticipant = `
