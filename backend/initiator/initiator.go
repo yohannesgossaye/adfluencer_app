@@ -17,6 +17,7 @@ import (
 	"adinfluence_service_app/platform/mail"
 	"adinfluence_service_app/platform/notify"
 	"adinfluence_service_app/platform/sms"
+	"adinfluence_service_app/platform/utils"
 
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
@@ -107,7 +108,8 @@ func Initiator(ctx context.Context) {
 	}))
 
 	r.Use(chimiddleware.RequestID)
-	r.Use(chimiddleware.RealIP)
+	// The visitor's real IP, believing forwarding headers only from our own proxy (nginx).
+	r.Use(utils.TrustedRealIP(cfg.TrustedProxies))
 	r.Use(chimiddleware.Logger)
 	r.Use(chimiddleware.Recoverer)
 	r.Use(requestTimeout(requestTimeoutDefault, requestTimeoutUpload))
@@ -124,7 +126,8 @@ func Initiator(ctx context.Context) {
 		Sessions:       cfg.JWT.Sessions,
 	})
 	dispatcher := notify.New(logger)
-	service := InitModules(postgresRepo, tokens, emailClient, smsClient, dispatcher, fileStorage, cfg.FrontendURL, cfg.ContactInbox, cfg.IsDevelopment(), logger)
+	limits := initRateLimitStore(ctx, cfg.RedisURL, logger)
+	service := InitModules(postgresRepo, tokens, emailClient, smsClient, dispatcher, limits, fileStorage, cfg.FrontendURL, cfg.ContactInbox, cfg.IsDevelopment(), logger)
 	handler := InitHandler(service, tokens, cfg.CORSOrigins, logger)
 	authMW := middleware.InitAuthMiddleware(tokens)
 	InitRoute(r, handler, authMW)

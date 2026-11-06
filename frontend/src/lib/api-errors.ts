@@ -58,6 +58,7 @@ export function adminErrorMessage(err: unknown, fallback: string): string {
 const AUTH_MESSAGES: Record<string, string> = {
   invalid_credentials: "That email and password don't match. Check them and try again.",
   login_locked: "Too many failed attempts. Wait a few minutes, or reset your password.",
+  too_many_attempts: "Too many attempts from your network. Wait a few minutes and try again.",
   account_blocked: "This account is blocked. Contact Adfluence support.",
   account_suspended: "This account is suspended. Contact Adfluence support.",
   account_removed: "This account has been closed. Contact Adfluence support.",
@@ -81,7 +82,9 @@ export function authErrorMessage(err: unknown, fallback: string): string {
   if (!err.response) return "You appear to be offline. Check your connection and try again.";
   if (err.response.status >= 500) return "Adfluence is having trouble right now. Please try again in a moment.";
   const type = apiErrorType(err);
-  if (type && AUTH_MESSAGES[type]) return AUTH_MESSAGES[type];
   const data = err.response.data as { message?: string; error?: { details?: Array<{ description?: string }> } } | undefined;
+  // Rate limits: the server's message says exactly how long to wait ("Try again in 5 minutes").
+  if (err.response.status === 429 && data?.message?.startsWith("Too many")) return data.message;
+  if (type && AUTH_MESSAGES[type]) return AUTH_MESSAGES[type];
   return data?.error?.details?.[0]?.description || data?.message || fallback;
 }

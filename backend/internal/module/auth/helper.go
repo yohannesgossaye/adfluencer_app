@@ -6,9 +6,9 @@ import (
 	customErr "adinfluence_service_app/internal/constant/errors"
 	"adinfluence_service_app/internal/constant/model"
 	authDto "adinfluence_service_app/internal/constant/model/dto/auth"
-	"adinfluence_service_app/internal/module/auth/helper"
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"go.uber.org/zap"
@@ -96,35 +96,23 @@ func (m *userAuthModule) writeAuditAsync(input authDto.CreateAuditLogInput) {
 	}(input)
 }
 
-func (m *userAuthModule) checkLoginLockout(ctx context.Context, email string) error {
-	lockout, err := m.persistence.GetLoginLockout(ctx, email)
-	if err != nil {
-		return err
+// warnAccountLocked tells the owner that logins to their account were paused
+// after many wrong passwords, sent once when the pause starts.
+func (m *userAuthModule) warnAccountLocked(ctx context.Context, email string, pause time.Duration) {
+	m.logger.Warn(ctx, "account login paused after many failed attempts", zap.String("email", email))
+	if m.mail == nil || !m.mail.Enabled() {
+		return
 	}
-	if helper.IsLoginLocked(lockout, time.Now().UTC()) {
-		return customErr.ErrLoginLocked
-	}
-	return nil
-}
+	body := fmt.Sprintf(`Someone tried to log in to your Adfluence account many times with the wrong password.
 
-func (m *userAuthModule) recordLoginFailure(ctx context.Context, email string) error {
-	now := time.Now().UTC()
+To protect your account, logging in is paused for %d minutes.
 
-	lockout, err := m.persistence.GetLoginLockout(ctx, email)
-	if err != nil {
-		return err
-	}
+If this was you, wait and try again, or reset your password: %s/auth/forgot-password
 
-	updated := helper.ApplyFailedLogin(lockout, email, now)
-	if err := m.persistence.SaveLoginLockout(ctx, updated); err != nil {
-		return err
-	}
+If this wasn't you, your password is still safe, but we recommend changing it to one you don't use anywhere else.
 
-	if helper.IsLoginLocked(&updated, now) {
-		return customErr.ErrLoginLocked
-	}
-
-	return nil
+— Adfluence`, int(pause.Minutes()), m.frontendURL)
+	m.sendEmail(email, "Unusual login attempts on your Adfluence account", body, "login_attempts_warning")
 }
 
 // sendEmail queues an email for background delivery; the result is logged.

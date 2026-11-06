@@ -602,53 +602,6 @@ func (a *auth) CreateAuditLog(ctx context.Context, input authDto.CreateAuditLogI
 	return nil
 }
 
-func (a *auth) GetLoginLockout(ctx context.Context, email string) (*authDto.LoginLockout, error) {
-	var lockout authDto.LoginLockout
-	var lockedUntil sql.NullTime
-
-	err := a.db.QueryRowContext(ctx, getLoginLockout, email).Scan(
-		&lockout.Email,
-		&lockout.FailedAttempts,
-		&lockout.LockoutTier,
-		&lockedUntil,
-	)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, nil
-		}
-		return nil, fmt.Errorf("get login lockout: %w", err)
-	}
-
-	if lockedUntil.Valid {
-		lockout.LockedUntil = &lockedUntil.Time
-	}
-
-	return &lockout, nil
-}
-
-func (a *auth) SaveLoginLockout(ctx context.Context, lockout authDto.LoginLockout) error {
-	now := time.Now().UTC()
-	_, err := a.db.ExecContext(ctx, upsertLoginLockout,
-		lockout.Email,
-		lockout.FailedAttempts,
-		lockout.LockoutTier,
-		nullTime(lockout.LockedUntil),
-		now,
-	)
-	if err != nil {
-		return fmt.Errorf("save login lockout: %w", err)
-	}
-	return nil
-}
-
-func (a *auth) ClearLoginLockout(ctx context.Context, email string) error {
-	_, err := a.db.ExecContext(ctx, deleteLoginLockout, email)
-	if err != nil {
-		return fmt.Errorf("clear login lockout: %w", err)
-	}
-	return nil
-}
-
 func (a *auth) InsertRateLimitEvent(ctx context.Context, scope, rateKey string) error {
 	_, err := a.db.ExecContext(ctx, insertRateLimitEvent,
 		utils.GenerateUUID(),

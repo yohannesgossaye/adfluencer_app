@@ -167,6 +167,8 @@ func ClientErrorCode(err error) string {
 		return "invalid_dispute_status"
 	case errors.Is(err, ErrLoginLocked):
 		return "login_locked"
+	case errors.Is(err, ErrTooManyAttempts):
+		return "too_many_attempts"
 	case errors.Is(err, ErrForgotPasswordRateLimit):
 		return "too_many_forgot_password_requests"
 	case errors.Is(err, ErrContactRateLimit):

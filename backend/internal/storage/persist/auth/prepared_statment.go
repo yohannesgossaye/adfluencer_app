@@ -301,33 +301,6 @@ const (
 	) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 	`
 
-	getLoginLockout = `
-	SELECT email, failed_attempts, lockout_tier, locked_until
-	FROM auth_login_lockouts
-	WHERE email = $1
-	LIMIT 1
-	`
-
-	upsertLoginLockout = `
-	INSERT INTO auth_login_lockouts (
-		email,
-		failed_attempts,
-		lockout_tier,
-		locked_until,
-		updated_at
-	) VALUES ($1, $2, $3, $4, $5)
-	ON CONFLICT (email) DO UPDATE SET
-		failed_attempts = EXCLUDED.failed_attempts,
-		lockout_tier = EXCLUDED.lockout_tier,
-		locked_until = EXCLUDED.locked_until,
-		updated_at = EXCLUDED.updated_at
-	`
-
-	deleteLoginLockout = `
-	DELETE FROM auth_login_lockouts
-	WHERE email = $1
-	`
-
 	insertRateLimitEvent = `
 	INSERT INTO auth_rate_limit_events (id, scope, rate_key)
 	VALUES ($1, $2, $3)

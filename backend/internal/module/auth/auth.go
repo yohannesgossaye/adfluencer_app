@@ -34,12 +34,18 @@ type userAuthModule struct {
 	contactInbox string
 	logSecrets   bool
 	logger       utils.Logger
+	guard        loginGuard
 }
 
 // logSecrets allows OTPs and reset links to be written to the log when no
 // email/SMS provider is configured. Enable it only for local development.
-func InitAuthModule(p storage.AuthPersisitence, tokens *jwt.TokenManager, email *mail.Client, smsClient *sms.Client, dispatcher *notify.Dispatcher, frontendURL, contactInbox string, logSecrets bool, log utils.Logger) module.AuthService {
+// limits holds the attempt counters (Redis in production); nil keeps them in memory.
+func InitAuthModule(p storage.AuthPersisitence, tokens *jwt.TokenManager, email *mail.Client, smsClient *sms.Client, dispatcher *notify.Dispatcher, limits ratelimit.Store, frontendURL, contactInbox string, logSecrets bool, log utils.Logger) module.AuthService {
+	if limits == nil {
+		limits = ratelimit.NewMemoryStore()
+	}
 	return &userAuthModule{
+		guard:        loginGuard{store: limits},
 		persistence:  p,
 		tokens:       tokens,
 		mail:         email,
@@ -59,6 +65,11 @@ func (m *userAuthModule) SignUp(ctx context.Context, req authDto.SignUpRequest, 
 		zap.String("name", req.Name),
 		zap.String("ip", meta.IPAddress),
 	)
+
+	if err := m.guard.allow(ctx, "rl:signup:ip:"+meta.IPAddress, ratelimit.SignupPerIPPerHour, time.Hour, customErr.ErrTooManyAttempts); err != nil {
+		m.logger.Warn(ctx, "signup refused: too many from this network", zap.String("ip", meta.IPAddress))
+		return nil, err
+	}
 
 	id := utils.GenerateUUID()
 
@@ -121,29 +132,42 @@ func (m *userAuthModule) Login(ctx context.Context, req authDto.LoginRequest, me
 		zap.String("ip", meta.IPAddress),
 	)
 
-	if err := m.checkLoginLockout(ctx, email); err != nil {
-		m.logger.Warn(ctx, "login blocked due to lockout", zap.String("email", email), zap.String("reason", err.Error()))
+	keys := keysFor(email, meta.IPAddress)
+	if err := m.guard.checkNetwork(ctx, loginPolicy(req.Portal == "admin"), keys); err != nil {
+		m.logger.Warn(ctx, "login refused: too many failed attempts from this network", zap.String("ip", meta.IPAddress))
 		return nil, err
 	}
 
 	cred, err := m.persistence.GetUserByEmail(ctx, email)
-	if err != nil {
-		if errors.Is(err, customErr.ErrUserNotFound) {
-			m.logger.Warn(ctx, "login failed: user not found", zap.String("email", email))
-			if lockErr := m.recordLoginFailure(ctx, email); lockErr != nil {
-				return nil, lockErr
-			}
-			return nil, customErr.ErrInvalidCredentials
-		}
+	found := err == nil
+	if err != nil && !errors.Is(err, customErr.ErrUserNotFound) {
 		m.logger.Error(ctx, "database error querying user by email", zap.String("email", email), zap.String("reason", err.Error()))
 		return nil, err
 	}
+	// Admin accounts get the stricter limits wherever they log in.
+	policy := loginPolicy(req.Portal == "admin" || (found && cred.Role == string(model.AdminRole)))
 
-	ok, err := jwt.VerifyPassword(req.Password, cred.PasswordHash)
-	if err != nil || !ok {
-		m.logger.Warn(ctx, "login failed: invalid password", zap.String("email", email))
-		if lockErr := m.recordLoginFailure(ctx, email); lockErr != nil {
-			return nil, lockErr
+	if err := m.guard.checkAccount(ctx, keys); err != nil {
+		m.logger.Warn(ctx, "login refused: email locked after failed attempts", zap.String("email", email), zap.String("ip", meta.IPAddress))
+		return nil, err
+	}
+
+	// Unknown emails get the same answer, in the same time, as wrong passwords.
+	ok := false
+	if found {
+		ok, err = jwt.VerifyPassword(req.Password, cred.PasswordHash)
+		ok = ok && err == nil
+	} else {
+		checkDummyPassword(req.Password)
+	}
+	if !ok {
+		m.logger.Warn(ctx, "login failed: wrong email or password", zap.String("email", email), zap.Bool("account_exists", found), zap.String("ip", meta.IPAddress))
+		wait, accountLocked := m.guard.failed(ctx, policy, keys)
+		if accountLocked && found {
+			m.warnAccountLocked(ctx, cred.Email, policy.AccountLock)
+		}
+		if wait != nil {
+			return nil, wait
 		}
 		return nil, customErr.ErrInvalidCredentials
 	}
@@ -168,9 +192,7 @@ func (m *userAuthModule) Login(ctx context.Context, req authDto.LoginRequest, me
 		return nil, err
 	}
 
-	if err := m.persistence.ClearLoginLockout(ctx, email); err != nil {
-		m.logger.Warn(ctx, "failed to clear login lockout", zap.String("email", email), zap.String("reason", err.Error()))
-	}
+	m.guard.succeeded(ctx, keys)
 
 	now := time.Now().UTC()
 	if err := m.persistence.UpdateLastLoginAt(ctx, cred.ID, now); err != nil {
@@ -340,9 +362,14 @@ func (m *userAuthModule) Logout(ctx context.Context, userID string, req authDto.
 	return nil
 }
 
-func (m *userAuthModule) ForgotPassword(ctx context.Context, req authDto.ForgotPasswordRequest) error {
+func (m *userAuthModule) ForgotPassword(ctx context.Context, req authDto.ForgotPasswordRequest, meta authDto.SessionMeta) error {
 	email := helper.NormalizeEmail(req.Email)
-	m.logger.Info(ctx, "processing forgot password request", zap.String("email", email))
+	m.logger.Info(ctx, "processing forgot password request", zap.String("email", email), zap.String("ip", meta.IPAddress))
+
+	if err := m.guard.allow(ctx, "rl:forgot:ip:"+meta.IPAddress, ratelimit.ForgotPasswordPerIPPerHour, time.Hour, customErr.ErrForgotPasswordRateLimit); err != nil {
+		m.logger.Warn(ctx, "forgot password refused: too many from this network", zap.String("ip", meta.IPAddress))
+		return err
+	}
 
 	since := time.Now().UTC().Add(-time.Hour)
 	count, err := m.persistence.CountRateLimitEvents(ctx, forgotPasswordRateScope, email, since)
