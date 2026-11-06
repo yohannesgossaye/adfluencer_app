@@ -26,6 +26,8 @@ import (
 )
 
 func Initiator(ctx context.Context) {
+	// Before anything reads a setting, logging included.
+	vault := LoadVault()
 	logger := InitLogger()
 	defer logger.Sync()
 
@@ -59,6 +61,11 @@ func Initiator(ctx context.Context) {
 	bgCtx, stopBackground := context.WithCancel(context.Background())
 	defer stopBackground()
 	cleanup.Start(bgCtx, db, logger, time.Hour)
+	if vault != nil {
+		go vault.KeepTokenAlive(bgCtx, 24*time.Hour, func(err error) {
+			logger.Warn(bgCtx, "vault token renewal failed — the API keeps running, but fix the token before it expires", zap.Error(err))
+		})
+	}
 
 	emailClient := mail.New(mail.Config{
 		Host:     cfg.SMTP.Host,
