@@ -14,6 +14,7 @@ import { apiErrorType, businessErrorMessage } from "@/lib/api-errors";
 
 import { UserAvatar } from "@/components/common/user-avatar";
 import { formatEtbRange } from "@/lib/contracts";
+import { canOptimize } from "@/lib/images";
 
 type InfluencerProfileProps = {
   influencerId: string;
@@ -312,7 +313,7 @@ export function InfluencerProfile({ influencerId }: InfluencerProfileProps) {
                         src={mediaUrl}
                         alt={item.title || "Portfolio item"}
                         fill
-                        unoptimized
+                        unoptimized={!canOptimize(mediaUrl)}
                         className="object-cover"
                       />
                     )}

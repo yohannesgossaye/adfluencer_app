@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import axios from "axios";
 import { ArrowLeft, Loader2 } from "lucide-react";
@@ -9,11 +9,12 @@ import { toast } from "sonner";
 import { ContractDetailView } from "@/components/contracts/contract-detail";
 import { ReportProblemButton } from "@/components/contracts/report-problem";
 import { Button } from "@/components/ui/button";
-import { influencerApi, type ContractDetail, type ContractListItem } from "@/lib/api/influencer";
+import { influencerApi } from "@/lib/api/influencer";
 import { contractStatus, formatEtb } from "@/lib/contracts";
 import { cn } from "@/lib/utils";
 import { StatusBadge } from "@/components/common/status-badge";
 import { FilterChips } from "@/components/common/filter-chips";
+import { loadState, useContract, useContracts, useInvalidateContracts } from "@/lib/queries";
 
 const FILTERS = [
   { id: "", label: "All" },
@@ -38,48 +39,23 @@ export function InfluencerContracts() {
   // Emails link here with ?contract_id= to open that contract.
   const linkedId = useSearchParams().get("contract_id");
   const [filter, setFilter] = useState<string>("");
-  const [rows, setRows] = useState<ContractListItem[]>([]);
-  const [listState, setListState] = useState<"loading" | "ready" | "error">("loading");
   const [selectedId, setSelectedId] = useState<string | null>(linkedId);
-  const [detail, setDetail] = useState<ContractDetail | null>(null);
-  const [detailError, setDetailError] = useState<string | null>(null);
   const [mobileShowDetail, setMobileShowDetail] = useState(Boolean(linkedId));
   const [confirm, setConfirm] = useState<"accept" | "decline" | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const loadList = useCallback(async () => {
-    try {
-      const res = await influencerApi.listContracts({ status: filter || undefined, limit: 50 });
-      setRows(res.data?.items ?? []);
-      setListState("ready");
-    } catch {
-      setListState("error");
-    }
-  }, [filter]);
-
-  const loadDetail = useCallback(async (id: string) => {
-    try {
-      const res = await influencerApi.getContract(id);
-      setDetail(res.data ?? null);
-      setDetailError(null);
-    } catch (err) {
-      setDetailError(apiError(err, "Could not load this contract."));
-    }
-  }, []);
-
-  useEffect(() => {
-    void Promise.resolve().then(loadList);
-  }, [loadList]);
-
-  useEffect(() => {
-    if (linkedId) void Promise.resolve().then(() => loadDetail(linkedId));
-  }, [linkedId, loadDetail]);
+  // Cached: switching filters or contracts shows what was already loaded at once.
+  const listQuery = useContracts("influencer", filter);
+  const rows = listQuery.data ?? [];
+  const listState = loadState(listQuery);
+  const detailQuery = useContract("influencer", selectedId);
+  const detail = detailQuery.data ?? null;
+  const detailError = detailQuery.isError && !detail ? apiError(detailQuery.error, "Could not load this contract.") : null;
+  const refresh = useInvalidateContracts("influencer");
 
   const select = (id: string) => {
     setSelectedId(id);
-    setDetail(null);
     setConfirm(null);
-    void loadDetail(id);
     if (window.matchMedia("(max-width: 1279px)").matches) setMobileShowDetail(true);
   };
 
@@ -95,7 +71,7 @@ export function InfluencerContracts() {
         toast.success("Contract declined.");
       }
       setConfirm(null);
-      await Promise.all([loadList(), loadDetail(detail.id)]);
+      await refresh(detail.id);
     } catch (err) {
       toast.error(apiError(err, "The action could not be completed."));
     } finally {
@@ -138,7 +114,7 @@ export function InfluencerContracts() {
         </>
       )
     ) : detail && detail.status === "active" ? (
-      <ReportProblemButton contractId={detail.id} role="influencer" onReported={() => Promise.all([loadList(), loadDetail(detail.id)]).then(() => {})} />
+      <ReportProblemButton contractId={detail.id} role="influencer" onReported={() => refresh(detail.id).then(() => {})} />
     ) : null;
 
   return (
@@ -153,7 +129,6 @@ export function InfluencerContracts() {
         value={filter}
         onChange={(v) => {
           setFilter(v);
-          setListState("loading");
         }}
         options={FILTERS.map((f) => ({ value: f.id, label: f.label }))}
       />
@@ -165,7 +140,7 @@ export function InfluencerContracts() {
           ) : listState === "error" ? (
             <div role="alert" className="rounded-2xl border border-rose-400/30 bg-rose-500/10 p-6 text-sm text-rose-100">
               Could not load contracts.
-              <Button type="button" variant="link" className="ml-2 h-auto p-0 text-white" onClick={() => void loadList()}>Try again</Button>
+              <Button type="button" variant="link" className="ml-2 h-auto p-0 text-white" onClick={() => void listQuery.refetch()}>Try again</Button>
             </div>
           ) : rows.length === 0 ? (
             <div className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-8 text-center text-sm text-[#CBD5E1]">

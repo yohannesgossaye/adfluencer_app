@@ -1,46 +1,33 @@
 import type { NextConfig } from "next";
 
+// Uploaded photos are served by the API under /uploads (see backend
+// STORAGE_PUBLIC_URL). Only that address is resized by Next.js, so the image
+// optimizer can't be used to fetch arbitrary websites. src/lib/images.ts
+// decides per image.
+function uploadsPattern() {
+  try {
+    const api = new URL(process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080");
+    return {
+      protocol: api.protocol.replace(":", "") as "http" | "https",
+      hostname: api.hostname,
+      port: api.port,
+      pathname: "/uploads/**",
+    };
+  } catch {
+    return null;
+  }
+}
+
+const uploads = uploadsPattern();
+
 const nextConfig: NextConfig = {
   devIndicators: false,
   turbopack: {
     root: process.cwd(),
   },
   images: {
-    unoptimized: true,
-    remotePatterns: [
-      {
-        protocol: "http",
-        hostname: "localhost",
-        port: "9000",
-        pathname: "/**",
-      },
-      {
-        protocol: "http",
-        hostname: "127.0.0.1",
-        port: "9000",
-        pathname: "/**",
-      },
-      {
-        protocol: "http",
-        hostname: "localhost",
-        port: "8080",
-        pathname: "/**",
-      },
-      {
-        protocol: "http",
-        hostname: "127.0.0.1",
-        port: "8080",
-        pathname: "/**",
-      },
-      {
-        protocol: "https",
-        hostname: "**",
-      },
-      {
-        protocol: "http",
-        hostname: "**",
-      },
-    ],
+    remotePatterns: uploads ? [uploads] : [],
+    formats: ["image/avif", "image/webp"],
   },
 };
 

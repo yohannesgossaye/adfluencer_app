@@ -21,6 +21,7 @@ import { businessErrorMessage } from "@/lib/api-errors";
 import { cn, getInitials } from "@/lib/utils";
 import { formatEtbRange } from "@/lib/contracts";
 import { platformLabel } from "@/lib/status";
+import { canOptimize } from "@/lib/images";
 
 const PLATFORMS = [
   { value: "", label: "All platforms" },
@@ -126,7 +127,7 @@ export function Recommendations() {
       ).data as SearchCreatorsResponse,
     [q, niche, platform, size, maxPrice, campaignId, sort],
   );
-  const list = usePagedList(fetchPage);
+  const list = usePagedList(["business", "creators", { q, niche, platform, size, maxPrice, campaignId, sort }], fetchPage);
   const creators: CreatorSearchItem[] = list.items;
   const rankedFor = list.last?.ranked_for;
   const campaign = useMemo(() => campaigns.find((c) => c.id === campaignId), [campaigns, campaignId]);
@@ -355,7 +356,7 @@ function CreatorCard({
       <div className="flex items-start gap-3">
         <div className="relative size-14 shrink-0 overflow-hidden rounded-full border border-white/10 bg-gradient-to-br from-[#4C1D95] to-[color:var(--adfluence-action)]">
           {c.profile_image_url ? (
-            <Image src={c.profile_image_url} alt="" fill sizes="56px" className="object-cover" />
+            <Image src={c.profile_image_url} alt="" fill sizes="56px" unoptimized={!canOptimize(c.profile_image_url)} className="object-cover" />
           ) : (
             <span className="flex size-full items-center justify-center text-lg font-bold">{getInitials(c.creator_name, "CR")}</span>
           )}

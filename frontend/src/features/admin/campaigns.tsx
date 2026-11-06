@@ -54,7 +54,7 @@ export function AdminCampaigns() {
       ).data,
     [status, filters],
   );
-  const list = usePagedList(fetchPage);
+  const list = usePagedList(["admin", "campaigns", { status, filters }], fetchPage);
   const rows: AdminCampaignListItem[] = list.items;
   const stats: AdminCampaignStats = list.last?.stats ?? { active: 0, draft: 0, paused: 0 };
   const loadCampaigns = list.reload;

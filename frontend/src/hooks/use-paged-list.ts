@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useMemo } from "react";
+import { keepPreviousData, useInfiniteQuery, type QueryKey } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 export type LoadState = "loading" | "ready" | "error";
@@ -10,72 +11,57 @@ type Page = { items?: unknown[]; pagination?: { total_docs?: number } };
 type ItemOf<R extends Page> = NonNullable<R["items"]>[number];
 
 /**
- * Loads a paged list and appends further pages on demand ("Load more").
+ * A paged list with "Load more", cached by React Query.
  *
- * `fetchPage` must be memoised (useCallback) with the filters it depends on;
- * when it changes, the list starts again from page 1. Late responses from an
- * older filter are ignored. `last` is the latest raw response, for extras such
- * as stats that come with page 1.
+ * `key` names the list and its filters, e.g. ["admin", "users", { role, status }];
+ * `fetchPage` loads one page for those same filters. Coming back to a list
+ * shows the cached rows at once and refreshes them in the background; while
+ * the filters change, the previous rows stay on screen until the new ones
+ * arrive. `last` is the first page's raw response, for extras such as stats.
  */
-export function usePagedList<R extends Page>(fetchPage: (page: number) => Promise<R | undefined>) {
+export function usePagedList<R extends Page>(key: QueryKey, fetchPage: (page: number) => Promise<R | undefined>) {
   type T = ItemOf<R>;
-  const [items, setItems] = useState<T[]>([]);
-  const [last, setLast] = useState<R | undefined>();
-  const [state, setState] = useState<LoadState>("loading");
-  const [page, setPage] = useState(1);
-  const [total, setTotal] = useState<number | null>(null);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [error, setError] = useState<unknown>(null);
-  const request = useRef(0);
-
-  const load = useCallback(
-    async (target: number) => {
-      const id = ++request.current;
-      if (target > 1) setLoadingMore(true);
-      try {
-        const res = await fetchPage(target);
-        if (id !== request.current) return;
-        const got = (res?.items ?? []) as T[];
-        setItems((prev) => (target === 1 ? got : [...prev, ...got]));
-        setTotal(res?.pagination?.total_docs ?? null);
-        setPage(target);
-        if (target === 1) setLast(res);
-        setError(null);
-        setState("ready");
-      } catch (err) {
-        if (id !== request.current) return;
-        // A failed "Load more" keeps what is shown (loadMore shows a toast).
-        if (target === 1) {
-          setError(err);
-          setState("error");
-        }
-        else throw err;
-      } finally {
-        if (id === request.current) setLoadingMore(false);
-      }
+  const query = useInfiniteQuery({
+    queryKey: key,
+    queryFn: async ({ pageParam }) => (await fetchPage(pageParam)) ?? ({} as R),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage, pages) => {
+      const total = lastPage.pagination?.total_docs;
+      const loaded = pages.reduce((n, p) => n + (p.items?.length ?? 0), 0);
+      return total != null && loaded < total && (lastPage.items?.length ?? 0) > 0 ? pages.length + 1 : undefined;
     },
-    [fetchPage],
-  );
+    placeholderData: keepPreviousData,
+  });
 
-  useEffect(() => {
-    void Promise.resolve(1).then(load);
-  }, [load]);
+  const pages = query.data?.pages;
+  const items = useMemo(() => (pages ?? []).flatMap((p) => (p.items ?? []) as T[]), [pages]);
+  const total = pages?.length ? (pages[pages.length - 1].pagination?.total_docs ?? null) : null;
 
-  /** Reload from page 1, e.g. after an action changed the data. Keeps the current rows on screen meanwhile. */
-  const reload = useCallback(() => load(1), [load]);
+  // Rows already on screen stay there if a background refresh fails.
+  const state: LoadState = query.data ? "ready" : query.isError && !query.isFetching ? "error" : "loading";
 
-  /** Full retry after an error: shows the loading state again. */
-  const retry = useCallback(() => {
-    setState("loading");
-    return load(1);
-  }, [load]);
+  const { refetch, fetchNextPage } = query;
+  /** Reload after an action changed the data; the current rows stay on screen meanwhile. */
+  const reload = useCallback(async () => {
+    await refetch();
+  }, [refetch]);
+  /** Try again after an error. */
+  const retry = reload;
+  const loadMore = useCallback(async () => {
+    const res = await fetchNextPage();
+    if (res.isFetchNextPageError) toast.error("More results could not be loaded. Please try again.");
+  }, [fetchNextPage]);
 
-  const loadMore = useCallback(
-    () => load(page + 1).catch(() => toast.error("More results could not be loaded. Please try again.")),
-    [load, page],
-  );
-
-  const hasMore = total !== null && items.length < total;
-
-  return { items, setItems, last, state, error, total, hasMore, loadingMore, loadMore, reload, retry };
+  return {
+    items,
+    last: pages?.[0],
+    state,
+    error: query.error,
+    total,
+    hasMore: query.hasNextPage,
+    loadingMore: query.isFetchingNextPage,
+    loadMore,
+    reload,
+    retry,
+  };
 }
