@@ -63,8 +63,23 @@ func TestFreshDatabaseGetsFullSchema(t *testing.T) {
 	if v != latest(t) {
 		t.Fatalf("version = %d, want %d", v, latest(t))
 	}
-	if missing, err := MissingSchema(ctx, db); err != nil || len(missing) > 0 {
-		t.Fatalf("fresh schema: missing %v, err %v", missing, err)
+	missing, err := MissingSchema(ctx, db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// check_schema.sql describes the baseline; later migrations may replace
+	// a baseline object on purpose.
+	replacedLater := map[string]bool{
+		"index uq_conversations_pair_campaign": true, // 00006: one chat per pair
+	}
+	var unexpected []string
+	for _, m := range missing {
+		if !replacedLater[m] {
+			unexpected = append(unexpected, m)
+		}
+	}
+	if len(unexpected) > 0 {
+		t.Fatalf("fresh schema: missing %v", unexpected)
 	}
 	// Running again is a no-op.
 	if v2, err := Up(ctx, db); err != nil || v2 != v {
