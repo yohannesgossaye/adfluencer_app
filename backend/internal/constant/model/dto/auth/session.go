@@ -18,9 +18,11 @@ type CreateSessionInput struct {
 	IPAddress        string
 	UserAgent        string
 	ExpiresAt        time.Time
-	// RefreshTTLSeconds is the session lifetime chosen at login; it is reused
-	// on every rotation so "remember me" sessions keep their longer lifetime.
+	// RefreshTTLSeconds is the idle timeout this session was issued with.
 	RefreshTTLSeconds int
+	// StartedAt is when the user logged in; it carries over every refresh so
+	// the session can't outlive its maximum age.
+	StartedAt time.Time
 }
 
 type UserSession struct {
@@ -29,6 +31,7 @@ type UserSession struct {
 	ExpiresAt time.Time
 	// RefreshTTL is zero for sessions created before lifetimes were stored.
 	RefreshTTL time.Duration
+	StartedAt  time.Time
 }
 
 type SessionMeta struct {

@@ -1,6 +1,7 @@
 package initiator
 
 import (
+	"adinfluence_service_app/platform/jwt"
 	"log"
 	"os"
 	"strconv"
@@ -61,10 +62,9 @@ type SMTPConfig struct {
 }
 
 type JWTConfig struct {
-	SecretKey                 string
-	AccessTokenTTL            time.Duration
-	RefreshTokenTTL           time.Duration
-	RememberMeRefreshTokenTTL time.Duration
+	SecretKey      string
+	AccessTokenTTL time.Duration
+	Sessions       jwt.SessionPolicy
 }
 
 func Load() *Config {
@@ -164,10 +164,15 @@ func loadJWTConfig() JWTConfig {
 	secret := os.Getenv("JWT_SECRET")
 
 	return JWTConfig{
-		SecretKey:                 secret,
-		AccessTokenTTL:            parseDuration(Getenv("JWT_ACCESS_TOKEN_TTL", "15m"), 15*time.Minute),
-		RefreshTokenTTL:           parseDuration(Getenv("JWT_REFRESH_TOKEN_TTL", "168h"), 7*24*time.Hour),
-		RememberMeRefreshTokenTTL: parseDuration(Getenv("JWT_REMEMBER_ME_REFRESH_TTL", "720h"), 30*24*time.Hour),
+		SecretKey: secret,
+		// Short-lived access tokens; sessions end after inactivity (bank-style).
+		AccessTokenTTL: parseDuration(Getenv("JWT_ACCESS_TOKEN_TTL", "5m"), 5*time.Minute),
+		Sessions: jwt.SessionPolicy{
+			Idle:        parseDuration(Getenv("SESSION_IDLE_TIMEOUT", "15m"), 15*time.Minute),
+			MaxAge:      parseDuration(Getenv("SESSION_MAX_AGE", "12h"), 12*time.Hour),
+			AdminIdle:   parseDuration(Getenv("SESSION_ADMIN_IDLE_TIMEOUT", "10m"), 10*time.Minute),
+			AdminMaxAge: parseDuration(Getenv("SESSION_ADMIN_MAX_AGE", "8h"), 8*time.Hour),
+		},
 	}
 }
 

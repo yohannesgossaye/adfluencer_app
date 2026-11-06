@@ -119,10 +119,9 @@ func Initiator(ctx context.Context) {
 
 	postgresRepo := InitPersistence(db, logger)
 	tokens := jwt.NewTokenManager(jwt.ManagerConfig{
-		SecretKey:                 cfg.JWT.SecretKey,
-		AccessTokenTTL:            cfg.JWT.AccessTokenTTL,
-		RefreshTokenTTL:           cfg.JWT.RefreshTokenTTL,
-		RememberMeRefreshTokenTTL: cfg.JWT.RememberMeRefreshTokenTTL,
+		SecretKey:      cfg.JWT.SecretKey,
+		AccessTokenTTL: cfg.JWT.AccessTokenTTL,
+		Sessions:       cfg.JWT.Sessions,
 	})
 	dispatcher := notify.New(logger)
 	service := InitModules(postgresRepo, tokens, emailClient, smsClient, dispatcher, fileStorage, cfg.FrontendURL, cfg.ContactInbox, cfg.IsDevelopment(), logger)

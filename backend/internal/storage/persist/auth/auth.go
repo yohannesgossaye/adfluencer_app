@@ -1,8 +1,8 @@
 package auth
 
 import (
-	"adinfluence_service_app/internal/constant/model"
 	customErr "adinfluence_service_app/internal/constant/errors"
+	"adinfluence_service_app/internal/constant/model"
 	authDto "adinfluence_service_app/internal/constant/model/dto/auth"
 	"adinfluence_service_app/platform/utils"
 	"context"
@@ -109,7 +109,7 @@ func (a *auth) SignUp(ctx context.Context, user model.User, name string, isInflu
 			PhoneVerified: user.PhoneVerified,
 			CreatedAt:     now,
 		},
-		Profile:    profile,
+		Profile: profile,
 	}, nil
 }
 
@@ -179,6 +179,7 @@ func (a *auth) CreateSession(ctx context.Context, input authDto.CreateSessionInp
 		input.ExpiresAt,
 		time.Now().UTC(),
 		nullPositiveInt(input.RefreshTTLSeconds),
+		startedAt(input.StartedAt),
 	)
 	if err != nil {
 		return fmt.Errorf("insert session: %w", err)
@@ -194,6 +195,7 @@ func (a *auth) RotateSession(ctx context.Context, refreshTokenHash string, grace
 		&session.UserID,
 		&session.ExpiresAt,
 		&ttlSeconds,
+		&session.StartedAt,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -205,6 +207,13 @@ func (a *auth) RotateSession(ctx context.Context, refreshTokenHash string, grace
 		session.RefreshTTL = time.Duration(ttlSeconds.Int64) * time.Second
 	}
 	return &session, nil
+}
+
+func startedAt(t time.Time) time.Time {
+	if t.IsZero() {
+		return time.Now().UTC()
+	}
+	return t
 }
 
 func nullPositiveInt(v int) sql.NullInt64 {
