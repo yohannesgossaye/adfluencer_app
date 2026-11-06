@@ -85,3 +85,96 @@ jobs:
       # Lint blocks merging: any error or warning fails this job.
       - name: Lint
         run: pnpm exec eslint . --max-warnings 0
+
+  # A robot uses the real site in Chrome: business, creator and admin flows
+  # (frontend/e2e). Everything runs on a throwaway database inside this job;
+  # the live server and its data are never touched.
+  e2e:
+    name: E2E (browser flows)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGUSER: ci
+      PGPASSWORD: ci
+      PGDATABASE: e2e
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Start the API (it creates the tables on start)
+        working-directory: backend
+        env:
+          DATABASE_URL: postgres://ci:ci@localhost:5432/e2e?sslmode=disable
+          JWT_SECRET: e2e-only-secret-not-used-anywhere-else-0123456789
+          APP_ENV: development
+          PORT: "8080"
+          CORS_ORIGINS: http://localhost:3000
+        run: |
+          go build -o "$RUNNER_TEMP/api" ./cmd/main.go
+          (cd "$RUNNER_TEMP" && nohup ./api > api.log 2>&1 &)
+          for i in $(seq 60); do curl -s -o /dev/null http://localhost:8080/ && exit 0; sleep 1; done
+          cat "$RUNNER_TEMP/api.log"; exit 1
+
+      - name: Load test data
+        run: |
+          psql -v ON_ERROR_STOP=1 -q -f backend/scripts/seed_demo_creators.sql
+          psql -v ON_ERROR_STOP=1 -q -f frontend/e2e/fixtures.sql
+
+      - name: Build and start the site
+        working-directory: frontend
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:8080
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+          (nohup pnpm start -p 3000 > "$RUNNER_TEMP/web.log" 2>&1 &)
+          for i in $(seq 60); do curl -s -o /dev/null http://localhost:3000/ && exit 0; sleep 1; done
+          cat "$RUNNER_TEMP/web.log"; exit 1
+
+      - name: Install Chrome for the tests
+        working-directory: frontend
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run the browser tests
+        working-directory: frontend
+        run: pnpm exec playwright test
+
+      # On failure: screenshots, traces and server logs to see what broke.
+      - name: Upload what the robot saw
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-report
+          path: |
+            frontend/playwright-report
+            frontend/test-results
+            ${{ runner.temp }}/api.log
+            ${{ runner.temp }}/web.log
+          retention-days: 7
