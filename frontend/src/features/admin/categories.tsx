@@ -17,7 +17,7 @@ export function AdminCategories() {
 
   // Categories are one short list; the hook only adds loading and error states.
   const fetchAll = useCallback(async () => (await adminApi.listCategories()).data, []);
-  const list = usePagedList(fetchAll);
+  const list = usePagedList(["admin", "categories"], fetchAll);
   const rows: AdminCategoryItem[] = list.items;
   const loadCategories = list.reload;
 

@@ -12,10 +12,19 @@ import (
 )
 
 type ManagerConfig struct {
-	SecretKey                 string
-	AccessTokenTTL            time.Duration
-	RefreshTokenTTL           time.Duration
-	RememberMeRefreshTokenTTL time.Duration
+	SecretKey      string
+	AccessTokenTTL time.Duration
+	Sessions       SessionPolicy
+}
+
+// SessionPolicy (bank-style): a session ends after Idle without activity
+// (each refresh renews it) and after MaxAge in any case. Admins get their
+// own, stricter values.
+type SessionPolicy struct {
+	Idle        time.Duration
+	MaxAge      time.Duration
+	AdminIdle   time.Duration
+	AdminMaxAge time.Duration
 }
 
 type TokenManager struct {
@@ -57,7 +66,7 @@ func (m *TokenManager) GenerateTokenPair(input AccessTokenInput) (TokenPair, err
 		AccessToken:      accessToken,
 		RefreshToken:     refreshToken,
 		AccessExpiresIn:  accessExpiresIn,
-		RefreshExpiresAt: time.Now().UTC().Add(m.cfg.RefreshTokenTTL),
+		RefreshExpiresAt: time.Now().UTC().Add(m.cfg.Sessions.Idle),
 	}, nil
 }
 
@@ -107,15 +116,21 @@ func (m *TokenManager) ParseAccessToken(tokenString string) (*AccessClaims, erro
 	return claims, nil
 }
 
-func (m *TokenManager) RefreshTokenTTL() time.Duration {
-	return m.cfg.RefreshTokenTTL
-}
-
-func (m *TokenManager) RememberMeRefreshTokenTTL() time.Duration {
-	if m.cfg.RememberMeRefreshTokenTTL > 0 {
-		return m.cfg.RememberMeRefreshTokenTTL
+// SessionLimits returns how long a session of this role may sit idle and how
+// long it may last at all.
+func (m *TokenManager) SessionLimits(role string) (idle, maxAge time.Duration) {
+	p := m.cfg.Sessions
+	idle, maxAge = p.Idle, p.MaxAge
+	if role == "admin" {
+		idle, maxAge = p.AdminIdle, p.AdminMaxAge
 	}
-	return m.cfg.RefreshTokenTTL
+	if idle <= 0 {
+		idle = 15 * time.Minute
+	}
+	if maxAge <= 0 {
+		maxAge = 12 * time.Hour
+	}
+	return idle, maxAge
 }
 
 func GenerateRefreshToken() (string, error) {

@@ -49,8 +49,9 @@ const (
 		user_agent,
 		expires_at,
 		created_at,
-		refresh_ttl_seconds
-	) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		refresh_ttl_seconds,
+		started_at
+	) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 	`
 
 	// rotateSession consumes a refresh token in one atomic statement. A token
@@ -64,7 +65,7 @@ const (
 		AND revoked_at IS NULL
 		AND expires_at > NOW()
 		AND (rotated_at IS NULL OR rotated_at > NOW() - make_interval(secs => $2))
-	RETURNING id, user_id, expires_at, refresh_ttl_seconds
+	RETURNING id, user_id, expires_at, refresh_ttl_seconds, started_at
 	`
 
 	getSessionByRefreshHash = `

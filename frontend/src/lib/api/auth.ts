@@ -40,6 +40,10 @@ export type AuthTokens = {
   access_token: string;
   refresh_token: string;
   expires_in: number;
+  /** Seconds a session may sit idle; the site warns, then signs out. */
+  idle_timeout_seconds?: number;
+  /** When the session ends however active the person is. */
+  session_ends_at?: string;
 };
 
 export type SignupRequest = {
@@ -61,7 +65,6 @@ export type SignupResponseData = {
 export type LoginRequest = {
   email: string;
   password: string;
-  remember_me?: boolean;
   portal?: string;
   next?: string;
 };

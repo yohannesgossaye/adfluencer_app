@@ -10,6 +10,7 @@ A robot uses the real site in Chrome to check the main flows on every pull reque
 | `dispute.spec.ts` | Business reports a problem, admin resolves it |
 | `support.spec.ts` | Creator writes, admin replies, creator answers |
 | `chat.spec.ts` | Opening a chat from different pages reuses one conversation |
+| `session.spec.ts` | Idle warning, "Stay signed in", sign-out after inactivity; admins sooner |
 
 CI (`.github/workflows/ci.yml`, job **E2E**) does the following:
 1. Starts an empty Postgres and the API, which creates the tables.

@@ -59,7 +59,7 @@ export function AdminSupport() {
     },
     [roleFilter, statusFilter, priorityFilter],
   );
-  const list = usePagedList(fetchPage);
+  const list = usePagedList(["admin", "support", { roleFilter, statusFilter, priorityFilter }], fetchPage);
   const tickets: AdminSupportTicketItem[] = list.items;
   const loadTickets = list.reload;
   const stats: AdminSupportTicketStats = list.last?.stats ?? {

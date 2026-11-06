@@ -77,7 +77,7 @@ func (m *userAuthModule) SignUp(ctx context.Context, req authDto.SignUpRequest, 
 		return nil, err
 	}
 
-	tokenPair, err := m.issueSession(ctx, res.User, res.Profile, meta, 0)
+	tokens, err := m.issueSession(ctx, res.User, res.Profile, meta, time.Time{})
 	if err != nil {
 		if delErr := m.persistence.DeleteUser(ctx, id); delErr != nil {
 			m.logger.Error(ctx, "signup rollback failed",
@@ -89,7 +89,7 @@ func (m *userAuthModule) SignUp(ctx context.Context, req authDto.SignUpRequest, 
 		return nil, err
 	}
 
-	res.Tokens = helper.TokenResponse(tokenPair)
+	res.Tokens = tokens
 	// Same rules as login: a new creator goes to their profile, not the
 	// dashboard, which is only available after approval.
 	res.RedirectTo = helper.RedirectToLogin(res.User.Role, res.User.Status)
@@ -178,13 +178,9 @@ func (m *userAuthModule) Login(ctx context.Context, req authDto.LoginRequest, me
 	}
 	cred.LastLoginAt = &now
 
-	refreshTTL := time.Duration(0)
-	if req.RememberMe {
-		refreshTTL = m.tokens.RememberMeRefreshTokenTTL()
-	}
-
+	// Every session ends after inactivity; "remember me" is no longer offered.
 	user := cred.UserResponse
-	tokenPair, err := m.issueSession(ctx, user, *profile, meta, refreshTTL)
+	tokens, err := m.issueSession(ctx, user, *profile, meta, time.Time{})
 	if err != nil {
 		m.logger.Error(ctx, "unable to issue login tokens", zap.String("user_id", user.ID), zap.String("reason", err.Error()))
 		return nil, err
@@ -215,7 +211,7 @@ func (m *userAuthModule) Login(ctx context.Context, req authDto.LoginRequest, me
 	return &authDto.LoginResponse{
 		User:       user,
 		Profile:    *profile,
-		Tokens:     helper.TokenResponse(tokenPair),
+		Tokens:     tokens,
 		RedirectTo: redirectTo,
 	}, nil
 }
@@ -259,9 +255,14 @@ func (m *userAuthModule) RefreshToken(ctx context.Context, req authDto.RefreshTo
 		return nil, err
 	}
 
-	// The old token was consumed by RotateSession above; the new session keeps
-	// the lifetime chosen at login (e.g. 30 days for "remember me").
-	tokenPair, err := m.issueSession(ctx, *user, *profile, meta, session.RefreshTTL)
+	// Sessions from before started_at existed have no start: end them.
+	if session.StartedAt.IsZero() {
+		_ = m.persistence.RevokeSession(ctx, session.ID)
+		return nil, customErr.ErrInvalidRefreshToken
+	}
+	// The old token was consumed by RotateSession above. The new one is valid
+	// for another idle period, but never past the session's maximum age.
+	tokens, err := m.issueSession(ctx, *user, *profile, meta, session.StartedAt)
 	if err != nil {
 		m.logger.Error(ctx, "failed to issue rotated session tokens", zap.String("user_id", user.ID), zap.String("reason", err.Error()))
 		return nil, err
@@ -270,7 +271,7 @@ func (m *userAuthModule) RefreshToken(ctx context.Context, req authDto.RefreshTo
 	m.logger.Info(ctx, "token refreshed successfully", zap.String("user_id", user.ID), zap.String("role", user.Role))
 
 	return &authDto.RefreshTokenResponse{
-		Tokens:     helper.TokenResponse(tokenPair),
+		Tokens:     tokens,
 		RedirectTo: helper.RedirectToLogin(user.Role, user.Status),
 	}, nil
 }
@@ -657,17 +658,31 @@ func (m *userAuthModule) VerifyPhone(ctx context.Context, userID string, req aut
 	}, nil
 }
 
-func (m *userAuthModule) issueSession(ctx context.Context, user authDto.UserResponse, profile authDto.ProfileResponse, meta authDto.SessionMeta, refreshTTL time.Duration) (jwt.TokenPair, error) {
+// issueSession creates a session and its tokens. startedAt is zero for a new
+// login; a refresh passes the session's original start so its maximum age
+// counts from the login. The refresh token is valid for one idle period
+// (renewed by each refresh), never beyond startedAt + maximum age.
+func (m *userAuthModule) issueSession(ctx context.Context, user authDto.UserResponse, profile authDto.ProfileResponse, meta authDto.SessionMeta, startedAt time.Time) (authDto.TokenResponse, error) {
 	tokenPair, err := m.tokens.GenerateTokenPair(helper.AccessTokenInput(user, profile))
 	if err != nil {
-		return jwt.TokenPair{}, fmt.Errorf("generate token pair: %w", err)
+		return authDto.TokenResponse{}, fmt.Errorf("generate token pair: %w", err)
 	}
 
-	now := time.Now().UTC()
-	if refreshTTL > 0 {
-		tokenPair.RefreshExpiresAt = now.Add(refreshTTL)
-	} else {
-		refreshTTL = tokenPair.RefreshExpiresAt.Sub(now)
+	// Postgres keeps microseconds: use the same precision (and UTC) so the
+	// session end reported after a refresh is exactly the one from login.
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	if startedAt.IsZero() {
+		startedAt = now
+	}
+	startedAt = startedAt.UTC()
+	idle, maxAge := m.tokens.SessionLimits(user.Role)
+	endsAt := startedAt.Add(maxAge)
+	expiresAt := now.Add(idle)
+	if expiresAt.After(endsAt) {
+		expiresAt = endsAt
+	}
+	if !expiresAt.After(now) {
+		return authDto.TokenResponse{}, customErr.ErrInvalidRefreshToken
 	}
 
 	err = m.persistence.CreateSession(ctx, authDto.CreateSessionInput{
@@ -675,12 +690,16 @@ func (m *userAuthModule) issueSession(ctx context.Context, user authDto.UserResp
 		RefreshTokenHash:  jwt.HashRefreshToken(tokenPair.RefreshToken),
 		IPAddress:         meta.IPAddress,
 		UserAgent:         meta.UserAgent,
-		ExpiresAt:         tokenPair.RefreshExpiresAt,
-		RefreshTTLSeconds: int(refreshTTL.Round(time.Second).Seconds()),
+		ExpiresAt:         expiresAt,
+		RefreshTTLSeconds: int(idle.Seconds()),
+		StartedAt:         startedAt,
 	})
 	if err != nil {
-		return jwt.TokenPair{}, err
+		return authDto.TokenResponse{}, err
 	}
 
-	return tokenPair, nil
+	res := helper.TokenResponse(tokenPair)
+	res.IdleTimeoutSeconds = int64(idle.Seconds())
+	res.SessionEndsAt = endsAt
+	return res, nil
 }

@@ -38,7 +38,7 @@ export function AdminDisputes() {
   const [resolving, setResolving] = useState<AdminDisputeDetail | null>(null);
 
   const fetchPage = useCallback(async (page: number) => (await adminApi.listDisputes({ tab, page })).data, [tab]);
-  const list = usePagedList(fetchPage);
+  const list = usePagedList(["admin", "disputes", { tab }], fetchPage);
   const rows: AdminDisputeListItem[] = list.items;
   const loadDisputes = list.reload;
   // The selection follows the list: a dispute from the other tab is never shown.

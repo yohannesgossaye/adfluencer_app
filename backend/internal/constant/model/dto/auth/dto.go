@@ -33,8 +33,10 @@ type UserResponse struct {
 }
 
 type LoginRequest struct {
-	Email      string `json:"email"`
-	Password   string `json:"password"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
+	// RememberMe is ignored: every session ends after inactivity (kept so
+	// older clients that still send it are accepted).
 	RememberMe bool   `json:"remember_me"`
 	Portal     string `json:"portal,omitempty"` // "admin" when logging in from /admin/login
 	Next       string `json:"next,omitempty"`   // safe internal redirect after login
@@ -72,4 +74,8 @@ type TokenResponse struct {
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
 	ExpiresIn    int64  `json:"expires_in"`
+	// The session's limits, so the site can warn before it signs the user out:
+	// idle seconds allowed between activity, and when the session ends anyway.
+	IdleTimeoutSeconds int64     `json:"idle_timeout_seconds"`
+	SessionEndsAt      time.Time `json:"session_ends_at"`
 }

@@ -18,6 +18,7 @@ import { parseAmount } from "@/lib/numbers";
 import { getInitials } from "@/lib/utils";
 import { StatusBadge } from "@/components/common/status-badge";
 import { creatorStatus } from "@/lib/status";
+import { canOptimize } from "@/lib/images";
 
 // Values match what the server stores (lowercase); labels are for display.
 const platformOptions = [
@@ -338,7 +339,7 @@ export function InfluencerProfile() {
               src={avatarUrl}
               alt={form.name}
               fill
-              unoptimized
+              unoptimized={!canOptimize(avatarUrl)}
               className="object-cover transition-opacity group-hover:opacity-75"
               sizes="96px"
             />
@@ -668,7 +669,7 @@ export function InfluencerProfile() {
                         src={item.file_url}
                         alt="Portfolio item"
                         fill
-                        unoptimized
+                        unoptimized={!canOptimize(item.file_url)}
                         className="object-cover"
                         sizes="(max-width:768px) 100vw, 33vw"
                       />

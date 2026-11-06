@@ -1,7 +1,8 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from "axios";
 
-import { AUTH_TOKEN_STORAGE_KEY, REFRESH_TOKEN_STORAGE_KEY, AUTH_USER_STORAGE_KEY } from "@/lib/constants";
+import { AUTH_TOKEN_STORAGE_KEY, REFRESH_TOKEN_STORAGE_KEY } from "@/lib/constants";
 import { getPublicEnv } from "@/lib/env";
+import { clearStoredSession, isIdle, loginUrl, rememberSessionLimits, type SignOutReason } from "@/lib/session";
 
 const { apiBaseUrl } = getPublicEnv();
 const baseURL = apiBaseUrl || "http://localhost:8080";
@@ -44,15 +45,13 @@ function bearerToken(config: InternalAxiosRequestConfig): string | null {
   return typeof header === "string" && header.startsWith("Bearer ") ? header.slice(7) : null;
 }
 
-function clearSessionAndRedirect() {
-  window.localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
-  window.localStorage.removeItem(REFRESH_TOKEN_STORAGE_KEY);
-  window.localStorage.removeItem(AUTH_USER_STORAGE_KEY);
-  const path = `${window.location.pathname}${window.location.search}`;
+function clearSessionAndRedirect(reason?: SignOutReason) {
+  const path = window.location.pathname;
+  const url = loginUrl(reason ?? (isIdle() ? "idle" : "expired"));
+  clearStoredSession();
   if (path.startsWith("/auth") || path.startsWith("/admin/login")) return;
   // Admins sign in on their own page; everyone else on the main login.
-  const login = path.startsWith("/admin") ? "/admin/login" : "/auth/login";
-  window.location.assign(`${login}?next=${encodeURIComponent(path)}`);
+  window.location.assign(url);
 }
 
 async function requestNewTokens(): Promise<string> {
@@ -67,8 +66,11 @@ async function requestNewTokens(): Promise<string> {
       { refresh_token: refreshToken },
       { headers: { "Content-Type": "application/json" }, timeout: REFRESH_TIMEOUT_MS }
     );
-    const tokens = res.data?.data?.tokens;
+    const tokens = res.data?.data?.tokens as
+      | { access_token: string; refresh_token?: string; idle_timeout_seconds?: number; session_ends_at?: string }
+      | undefined;
     if (!tokens?.access_token) throw new Error("refresh response did not include an access token");
+    rememberSessionLimits(tokens);
 
     window.localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, tokens.access_token);
     if (tokens.refresh_token) {
@@ -86,6 +88,26 @@ async function requestNewTokens(): Promise<string> {
 }
 
 let refreshInFlight: Promise<string> | null = null;
+let renewInFlight: Promise<string> | null = null;
+
+/**
+ * Renews the server session now (the person is active), once at a time
+ * across tabs. Never used for an idle session.
+ */
+export function renewSession(): Promise<string> {
+  if (renewInFlight) return renewInFlight;
+  const locked: Promise<string> =
+    typeof navigator !== "undefined" && navigator.locks?.request
+      ? navigator.locks.request(REFRESH_LOCK_NAME, () => requestNewTokens()).then((token) => token)
+      : requestNewTokens();
+  renewInFlight = locked.finally(() => {
+    renewInFlight = null;
+  });
+  return renewInFlight.catch((err) => {
+    if (err instanceof SessionExpiredError) clearSessionAndRedirect();
+    throw err;
+  });
+}
 
 /**
  * Returns a fresh access token, refreshing at most once at a time across all
@@ -124,6 +146,13 @@ apiClient.interceptors.response.use(
       typeof window === "undefined" ||
       isAuthEndpoint(original.url)
     ) {
+      return Promise.reject(error);
+    }
+
+    // Nobody has used the site for the idle limit: don't let background
+    // traffic (chat updates, reconnects) renew the session; sign out instead.
+    if (isIdle()) {
+      clearSessionAndRedirect("idle");
       return Promise.reject(error);
     }
 

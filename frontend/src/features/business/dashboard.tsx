@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
 import {
   ArrowRight,
   BarChart3,
@@ -19,39 +18,19 @@ import { ListStatus } from "@/components/common/list-status";
 import { BusinessKpiCard } from "@/components/dashboard/business-kpi-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { LoadState } from "@/hooks/use-paged-list";
-import { businessApi, type DashboardSummaryResponse } from "@/lib/api/business";
-import { chatApi, type ChatConversationItem } from "@/lib/api/chat";
 import { formatDate } from "@/lib/contracts";
 import { StatusBadge } from "@/components/common/status-badge";
 import { campaignStatus } from "@/lib/status";
+import { loadState, useBusinessDashboard, useConversations } from "@/lib/queries";
 
 
 export function BusinessDashboard() {
-  const [summary, setSummary] = useState<DashboardSummaryResponse | null>(null);
-  const [conversations, setConversations] = useState<ChatConversationItem[]>([]);
-  const [state, setState] = useState<LoadState>("loading");
-
-  const loadDashboard = useCallback(async () => {
-    const [sumRes, chatRes] = await Promise.allSettled([
-      businessApi.getDashboardSummary(),
-      chatApi.listConversations(),
-    ]);
-    if (chatRes.status === "fulfilled" && chatRes.value.data) {
-      setConversations(Array.isArray(chatRes.value.data) ? chatRes.value.data : []);
-    }
-    // The summary drives every number here; without it, say so instead of showing zeros.
-    if (sumRes.status === "fulfilled") {
-      setSummary(sumRes.value.data ?? null);
-      setState("ready");
-    } else {
-      setState("error");
-    }
-  }, []);
-
-  useEffect(() => {
-    void Promise.resolve().then(loadDashboard);
-  }, [loadDashboard]);
+  const summaryQuery = useBusinessDashboard();
+  const conversationsQuery = useConversations();
+  const summary = summaryQuery.data ?? null;
+  const conversations = conversationsQuery.data ?? [];
+  // The summary drives every number here; without it, say so instead of showing zeros.
+  const state = loadState(summaryQuery);
 
   const greetingName =
     summary?.greeting?.business_name ||
@@ -83,10 +62,7 @@ export function BusinessDashboard() {
         isEmpty={false}
         emptyText=""
         errorText="Your dashboard could not be loaded."
-        onRetry={() => {
-          setState("loading");
-          void loadDashboard();
-        }}
+        onRetry={() => void summaryQuery.refetch()}
       >
         {summary?.marketplace_access && summary.marketplace_access.verification_status !== "verified" ? (
           <VerificationStatusCard

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import axios from "axios";
@@ -15,14 +15,13 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import {
   businessApi,
   type CampaignListItem,
-  type ContractDetail,
-  type ContractListItem,
   type InviteResponse,
 } from "@/lib/api/business";
 import { DELIVERABLE_TYPES, contractStatus, formatEtb, previewFees } from "@/lib/contracts";
 import { cn } from "@/lib/utils";
 import { StatusBadge } from "@/components/common/status-badge";
 import { FilterChips } from "@/components/common/filter-chips";
+import { loadState, useContract, useContracts, useInvalidateContracts } from "@/lib/queries";
 
 const FILTERS = [
   { id: "", label: "All" },
@@ -247,11 +246,7 @@ export function BusinessContracts() {
   const searchParams = useSearchParams();
   // Emails link here with ?contract_id= to open that contract.
   const linkedId = searchParams.get("contract_id");
-  const [rows, setRows] = useState<ContractListItem[]>([]);
-  const [listState, setListState] = useState<"loading" | "ready" | "error">("loading");
   const [selectedId, setSelectedId] = useState<string | null>(linkedId);
-  const [detail, setDetail] = useState<ContractDetail | null>(null);
-  const [detailError, setDetailError] = useState<string | null>(null);
   const [mobileShowDetail, setMobileShowDetail] = useState(Boolean(linkedId));
   // "Send contract" on an accepted invite links here with both ids.
   const preset = useMemo(() => {
@@ -263,39 +258,18 @@ export function BusinessContracts() {
   const [confirm, setConfirm] = useState<Confirm>(null);
   const [busy, setBusy] = useState(false);
 
-  const loadList = useCallback(async () => {
-    try {
-      const res = await businessApi.listContracts({ status: filter || undefined, limit: 50 });
-      setRows(res.data?.items ?? []);
-      setListState("ready");
-    } catch {
-      setListState("error");
-    }
-  }, [filter]);
-
-  const loadDetail = useCallback(async (id: string) => {
-    try {
-      const res = await businessApi.getContract(id);
-      setDetail(res.data ?? null);
-      setDetailError(null);
-    } catch (err) {
-      setDetailError(apiError(err, "Could not load this contract."));
-    }
-  }, []);
-
-  useEffect(() => {
-    void Promise.resolve().then(loadList);
-  }, [loadList]);
-
-  useEffect(() => {
-    if (linkedId) void Promise.resolve().then(() => loadDetail(linkedId));
-  }, [linkedId, loadDetail]);
+  // Cached: switching filters or contracts shows what was already loaded at once.
+  const listQuery = useContracts("business", filter);
+  const rows = listQuery.data ?? [];
+  const listState = loadState(listQuery);
+  const detailQuery = useContract("business", selectedId);
+  const detail = detailQuery.data ?? null;
+  const detailError = detailQuery.isError && !detail ? apiError(detailQuery.error, "Could not load this contract.") : null;
+  const refresh = useInvalidateContracts("business");
 
   const select = (id: string) => {
     setSelectedId(id);
-    setDetail(null);
     setConfirm(null);
-    void loadDetail(id);
     if (window.matchMedia("(max-width: 1279px)").matches) setMobileShowDetail(true);
   };
 
@@ -311,7 +285,7 @@ export function BusinessContracts() {
         toast.success("Contract cancelled.");
       }
       setConfirm(null);
-      await Promise.all([loadList(), loadDetail(detail.id)]);
+      await refresh(detail.id);
     } catch (err) {
       toast.error(apiError(err, "The action could not be completed."));
     } finally {
@@ -359,7 +333,7 @@ export function BusinessContracts() {
           </Button>
         ) : null}
         {detail.status === "active" ? (
-          <ReportProblemButton contractId={detail.id} role="business" onReported={() => Promise.all([loadList(), loadDetail(detail.id)]).then(() => {})} />
+          <ReportProblemButton contractId={detail.id} role="business" onReported={() => refresh(detail.id).then(() => {})} />
         ) : null}
         {detail.status === "pending_influencer" || detail.status === "accepted" ? (
           <Button type="button" variant="outline" onClick={() => setConfirm({ kind: "cancel" })} className="h-10 rounded-xl border-rose-400/40 bg-transparent text-rose-200 hover:bg-rose-500/10">
@@ -390,7 +364,6 @@ export function BusinessContracts() {
         value={filter}
         onChange={(v) => {
           setFilter(v);
-          setListState("loading");
         }}
         options={FILTERS.map((f) => ({ value: f.id, label: f.label }))}
       />
@@ -402,7 +375,7 @@ export function BusinessContracts() {
           ) : listState === "error" ? (
             <div role="alert" className="rounded-2xl border border-rose-400/30 bg-rose-500/10 p-6 text-sm text-rose-100">
               Could not load contracts.
-              <Button type="button" variant="link" className="ml-2 h-auto p-0 text-white" onClick={() => void loadList()}>Try again</Button>
+              <Button type="button" variant="link" className="ml-2 h-auto p-0 text-white" onClick={() => void listQuery.refetch()}>Try again</Button>
             </div>
           ) : rows.length === 0 ? (
             <div className="rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.08)] p-8 text-center text-sm text-[#CBD5E1]">
@@ -458,7 +431,7 @@ export function BusinessContracts() {
         onOpenChange={setSheetOpen}
         onCreated={(id) => {
           setFilter("");
-          void loadList().then(() => select(id));
+          void refresh().then(() => select(id));
         }}
       />
     </div>
