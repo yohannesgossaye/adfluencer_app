@@ -1,5 +1,9 @@
 package model
 
+import "time"
+
+const AuditAsyncTimeout = 20 * time.Second
+
 type Role string
 type UserStatus string
 type DocumentType string

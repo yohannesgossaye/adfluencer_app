@@ -1,0 +1,12 @@
+[Unit]
+Description=Adfluence database backup to S3
+Wants=network-online.target docker.service
+After=network-online.target docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/adfluence/backup.sh nightly
+# A slow upload must not hang forever.
+TimeoutStartSec=30min
+Nice=10
+IOSchedulingClass=idle

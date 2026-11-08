@@ -1,0 +1,12 @@
+[Unit]
+Description=Nightly Adfluence database backup (02:00 Ethiopia time)
+
+[Timer]
+# 23:00 UTC = 02:00 in Ethiopia (UTC+3, no daylight saving).
+OnCalendar=*-*-* 23:00:00 UTC
+# If the server was off at 23:00, run once when it comes back.
+Persistent=true
+RandomizedDelaySec=5min
+
+[Install]
+WantedBy=timers.target
