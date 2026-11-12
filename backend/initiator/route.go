@@ -18,7 +18,7 @@ func InitRoute(router chi.Router, rest handlers, authMW middleware.AuthMiddlewar
 		auth.AuthRoutes(r, rest.auth, authMW)
 		influencerRoutes.InfluencerRoutes(r, rest.influencer, authMW)
 		businessRoutes.BusinessRoutes(r, rest.business, authMW)
-		adminRoutes.AdminRoutes(r, rest.admin, authMW)
+		adminRoutes.AdminRoutes(r, rest.admin, rest.createAdmin, authMW)
 		marketplaceRoutes.MarketPlaceRoutes(r, rest.chat, authMW)
 	})
 

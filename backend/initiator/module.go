@@ -2,6 +2,7 @@ package initiator
 
 import (
 	"adinfluence_service_app/internal/module"
+	createadmin "adinfluence_service_app/internal/module/createAdmin"
 	adminModule "adinfluence_service_app/internal/module/admin"
 	auth "adinfluence_service_app/internal/module/auth"
 	businessModule "adinfluence_service_app/internal/module/business"
@@ -19,11 +20,12 @@ import (
 )
 
 type modules struct {
-	auth       module.AuthService
-	influencer module.InfluencerService
-	business   module.BusinessService
-	admin      module.AdminService
-	chat       module.ChatService
+	auth        module.AuthService
+	influencer  module.InfluencerService
+	business    module.BusinessService
+	admin       module.AdminService
+	chat        module.ChatService
+	createAdmin module.CreateAdminService
 }
 
 func InitModules(persistence persistence, tokens *jwt.TokenManager, email *mail.Client, smsClient *sms.Client, dispatcher *notify.Dispatcher, limits ratelimit.Store, files platformStorage.Service, frontendURL, contactInbox string, logSecrets bool, log utils.Logger) modules {
@@ -32,10 +34,11 @@ func InitModules(persistence persistence, tokens *jwt.TokenManager, email *mail.
 	disputes := disputeModule.New(persistence.contract, emailer, log)
 	threads := supportModule.New(persistence.support, emailer, log)
 	return modules{
-		auth:       auth.InitAuthModule(persistence.auth, tokens, email, smsClient, dispatcher, limits, frontendURL, contactInbox, logSecrets, log),
-		influencer: influencer.InitInfluencerModule(persistence.influencer, persistence.contract, persistence.support, persistence.auth, files, disputes, threads, log),
-		business:   businessModule.InitBusinessModule(persistence.business, persistence.influencer, persistence.contract, persistence.support, persistence.auth, files, disputes, threads, log),
-		admin:      adminModule.InitAdminModule(persistence.admin, persistence.influencer, persistence.support, persistence.contract, disputes, threads, log),
-		chat:       chatModule.InitChatService(persistence.chat, persistence.auth, log),
+		auth:        auth.InitAuthModule(persistence.auth, tokens, email, smsClient, dispatcher, limits, frontendURL, contactInbox, logSecrets, log),
+		influencer:  influencer.InitInfluencerModule(persistence.influencer, persistence.contract, persistence.support, persistence.auth, files, disputes, threads, log),
+		business:    businessModule.InitBusinessModule(persistence.business, persistence.influencer, persistence.contract, persistence.support, persistence.auth, files, disputes, threads, log),
+		admin:       adminModule.InitAdminModule(persistence.admin, persistence.influencer, persistence.support, persistence.contract, disputes, threads, log),
+		chat:        chatModule.InitChatService(persistence.chat, persistence.auth, log),
+		createAdmin: createadmin.InitCreateAdminModule(persistence.createAdmin, log),
 	}
 }

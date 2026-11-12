@@ -83,6 +83,11 @@ var (
 	ErrDisputeAlreadyOpen         = errors.New("this contract already has an open dispute")
 	ErrDisputeAlreadyResolved     = errors.New("this dispute is already resolved")
 	ErrInvalidRefreshToken        = errors.New("invalid or expired refresh token")
+	ErrAdminNameRequired          = errors.New("admin name is required")
+	ErrAdminEmailRequired         = errors.New("admin email is required")
+	ErrPasswordRequired           = errors.New("password is required")
+	ErrAdminRoleRequired          = errors.New("admin role is required")
+	ErrInvalidAdminRole           = errors.New("invalid admin role,please use 'super_admin' as admin role")
 )
 
 var ErrorMap = map[error]int{
@@ -163,4 +168,9 @@ var ErrorMap = map[error]int{
 	ErrDisputeAlreadyOpen:         http.StatusConflict,
 	ErrDisputeAlreadyResolved:     http.StatusConflict,
 	ErrInvalidRefreshToken:        http.StatusBadRequest,
+	ErrAdminNameRequired:          http.StatusBadRequest,
+	ErrAdminEmailRequired:         http.StatusBadRequest,
+	ErrPasswordRequired:           http.StatusBadRequest,
+	ErrAdminRoleRequired:          http.StatusBadRequest,
+	ErrInvalidAdminRole:           http.StatusBadRequest,
 }

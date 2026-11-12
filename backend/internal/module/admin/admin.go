@@ -7,6 +7,7 @@ import (
 	authDto "adinfluence_service_app/internal/constant/model/dto/auth"
 	commonDto "adinfluence_service_app/internal/constant/model/dto/common"
 	influencerDto "adinfluence_service_app/internal/constant/model/dto/influencer"
+	"adinfluence_service_app/internal/module"
 	"adinfluence_service_app/internal/module/admin/helper"
 	disputeModule "adinfluence_service_app/internal/module/dispute"
 	influencerHelper "adinfluence_service_app/internal/module/influencer/helper"
@@ -33,7 +34,7 @@ type adminModule struct {
 	logger     utils.Logger
 }
 
-func InitAdminModule(admin storage.AdminPersistence, influencer storage.InfluencerPersistence, support storage.SupportPersistence, contracts storage.ContractPersistence, disputes *disputeModule.Service, threads *supportModule.Service, log utils.Logger) *adminModule {
+func InitAdminModule(admin storage.AdminPersistence, influencer storage.InfluencerPersistence, support storage.SupportPersistence, contracts storage.ContractPersistence, disputes *disputeModule.Service, threads *supportModule.Service, log utils.Logger) module.AdminService {
 	return &adminModule{
 		admin:      admin,
 		influencer: influencer,

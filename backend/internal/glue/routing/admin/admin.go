@@ -9,7 +9,7 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func AdminRoutes(router chi.Router, rest handler.AdminHandler, authMiddleware middleware.AuthMiddleware) {
+func AdminRoutes(router chi.Router, rest handler.AdminHandler, createAdminHandler handler.CreateAdminHandler, authMiddleware middleware.AuthMiddleware) {
 	router.Route("/admin", func(r chi.Router) {
 		auth := []func(next http.Handler) http.Handler{authMiddleware.AuthenticateToken}
 		glue.RegisterRoutes(r, []glue.Route{
@@ -275,6 +275,17 @@ func AdminRoutes(router chi.Router, rest handler.AdminHandler, authMiddleware mi
 					Path:        "/{dispute_id}/notes",
 					Handler:     rest.UpdateDisputeNotes,
 					Middlewares: auth,
+				},
+			}
+			glue.RegisterRoutes(r, routes)
+		})
+		/// this helps to create admin user instead of seed it in databse and used by api_key to create admin user
+		r.Route("/create_admin", func(r chi.Router) {
+			routes := []glue.Route{
+				{
+					Method:  http.MethodPost,
+					Path:    "/",
+					Handler: createAdminHandler.CreateAdmin,
 				},
 			}
 			glue.RegisterRoutes(r, routes)

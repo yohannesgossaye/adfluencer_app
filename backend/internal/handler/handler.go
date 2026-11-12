@@ -120,3 +120,7 @@ type AdminHandler interface {
 	ResolveDispute(w http.ResponseWriter, r *http.Request)
 	UpdateDisputeNotes(w http.ResponseWriter, r *http.Request)
 }
+
+type CreateAdminHandler interface {
+	CreateAdmin(w http.ResponseWriter, r *http.Request)
+}
