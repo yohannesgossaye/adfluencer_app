@@ -16,9 +16,10 @@ import (
 )
 
 type Config struct {
-	Port        string
-	DbUrl       string
-	FrontendURL string
+	Port              string
+	DbUrl             string
+	FrontendURL       string
+	AdminCreateApiKey string
 	// ContactInbox receives messages from the public Contact us page.
 	ContactInbox string
 	AppEnv       string
@@ -105,20 +106,21 @@ func Load() *Config {
 	_ = godotenv.Load()
 
 	cfg := &Config{
-		Port:           Getenv("PORT", "8080"),
-		DbUrl:          Getenv("DATABASE_URL", ""),
-		FrontendURL:    Getenv("FRONTEND_URL", "http://localhost:3000"),
-		ContactInbox:   Getenv("CONTACT_INBOX_EMAIL", Getenv("SMTP_FROM", os.Getenv("SMTP_USER"))),
-		AppEnv:         Getenv("APP_ENV", "production"),
-		CORSOrigins:    parseList(Getenv("CORS_ORIGINS", defaultCORSOrigins)),
-		MigrateOnStart: Getenv("MIGRATE_ON_START", "true") == "true",
-		RedisURL:       Getenv("REDIS_URL", ""),
-		TrustedProxies: utils.ParseTrustedProxies(Getenv("TRUSTED_PROXIES", utils.DefaultTrustedProxies)),
-		DB:             loadDBConfig(),
-		JWT:            loadJWTConfig(),
-		SMTP:           loadSMTPConfig(),
-		SMS:            loadSMSConfig(),
-		S3:             loadS3Config(),
+		Port:              Getenv("PORT", "8080"),
+		DbUrl:             Getenv("DATABASE_URL", ""),
+		FrontendURL:       Getenv("FRONTEND_URL", "http://localhost:3000"),
+		AdminCreateApiKey: Getenv("ADMIN_API_KEY", ""),
+		ContactInbox:      Getenv("CONTACT_INBOX_EMAIL", Getenv("SMTP_FROM", os.Getenv("SMTP_USER"))),
+		AppEnv:            Getenv("APP_ENV", "production"),
+		CORSOrigins:       parseList(Getenv("CORS_ORIGINS", defaultCORSOrigins)),
+		MigrateOnStart:    Getenv("MIGRATE_ON_START", "true") == "true",
+		RedisURL:          Getenv("REDIS_URL", ""),
+		TrustedProxies:    utils.ParseTrustedProxies(Getenv("TRUSTED_PROXIES", utils.DefaultTrustedProxies)),
+		DB:                loadDBConfig(),
+		JWT:               loadJWTConfig(),
+		SMTP:              loadSMTPConfig(),
+		SMS:               loadSMSConfig(),
+		S3:                loadS3Config(),
 	}
 
 	if cfg.DbUrl == "" {

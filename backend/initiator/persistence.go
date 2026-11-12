@@ -6,6 +6,7 @@ import (
 	auth "adinfluence_service_app/internal/storage/persist/auth"
 	businessPersist "adinfluence_service_app/internal/storage/persist/business"
 	contractPersist "adinfluence_service_app/internal/storage/persist/contract"
+	createadmin "adinfluence_service_app/internal/storage/persist/createAdmin"
 	influencerPersist "adinfluence_service_app/internal/storage/persist/influencer"
 	chatPersist "adinfluence_service_app/internal/storage/persist/marketplace/chat"
 	supportPersist "adinfluence_service_app/internal/storage/persist/support"
@@ -14,24 +15,25 @@ import (
 )
 
 type persistence struct {
-	auth       storage.AuthPersisitence
-	influencer storage.InfluencerPersistence
-	business   storage.BusinessPersistence
-	contract   storage.ContractPersistence
-	admin      storage.AdminPersistence
-	support    storage.SupportPersistence
-	chat       storage.ChatPersistence
+	auth        storage.AuthPersisitence
+	influencer  storage.InfluencerPersistence
+	business    storage.BusinessPersistence
+	contract    storage.ContractPersistence
+	admin       storage.AdminPersistence
+	support     storage.SupportPersistence
+	chat        storage.ChatPersistence
+	createAdmin storage.CreateAdminPersistence
 }
 
 func InitPersistence(db *sql.DB, log utils.Logger) persistence {
 	return persistence{
-		auth:       auth.InitAuthPersistence(db, log),
-		influencer: influencerPersist.InitInfluencerPersistence(db, log),
-		business:   businessPersist.InitBusinessPersistence(db, log),
-		contract:   contractPersist.InitContractPersistence(db, log),
-		admin:      adminPersist.InitAdminPersistence(db, log),
-		support:    supportPersist.InitSupportPersistence(db),
-		chat:       chatPersist.InitChatPersistence(db, log),
+		auth:        auth.InitAuthPersistence(db, log),
+		influencer:  influencerPersist.InitInfluencerPersistence(db, log),
+		business:    businessPersist.InitBusinessPersistence(db, log),
+		contract:    contractPersist.InitContractPersistence(db, log),
+		admin:       adminPersist.InitAdminPersistence(db, log),
+		support:     supportPersist.InitSupportPersistence(db),
+		chat:        chatPersist.InitChatPersistence(db, log),
+		createAdmin: createadmin.InitCreateAdminPersistence(db, log),
 	}
 }
-

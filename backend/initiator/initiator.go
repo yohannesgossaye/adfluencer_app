@@ -135,7 +135,7 @@ func Initiator(ctx context.Context) {
 	dispatcher := notify.New(logger)
 	limits := initRateLimitStore(ctx, cfg.RedisURL, logger)
 	service := InitModules(postgresRepo, tokens, emailClient, smsClient, dispatcher, limits, fileStorage, cfg.FrontendURL, cfg.ContactInbox, cfg.IsDevelopment(), logger)
-	handler := InitHandler(service, tokens, cfg.CORSOrigins, logger)
+	handler := InitHandler(service, tokens, cfg.AdminCreateApiKey, cfg.CORSOrigins, logger)
 	authMW := middleware.InitAuthMiddleware(tokens)
 	InitRoute(r, handler, authMW)
 

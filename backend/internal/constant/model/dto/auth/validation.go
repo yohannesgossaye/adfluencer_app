@@ -131,3 +131,6 @@ func (r VerifyPhoneRequest) ValidateVerifyPhoneRequest() error {
 		),
 	)
 }
+
+// ValidEmail applies the sign-up email rule (also used when creating admins).
+func ValidEmail(email string) bool { return emailRegex.MatchString(email) }

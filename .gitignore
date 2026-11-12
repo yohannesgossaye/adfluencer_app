@@ -9,3 +9,8 @@ docs/
 # Playwright reports and failure screenshots
 frontend/test-results/
 frontend/playwright-report/
+
+# Database dumps and backups: never commit them (the repo is public).
+*.dump
+adfluence_backup_*.sql
+*_backup_*.sql

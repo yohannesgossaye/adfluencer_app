@@ -125,3 +125,7 @@ type BusinessService interface {
 	GetSupportTicket(ctx context.Context, userID, ticketID string) (*businessDto.SupportTicketDetailResponse, error)
 	ReplySupportTicket(ctx context.Context, userID, ticketID string, req supportDto.ReplyRequest) (*supportDto.ReplyResult, error)
 }
+
+type CreateAdminService interface {
+	CreateAdmin(ctx context.Context, req adminDto.CreateAdminRequest, meta authDto.SessionMeta) (string, error)
+}
